@@ -1,0 +1,21 @@
+# CRYPTFALL
+
+Roguelike en primera persona con estética pixel art al estilo *Daggerfall* / *Hexen*. Se juega en el navegador, sin instalar nada.
+
+**▶ Jugar:** https://alexmiauplus01.github.io/Cryptfall/
+
+Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra llaves, enfréntate al Guardián y **sal con vida y con el botín**.
+
+| Control | Acción |
+|---|---|
+| W A S D | Moverse |
+| Ratón / Q E | Girar |
+| Clic / Espacio | Atacar |
+| R · C · V | Habilidades de clase |
+| 1 2 3 / rueda | Cambiar de arma |
+| I · J | Inventario (antorchas) · Diario |
+| F · Clic der. | Escudo · Bloquear / esquivar |
+| Shift | Esquivar |
+| P · N | Pausa y opciones · Sonido |
+
+Caminar contra una pared abre puertas, usa llaves y escaleras, y descubre pasadizos secretos.
