@@ -513,12 +513,12 @@ class Renderer {
       const k = p.block;
       const sx = lerp(VW * 0.17, VW * 0.40, k), sy = lerp(VH - 40, VH - 118, k);
       this.hand(p, -1, sx + 10, sy + 70, 0.1, lm);
-      this.blitRot(SPR.shield, 64, 64, sx - bx * 0.5, sy + by * 0.5, lerp(0.15, -0.02, k), lm, false, S2);
+      this.blitRot(shieldSprite(), 64, 64, sx - bx * 0.5, sy + by * 0.5, lerp(0.15, -0.02, k), lm, false, S2);
     }
 
     // ---------- bastones (sprite y brillo según el hechizo)
     if (W === 'staff') {
-      const sp = p.spell, spr = sp === 'nature' ? SPR.staff_nature : (sp === 'plague' || sp === 'dark') ? SPR.staff_dark : SPR.staff;
+      const sp = p.spell, spr = weaponSprite('staff', sp === 'nature' ? SPR.staff_nature : (sp === 'plague' || sp === 'dark') ? SPR.staff_dark : SPR.staff);
       const kick = rc * 22, ang = 0.04 - rc * 0.18;
       const gx = RGx - rc * 14, gy = RGy - kick;
       this.blitRot(spr, 32, 100, gx, gy, ang, lm, false, S2);
@@ -563,14 +563,14 @@ class Renderer {
           this.slashLine(mv, sw, side, p.slashRamp || 'steel');
           ang = q.ang; x = q.gx; y = q.gy; s = q.s; sv = q.sv;
         }
-        this.blitRot(side > 0 ? SPR.dagger : SPR.daggerL, side > 0 ? 23 : 24, 80, x, y, ang, lm, false, S2 * s, sv);
+        this.blitRot(weaponSprite('daggers', side > 0 ? SPR.dagger : SPR.daggerL), side > 0 ? 23 : 24, 80, x, y, ang, lm, false, S2 * s, sv);
         this.armHand(p, side, x, y, ang, rest, x0, y0, lm);
       }
       return;
     }
     // ---------- armas blancas: espada, espadón y daga
     const big = W === 'greatsword', dag = W === 'dagger';
-    const spr = big ? SPR.greatsword : dag ? SPR.dagger : SPR.sword;
+    const spr = weaponSprite(W, big ? SPR.greatsword : dag ? SPR.dagger : SPR.sword);
     const grip = big ? [39, 190] : dag ? [23, 80] : [31, 122]; // justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo
     const rest = big ? -0.08 : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? 190 : dag ? 82 : 125) * S2;
     const x0 = big ? VW * 0.60 : RGx, y0 = big ? VH - 22 - sideUp + by : RGy;

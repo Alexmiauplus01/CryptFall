@@ -115,7 +115,7 @@ function setClass(id, evolving) {
 }
 
 function newRun(cls) {
-  G.equip = { anillo: null, amuleto: null, armadura: null }; G.bag = [];
+  G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
   G.upg = {}; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
   G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
@@ -161,7 +161,7 @@ function populateLevel(lv) {
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
-    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12) }; P.push(c); return c; };
+    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' }; P.push(c); return c; };
     const foes = (n, type) => { for (let k = 0; k < n; k++) { const [x, y] = roomSpot(lv, r, used); const e = spawnEnemy(type || pickType(), x, y); e.sleep = true; } };
     let box = null;
     switch (r.type) {
@@ -375,7 +375,7 @@ function hurtPlayer(d, sx, sy) {
     let da = Math.atan2(sy - p.y, sx - p.x) - p.a;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (Math.abs(da) < 1.25) { // el escudo cubre el frente
-      d *= 0.2; p.inv = 0.25; G.shake = Math.max(G.shake, 0.12);
+      d *= 0.2 * Math.max(0.15, 1 - eqStat('block')); p.inv = 0.25; G.shake = Math.max(G.shake, 0.12);
       vfxImpact(p.x + Math.cos(p.a) * 0.7, p.y + Math.sin(p.a) * 0.7, 0.45, 'impact', 1);
       Sfx.play('hit');
     }
@@ -389,6 +389,7 @@ function hurtPlayer(d, sx, sy) {
   if (d < 0.5) { p.inv = 0.3; return; }
   p.hp -= Math.max(1, Math.round(d)); p.inv = 0.45; G.hurtFx = 1; G.shake = Math.max(G.shake, 0.3);
   Sfx.play('hurt'); if (typeof padRumble === 'function') padRumble(0.7, 160);
+  equipOnHurt(d, sx, sy);
   if (eqSpecial('espinas') && sx !== undefined) { let best = null, bd = 2.2; for (const e of G.enemies) { const q = Math.hypot(e.x - sx, e.y - sy); if (!e.dead && q < bd) { bd = q; best = e; } } if (best) damageEnemy(best, d * 0.3, { silent: true }); }
   if (p.hp <= 0) die();
 }
@@ -417,10 +418,10 @@ function playerAttack() {
 function castSpell() {
   const p = G.p, sp = SPELLS[p.spell] || SPELLS.arcane;
   p.shootCd = sp.cd / p.rate; p.anim = 1;
-  const n = p.multi, spread = 0.1, sb = stealthBonus();
+  const arch = eqLegend('archimago') ? 1 : 0, n = p.multi + arch, spread = 0.1, sb = stealthBonus();
   for (let i = 0; i < n; i++) {
     const crit = Math.random() < p.crit;
-    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
+    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce + arch, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
   }
   Sfx.play('shoot');
 }
@@ -462,7 +463,7 @@ function meleeHit() {
     const crit = Math.random() < p.crit;
     const dd = w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1);
     damageEnemy(e, dd, { kx: dx / (d || 1) * w.kb, ky: dy / (d || 1) * w.kb, crit });
-    forgeHit(e, dd);
+    forgeHit(e, dd); equipHit(e, dd);
     if (hits < 4) vfxImpact(e.x, e.y, 0.5, shadow ? 'arcane' : 'steel', 0.7);
     if (shadow) applyFx(e, { slow: 1.5 });
     if (holy) healP(p.maxHp * 0.012);
@@ -529,9 +530,6 @@ function closeInventory() { if (G.state !== 'inventory') return; G.state = 'play
 function invAction(id) {
   if (id === 'torch') equipTorch();
   else if (id === 'shield') { const p = G.p; if (WEAPONS[p.weapon].hands !== 1) { toast('NECESITAS UNA MANO LIBRE', false); return; } toggleOffhand(); }
-  else if (typeof id === 'string' && id.startsWith('bag:')) equipFromBag(+id.slice(4));
-  else if (typeof id === 'string' && id.startsWith('drop:')) dropFromBag(+id.slice(5));
-  else if (typeof id === 'string' && id.startsWith('eq:')) unequip(id.slice(3));
   else if (id === 'potion') drinkPotion();
   else if (id === 'map') { readMap(); }
   else if (id === 'rune') { closeInventory(); useRune(); }
@@ -565,7 +563,7 @@ function updateProjs(dt) {
             pr.hit.add(e);
             damageEnemy(e, pr.dmg, { kx: pr.vx * 0.12, ky: pr.vy * 0.12, crit: pr.crit });
             hitFx(e, pr.fx, pr);
-            if (pr.basic) forgeHit(e, pr.dmg);
+            if (pr.basic) { forgeHit(e, pr.dmg); equipHit(e, pr.dmg); }
             if (!pr.explode) vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] === 'fire' ? 'impact' : PROJ_RAMP[pr.spr] || 'impact', 0.6);
             if (pr.explode) { explodeAt(pr.x, pr.y, pr.explode); pr.dead = true; break; }
             if (pr.pierce-- <= 0) { pr.dead = true; break; }
@@ -573,7 +571,8 @@ function updateProjs(dt) {
         }
       } else {
         const dx = p.x - pr.x, dy = p.y - pr.y, rr = 0.25 + pr.r;
-        if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
+        if (dx * dx + dy * dy < rr * rr && equipReflect(pr)) { vfxImpact(pr.x, pr.y, 0.45, 'steel', 0.8); Sfx.play('blade'); }
+        else if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
       }
     }
     pr.life -= dt;
@@ -681,8 +680,14 @@ function dropGem(x, y, v) {
 
 function killEnemy(e) {
   e.dead = true; G.kills++;
-  forgeOnKill(e);
-  if (e.ghost) { onGhostKilled(e); if (Math.random() < 0.6) dropItem('ghost', e.x, e.y + 0.3); }
+  forgeOnKill(e); equipOnKill(e);
+  if (e.ghost) {
+    onGhostKilled(e);
+    // 50%: recuperas uno de los legendarios que llevaba el caído; si no, un objeto normal de fantasma
+    const L = e.ghost.legends || [];
+    if (L.length && Math.random() < 0.5) { const it = JSON.parse(JSON.stringify(pick(L))); G.pickups.push({ type: 'item', item: it, x: e.x, y: e.y + 0.3, t: 0 }); toast('¡UN LEGENDARIO DEL CAÍDO!', true); }
+    else if (Math.random() < 0.6) dropItem('ghost', e.x, e.y + 0.3);
+  }
   const d = e.def, col = d.spr === 'slime' ? rgb(120, 220, 90) : d.spr === 'imp' || d.boss ? rgb(255, 90, 40) : rgb(220, 210, 180);
   burst(e.x, e.y, 0.3, d.boss ? 40 : 10, col, 2.5, 0.8, false, 0.06);
   if (d.boss) {
@@ -699,7 +704,7 @@ function killEnemy(e) {
 
 function onBossDead(e) {
   G.boss = null;
-  dropItem('boss', e.x + 0.4, e.y);
+  dropItem('boss', e.x + 0.4, e.y, { boss: e.type });
   G.flashFx = 1; G.shake = 0.7;
   Sfx.play('portal');
   toast(`¡${e.def.name} HA CAÍDO!`, true); logMsg('Su tesoro es tuyo. Ahora, a la salida', C.cyan);
@@ -932,7 +937,7 @@ function updatePickups(dt) {
       if (d < p.magnet * 0.6 || k.mag) { k.mag = true; k.x += dx / d * 6 * dt; k.y += dy / d * 6 * dt; }
       if (d < 0.5) { k.dead = true; G.loot += k.v; Sfx.play('coin'); logMsg(`+${k.v} de oro`, C.gold); }
     } else if (k.type === 'item') {
-      if (d < 0.7 && !k.full) { if (takeItem(k.item)) k.dead = true; else k.full = true; } else if (d > 1.2) k.full = false;
+      if (d < 0.7) { k.dead = true; takeItem(k.item); }
     } else if (k.type === 'torch') {
       if (d < 0.7) { k.dead = true; G.inv.torch++; Sfx.play('gem'); toast('+1 ANTORCHA', false); logMsg(`Recoges una antorcha (${G.inv.torch})`, C.orange); }
     } else if (k.type === 'key') {
@@ -968,7 +973,7 @@ function openChest(c) {
   }
   if (c.item === 'potion') G.pickups.push({ type: 'potion', x: c.x, y: c.y + 0.3, t: 0 });
   if (c.torch) G.pickups.push({ type: 'torch', x: c.x - 0.3, y: c.y + 0.2, t: 0 });
-  if (c.eq) dropItem('chest', c.x + 0.3, c.y + 0.2);
+  if (c.eq) dropItem(c.eqSrc || 'chest', c.x + 0.3, c.y + 0.2);
   else if (c.item && c.item.key !== undefined) takeKey(c.item.key);
   burst(c.x, c.y, 0.3, 14, rgb(255, 220, 110), 2, 0.7, true, 0.05);
   logMsg(`Abres un cofre: ${c.gold} de oro`, C.gold);
@@ -1120,7 +1125,7 @@ function update(dt) {
   const p = G.p;
   G.t += dt; G.totalTime += dt;
   updateBuffs(dt); applyStats();
-  updateTorch(dt);
+  updateTorch(dt); equipTick(dt);
   updatePlayer(dt);
   if (G.state !== 'play') return; // una escalera o la salida pueden cambiar de estado
   updateRooms(dt);
@@ -1171,7 +1176,7 @@ function buildItems() {
     if (k.type === 'gem') { const s = k.v >= 5 ? SPR.gemGold : k.v >= 3 ? SPR.gemGreen : SPR.gemBlue; items.push({ x: k.x, y: k.y, spr: s, h: 0.22, w: 0.22 * s.w / s.h, z: 0.05 + Math.sin(k.t * 4) * 0.03 }); }
     else if (k.type === 'potion') items.push({ x: k.x, y: k.y, spr: SPR.potion, h: 0.3, w: 0.2, z: 0.02 + Math.sin(k.t * 3) * 0.02 });
     else if (k.type === 'chest') { const s = k.open ? SPR.chestOpen : SPR.chest; items.push({ x: k.x, y: k.y, spr: s, h: 0.42, w: 0.42 * s.w / s.h, z: 0 }); }
-    else if (k.type === 'item') { const s = SPR[`icon_${k.item.slot}_${k.item.rar}`]; items.push({ x: k.x, y: k.y, spr: s, h: 0.24, w: 0.24, z: 0.18 + Math.sin(k.t * 3) * 0.04, bright: true }); }
+    else if (k.type === 'item') { const s = itemIcon(k.item); items.push({ x: k.x, y: k.y, spr: s, h: 0.24, w: 0.24, z: 0.18 + Math.sin(k.t * 3) * 0.04, bright: true }); }
     else if (k.type === 'torch') items.push({ x: k.x, y: k.y, spr: SPR.torchItem, h: 0.36, w: 0.36 * SPR.torchItem.w / SPR.torchItem.h, z: 0 });
     else if (k.type === 'gold') items.push({ x: k.x, y: k.y, spr: SPR.coins, h: 0.13, w: 0.13 * SPR.coins.w / SPR.coins.h, z: 0.01 });
     else if (k.type === 'key') { const s = SPR.keys[k.key]; items.push({ x: k.x, y: k.y, spr: s, h: 0.3, w: 0.3 * s.w / s.h, z: 0.25 + Math.sin(k.t * 3) * 0.05, bright: true }); }
@@ -1258,6 +1263,7 @@ function render() {
     else if (G.state === 'journal') ui.journal(G);
     else if (G.state === 'inventory') ui.inventory(G);
     else if (G.state === 'shop') ui.shop(G);
+    else if (G.state === 'swap') ui.swap(G);
     else if (G.state === 'map') ui.mapScreen(G);
     else if (G.state === 'controls') ui.controls(G);
     else if (G.state === 'forge') ui.forge(G);
@@ -1288,6 +1294,7 @@ document.addEventListener('keydown', (ev) => {
     return;
   }
   if (G.state === 'inventory') { if (e.code === 'KeyI' || e.code === 'Escape') closeInventory(); if (e.code === 'KeyT' || dig === 0) equipTorch(); return; }
+  if (G.state === 'swap') { const n = G.swap ? G.swap.slots.length : 0, d2 = { Digit4: 3, Numpad4: 3 }[e.code]; const i = dig !== undefined ? dig : d2; if (i !== undefined) { if (i < n) resolveSwap(G.swap.slots[i]); else if (i === n) resolveSwap(null); } return; }
   if (G.state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') closeMap(); if (e.code === 'KeyA' || e.code === 'ArrowLeft') mapStep(1); if (e.code === 'KeyD' || e.code === 'ArrowRight') mapStep(-1); return; }
   if (G.state === 'shop') { if (dig !== undefined) buyItem(SHOP_ITEMS[dig].id); else if (e.code === 'Digit4' || e.code === 'Numpad4') buyItem(SHOP_ITEMS[3].id); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
   if (G.state === 'forge') { if (dig !== undefined) forgeBuy(dig); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
@@ -1355,6 +1362,7 @@ function handleClick(x, y, button = 0) {
     }
     case 'inventory': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) invAction(h.id); else closeInventory(); break; }
     case 'map': { const m = ui.mouse; if (m.x < VW * 0.25) mapStep(1); else if (m.x > VW * 0.75) mapStep(-1); else closeMap(); break; }
+    case 'swap': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) resolveSwap(h.id === 'discard' ? null : h.id); break; }
     case 'shop': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else buyItem(h.id); } else closeNpc(); break; }
     case 'forge': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else forgeBuy(h.id); } else closeNpc(); break; }
     case 'exitask': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) leaveDungeon(); else stayInDungeon(); } break; }

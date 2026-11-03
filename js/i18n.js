@@ -53,15 +53,30 @@ const EN_DATA = {
     rapidez: ['Balance', (l) => `+${12 * l}% attack speed`], critico: ['Honed edge', (l) => `+${8 * l}% critical chance`],
   },
   shop: { torch: ['Torch', `Burns for 4 minutes`], potion: ['Health potion', 'Heals half your health (H)'], map: ['Map scroll', 'Reveals the level you are on'], rune: ['Return rune', 'Takes you back to the exit'] },
-  rarity: { comun: 'Common', raro: 'Rare', epico: 'Epic' },
+  rarity: { comun: 'Common', raro: 'Rare', epico: 'Epic', legendario: 'Legendary' },
   affix: {
     anillo: [['of wrath', (x) => `+${Math.round(x * 100)}% damage`], ['of the hawk', (x) => `+${Math.round(x * 100)}% crit chance`], ['of the wind', (x) => `+${Math.round(x * 100)}% attack speed`]],
     amuleto: [['of the oak', (x) => `+${Math.round(x * 100)}% max health`], ['of the spring', (x) => `+${x.toFixed(1)} health per second`], ['of the sage', (x) => `+${Math.round(x * 100)}% experience`], ['of dawn', (x) => `+${Math.round(x * 100)}% torch range`]],
     armadura: [['of iron', (x) => `-${Math.round(x * 100)}% damage taken`], ['of the runner', (x) => `+${Math.round(x * 100)}% speed`], ['of the shadow', (x) => `Dodge ${Math.round(x * 100)}% faster`]],
+    arma: [['honed', (x) => `+${Math.round(x * 100)}% damage with this weapon`], ['true', (x) => `+${Math.round(x * 100)}% crit with this weapon`], ['light', (x) => `+${Math.round(x * 100)}% speed with this weapon`]],
+    escudo: [['reinforced', (x) => `Blocks ${Math.round(x * 100)}% more`], ['of the bastion', (x) => `-${Math.round(x * 100)}% damage with the shield in hand`]],
   },
-  epic: { anillo: ['Ring of blood', 'You steal 3% of damage as health'], amuleto: ['Phoenix amulet', 'Once per dungeon it revives you with 40% health'], armadura: ['Armor of thorns', 'Returns 30% of damage to whoever hits you'] },
-  baseName: { anillo: ['Copper ring', 'Silver ring', 'Signet'], amuleto: ['Pendant', 'Amulet', 'Talisman'], armadura: ['Doublet', 'Chainmail', 'Breastplate'] },
-  slots: { anillo: 'Ring', amuleto: 'Amulet', armadura: 'Armor' },
+  epic: { anillo: ['Ring of blood', 'You steal 3% of damage as health'], amuleto: ['Phoenix amulet', 'Once per dungeon it revives you with 40% health'], armadura: ['Armor of thorns', 'Returns 30% of damage to whoever hits you'], arma: ['Runic weapon', 'Its blows burn, chill or poison'], escudo: ['Spiked shield', 'When blocking you return 40% of the blow'] },
+  legend: {
+    nigromante: ['Necromancer ring', (it) => `You steal ${Math.round(it.val * 100)}% of damage as health · ${Math.round(it.fx * 100)}% chance to raise the enemy you kill as an ally`],
+    reina: ['Heart of the Spider Queen', (it) => `+${Math.round(it.val * 100)}% health · your blows poison and ${Math.round(it.fx * 100)}% of your victims leave an allied spider`],
+    guardian: ['Guardian plate', (it) => `-${Math.round(it.val * 100)}% damage taken · a ring of fire bursts when you are hit`],
+    primigenio: ['Primordial eye', (it) => `+${Math.round(it.val * 100)}% crit · every ${it.fx.toFixed(1)} s it fires void orbs at the nearest enemy`],
+    solar: ['Solar blade', (it) => `+${Math.round(it.val * 100)}% damage · every third hit bursts into flames`],
+    titan: ['Mountainbreaker', (it) => `+${Math.round(it.val * 100)}% damage · every hit sends out a shockwave`],
+    colmillo: ['Shadow fang', (it) => `+${Math.round(it.val * 100)}% crit · killing hides you and restores ${Math.round(it.fx * 100)}% health`],
+    archimago: ['Archmage staff', (it) => `+${Math.round(it.val * 100)}% damage · +1 projectile that pierces one more enemy`],
+    egida: ['Aegis', (it) => `Blocks ${Math.round(it.val * 100)}% more · blocking reflects projectiles`],
+  },
+  slotLabel: { anillo1: 'Ring 1', anillo2: 'Ring 2', amuleto: 'Amulet', armadura: 'Armor', arma: 'Weapon', escudo: 'Shield' },
+  wtName: { sword: 'sword', greatsword: 'greatsword', dagger: 'dagger', staff: 'staff' },
+  baseName: { anillo: ['Copper ring', 'Silver ring', 'Signet'], amuleto: ['Pendant', 'Amulet', 'Talisman'], armadura: ['Doublet', 'Chainmail', 'Breastplate'], sword: ['Short sword', 'Longsword', 'Steel blade'], greatsword: ['Claymore', 'Greatsword', 'Zweihander'], dagger: ['Dirk', 'Dagger', 'Stiletto'], staff: ['Staff', 'Rod', 'Crozier'], escudo: ['Buckler', 'Oak shield', 'Pavise'] },
+  slots: { anillo: 'Ring', amuleto: 'Amulet', armadura: 'Armor', arma: 'Weapon', escudo: 'Shield' },
   actions: { up: 'Move forward', down: 'Move back', left: 'Strafe left', right: 'Strafe right', turnL: 'Turn left', turnR: 'Turn right', attack: 'Attack', block: 'Block', dash: 'Dodge', skill1: 'Skill 1', skill2: 'Skill 2', skill3: 'Skill 3', shield: 'Shield', weapon: 'Switch weapon', potion: 'Drink potion', map: 'Map', journal: 'Journal', inventory: 'Inventory', pause: 'Pause' },
   dgPre: ['The Catacombs', 'The Crypt', 'The Sunken Fortress', 'The Ossuary', 'The Vaults', 'The Desecrated Sanctum', 'The Buried Tower', 'The Galleries'],
   dgSuf: ['of Ulmar', 'of Vel Kharn', 'of the Blind King', 'of Morhaven', 'of Ashgrave', 'of the Grey Order', 'of Duskmere', 'of the Thousand Bones', 'of Karak Dum'],
@@ -85,7 +100,9 @@ function snapshotData() {
   for (const sl in EPIC) s.epic[sl] = [EPIC[sl].name, EPIC[sl].desc];
   s.baseName = JSON.parse(JSON.stringify(BASE_NAME)); s.actions = Object.assign({}, ACTION_NAME);
   s.dgPre = DG_PRE.slice(); s.dgSuf = DG_SUF.slice();
-  s.slots = { anillo: 'Anillo', amuleto: 'Amuleto', armadura: 'Armadura' };
+  s.slots = { anillo: 'Anillo', amuleto: 'Amuleto', armadura: 'Armadura', arma: 'Arma', escudo: 'Escudo' };
+  s.legend = Object.fromEntries(Object.entries(LEGEND).map(([k, L]) => [k, [L.name, L.desc]]));
+  s.slotLabel = Object.assign({}, SLOT_LABEL); s.wtName = Object.assign({}, WT_NAME);
   ES_DATA = s;
 }
 function applyData(D) {
@@ -111,6 +128,8 @@ function applyData(D) {
   Object.assign(ACTION_NAME, D.actions);
   DG_PRE.splice(0, DG_PRE.length, ...D.dgPre); DG_SUF.splice(0, DG_SUF.length, ...D.dgSuf);
   SLOT_NAME = D.slots;
+  for (const k in D.legend) if (LEGEND[k]) [LEGEND[k].name, LEGEND[k].desc] = D.legend[k];
+  Object.assign(SLOT_LABEL, D.slotLabel); Object.assign(WT_NAME, D.wtName);
   // temas ya construidos y fantasmas de la partida en curso
   if (G.dg) for (const z of G.dg.zs) { const lv = G.dg.lv(z); if (lv.themeObj) lv.themeObj.name = THEMES[lv.theme % THEMES.length].name; }
 }
@@ -155,7 +174,9 @@ const EN_UI = {
   'YA TIENES LA VIDA AL MÁXIMO': 'YOUR HEALTH IS ALREADY FULL', 'EL NIVEL SE REVELA EN TU MAPA': 'THE LEVEL IS REVEALED ON YOUR MAP', 'LA RUNA TE DEVUELVE A LA SALIDA': 'THE RUNE TAKES YOU BACK TO THE EXIT',
   'LA MOCHILA ESTÁ LLENA': 'YOUR BACKPACK IS FULL', 'CONTINÚAS LA PARTIDA': 'GAME RESUMED', 'EL FANTASMA DESCANSA AL FIN': 'THE GHOST RESTS AT LAST', '¡EL GUARDIÁN HA CAÍDO!': 'THE GUARDIAN HAS FALLEN!',
   'GIRA EL MÓVIL': 'TURN YOUR PHONE', 'CARGANDO LA MAZMORRA…': 'LOADING THE DUNGEON…', 'VACÍA': 'EMPTY', 'DOS MANOS': 'TWO HANDS', 'SALIR DE PANTALLA COMPLETA': 'EXIT FULLSCREEN', 'PANTALLA COMPLETA': 'FULLSCREEN',
-  'VIDA': 'HEALTH', 'ESPACIO': 'SPACE', 'CRUZ ARRIBA': 'D-PAD UP', 'CRUZ ABAJO': 'D-PAD DOWN', 'CRUZ IZQ.': 'D-PAD LEFT', 'CRUZ DER.': 'D-PAD RIGHT', 'FLECHA ARRIBA': 'UP ARROW', 'FLECHA ABAJO': 'DOWN ARROW',
+  'VIDA': 'HEALTH', '¿CAMBIAR DE EQUIPO?': 'SWAP EQUIPMENT?', 'HAS ENCONTRADO': 'YOU FOUND', 'EQUIPAR EL NUEVO': 'EQUIP THE NEW ONE', 'QUEDARME CON LO QUE LLEVO': 'KEEP WHAT I HAVE',
+  'EL OBJETO QUE NO TE QUEDES SE DESTRUYE': 'THE ITEM YOU DO NOT KEEP IS DESTROYED', 'LO QUE ENCUENTRAS SE EQUIPA AL MOMENTO': 'WHAT YOU FIND IS EQUIPPED ON THE SPOT', 'SOLO CON EL ESCUDO EN LA MANO': 'ONLY WITH THE SHIELD IN HAND',
+  '¡UN LEGENDARIO DEL CAÍDO!': 'A LEGENDARY FROM THE FALLEN!', 'LEGENDARIO': 'LEGENDARY', 'ESPACIO': 'SPACE', 'CRUZ ARRIBA': 'D-PAD UP', 'CRUZ ABAJO': 'D-PAD DOWN', 'CRUZ IZQ.': 'D-PAD LEFT', 'CRUZ DER.': 'D-PAD RIGHT', 'FLECHA ARRIBA': 'UP ARROW', 'FLECHA ABAJO': 'DOWN ARROW',
   'FLECHA IZQ.': 'LEFT ARROW', 'FLECHA DER.': 'RIGHT ARROW', 'SHIFT DER.': 'RIGHT SHIFT', 'CTRL DER.': 'RIGHT CTRL', 'BLOQ MAYÚS': 'CAPS LOCK', 'INTRO': 'ENTER', 'RETROCESO': 'BACKSPACE',
   'LA OSCURIDAD ES BUEN NEGOCIO, VIAJERO.': 'DARKNESS IS GOOD FOR BUSINESS, TRAVELER.', 'LA PRIMERA TE LA REGALO. LAS DEMÁS SE PAGAN.': 'THE FIRST ONE IS ON ME. THE REST YOU PAY FOR.',
   'SAQUEA LO QUE PUEDAS Y SAL CON VIDA': 'LOOT WHAT YOU CAN AND GET OUT ALIVE', 'ESTÁ OSCURO: TOCA I Y ENCIENDE UNA ANTORCHA': "IT'S DARK: TAP I AND LIGHT A TORCH", 'ESTÁ OSCURO: PULSA I Y ENCIENDE UNA ANTORCHA': "IT'S DARK: PRESS I AND LIGHT A TORCH",
@@ -183,7 +204,9 @@ const EN_RX = [
   [/^SE CONSUME LA ANTORCHA\. TE QUEDAN (\d+) \(I\)$/, 'THE TORCH BURNS OUT. YOU HAVE $1 LEFT (I)'], [/^EVOLUCIONAS: (.+)$/, 'YOU EVOLVE: $1'], [/^ENTRAS EN LA MAZMORRA COMO (.+)$/, 'YOU ENTER THE DUNGEON AS $1'],
   [/^EMPUÑAS: (.+?)( \(DOS MANOS\))?$/, (m, a, b) => `YOU WIELD: ${tr(a)}${b ? ' (TWO HANDS)' : ''}`], [/^FLECHAS DE (.+)$/, '$1 ARROWS'], [/^LA (.+) GIRA EN LA (.+)$/, 'THE $1 TURNS IN THE $2'],
   [/^UN FANTASMA RENCOROSO DE NIVEL (\d+) TE RECONOCE\.\.\.$/, 'A VENGEFUL GHOST OF LEVEL $1 RECOGNIZES YOU...'], [/^(.+): (\d+) NIVELES$/, '$1: $2 LEVELS'], [/^MANDO CONECTADO: (.+)$/, 'CONTROLLER CONNECTED: $1'],
-  [/^(.+) · (COMÚN|RARO|ÉPICO)$/, '$1 · $2'], [/^(.+) · (COMÚN|RARO|ÉPICO): (.+)$/, '$1 · $2: $3'],
+  [/^(.+) · (COMÚN|RARO|ÉPICO|LEGENDARIO)$/, '$1 · $2'], [/^(.+) · (COMÚN|RARO|ÉPICO|LEGENDARIO): (.+)$/, '$1 · $2: $3'],
+  [/^LLEVAS \((.+)\)$/, 'EQUIPPED ($1)'], [/^CAMBIAR POR EL (.+)$/, 'REPLACE $1'], [/^NO LA LLEVAS EN LA MANO \((.+)\)$/, (m, a) => `NOT IN YOUR HAND (${tr(a)})`],
+  [/^(.+) SE HACE PEDAZOS$/, '$1 SHATTERS'], [/^DEJAS (.+): SE HACE PEDAZOS$/, 'YOU LEAVE $1: IT SHATTERS'], [/^ARMA: (.+)$/, 'WEAPON: $1'], [/^(.+): VACÍO$/, '$1: EMPTY'],
   [/^\+(\d+)% DE DAÑO$/, '+$1% DAMAGE'], [/^\+(\d+)% DE CRÍTICO$/, '+$1% CRIT CHANCE'], [/^\+(\d+)% DE VELOCIDAD DE ATAQUE$/, '+$1% ATTACK SPEED'], [/^\+(\d+)% DE VIDA MÁXIMA$/, '+$1% MAX HEALTH'],
   [/^\+([\d.]+) DE VIDA POR SEGUNDO$/, '+$1 HEALTH PER SECOND'], [/^\+(\d+)% DE EXPERIENCIA$/, '+$1% EXPERIENCE'], [/^\+(\d+)% DE ALCANCE DE LA ANTORCHA$/, '+$1% TORCH RANGE'], [/^-(\d+)% DE DAÑO RECIBIDO$/, '-$1% DAMAGE TAKEN'],
   [/^\+(\d+)% DE VELOCIDAD$/, '+$1% SPEED'], [/^ESQUIVA (\d+)% MÁS RÁPIDO$/, 'DODGE $1% FASTER'],
@@ -223,6 +246,8 @@ function buildNameMap() {
   for (const k in S.rarity) put(S.rarity[k], E.rarity[k]);
   for (const sl in S.epic) put(S.epic[sl][0], E.epic[sl][0]);
   for (const sl in S.slots) put(S.slots[sl], E.slots[sl]);
+  for (const k in S.legend) put(S.legend[k][0], E.legend[k][0]);
+  for (const k in S.slotLabel) put(S.slotLabel[k], E.slotLabel[k]);
   for (const k in S.elements) put(S.elements[k], E.elements[k]);
   NAME_MAP = m;
   // nombres de mazmorra y de objetos (prefijo + sufijo) como patrones

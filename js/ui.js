@@ -304,39 +304,54 @@ class UI {
       this.text(sx + 24, sy + 3, r.label, r.on ? C.goldL : C.dim);
       if (sh > 16) this.text(sx + 24, sy + 12, r.sub.slice(0, 31), C.dim, { shadow: false });
     });
-    // ---- equipo y mochila
+    // ---- equipo (sin mochila: lo que no llevas puesto no existe)
     const rx = 238, rw = 234;
     this.panel(rx, y0, rw, 216);
     this.text(rx + 6, y0 + 5, 'EQUIPO', C.dim);
     let tip = null;
     SLOTS.forEach((s, i) => {
-      const it = G.equip[s], sx = rx + 5, sy = y0 + 16 + i * 30, sw = rw - 10, sh = 27, hot = this.hit(sx, sy, sw, sh);
-      this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: 'eq:' + s });
-      this.panel(sx, sy, sw, sh, hot && it);
-      this.rect(sx + 3, sy + 3, 21, 21, rgb(24, 16, 10));
-      if (it) { this.blit(SPR[`icon_${it.slot}_${it.rar}`], sx + 13, sy + 13, 18); if (hot) tip = it; }
-      this.text(sx + 30, sy + 4, it ? it.name.toUpperCase().slice(0, 32) : s.toUpperCase() + ': VACÍO', it ? itemCol(it) : C.dim);
-      this.text(sx + 30, sy + 15, it ? itemLines(it)[0].toUpperCase().slice(0, 32) : '-', C.dim, { shadow: false });
+      const it = G.equip[s], on = itemActive(s, it), sx = rx + 5, sy = y0 + 16 + i * 28, sw = rw - 10, sh = 26, hot = it && this.hit(sx, sy, sw, sh);
+      if (it) this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: 'info' });
+      this.panel(sx, sy, sw, sh, hot);
+      this.rect(sx + 3, sy + 3, 20, 20, rgb(24, 16, 10));
+      if (it) { this.blit(itemIcon(it), sx + 13, sy + 13, 16); if (hot) tip = it; }
+      this.text(sx + 28, sy + 4, it ? itemName(it).toUpperCase().slice(0, 33) : `${SLOT_LABEL[s].toUpperCase()}: VACÍO`, it ? (on ? itemCol(it) : C.dim) : C.dim);
+      const sub = !it ? '-' : !on ? (s === 'arma' ? `NO LA LLEVAS EN LA MANO (${WT_NAME[it.wtype].toUpperCase()})` : 'SOLO CON EL ESCUDO EN LA MANO') : itemLines(it)[0].toUpperCase();
+      this.text(sx + 28, sy + 14, String(tr(sub)).slice(0, 33), C.dim, { shadow: false });
     });
-    this.text(rx + 6, y0 + 110, `MOCHILA ${G.bag.length}/8`, C.dim);
-    for (let i = 0; i < 8; i++) {
-      const bx = rx + 6 + (i % 4) * 56, by = y0 + 122 + Math.floor(i / 4) * 34, it = G.bag[i], hot = it && this.hit(bx, by, 40, 30);
-      this.rect(bx, by, 40, 30, rgb(24, 16, 10));
-      if (!it) continue;
-      this.hot.push({ x: bx, y: by, w: 40, h: 30, id: 'bag:' + i });
-      if (hot) { this.panel(bx, by, 40, 30, true); tip = it; }
-      this.blit(SPR[`icon_${it.slot}_${it.rar}`], bx + 20, by + 15, 22);
-      this.rect(bx, by + 28, 40, 2, itemCol(it));
-      const dh = this.hit(bx + 41, by, 10, 10);
-      this.hot.push({ x: bx + 41, y: by, w: 10, h: 10, id: 'drop:' + i });
-      this.text(bx + 43, by + 1, 'X', dh ? C.red : C.dim, { shadow: false });
-    }
-    // detalle del objeto señalado
     if (tip) {
-      this.text(rx + 6, y0 + 194, `${tip.name.toUpperCase().slice(0, 26)} · ${RARITY[tip.rar].name.toUpperCase()}`, itemCol(tip), { shadow: false });
-      this.text(rx + 6, y0 + 204, itemLines(tip).join(' · ').toUpperCase().slice(0, 37), C.ink, { shadow: false });
-    } else this.text(rx + 6, y0 + 200, G.touchMode || G.padMode ? 'ELIGE UN OBJETO PARA EQUIPARLO' : 'CLIC: EQUIPAR / QUITAR · X: TIRAR', C.dim, { shadow: false });
+      const ls = itemLines(tip).join(' · ').toUpperCase();
+      this.text(rx + 6, y0 + 186, `${itemName(tip).toUpperCase().slice(0, 25)} · ${RARITY[tip.rar].name.toUpperCase()}`, itemCol(tip), { shadow: false });
+      wrapText(ls, 37).slice(0, 2).forEach((l, k) => this.text(rx + 6, y0 + 196 + k * 9, l, C.ink, { shadow: false }));
+    } else this.text(rx + 6, y0 + 196, 'LO QUE ENCUENTRAS SE EQUIPA AL MOMENTO', C.dim, { shadow: false });
     this.text(cx, VH - 10, G.touchMode ? 'TOCA FUERA PARA CERRAR' : G.padMode ? 'B PARA CERRAR' : 'I PARA CERRAR · H BEBER POCIÓN', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // Cambio de objeto: el encontrado frente a los que llevas en ese hueco; el que no se queda se destruye
+  swap(G) {
+    const S = G.swap; if (!S) return;
+    this.darken(VX, VY, VW, VH, 0.35);
+    const cx = VX + VW / 2, it = S.item;
+    this.text(cx, 8, '¿CAMBIAR DE EQUIPO?', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    const card = (x, y, w, title, o, tcol) => {
+      this.panel(x, y, w, 70);
+      this.text(x + 6, y + 5, title, tcol || C.dim);
+      this.rect(x + 6, y + 16, 22, 22, rgb(24, 16, 10)); this.blit(itemIcon(o), x + 17, y + 27, 18);
+      wrapText(itemName(o).toUpperCase(), Math.floor((w - 40) / 6)).slice(0, 2).forEach((l, k) => this.text(x + 34, y + 16 + k * 9, l, itemCol(o)));
+      this.text(x + 34, y + 35, RARITY[o.rar].name.toUpperCase(), itemCol(o), { shadow: false });
+      wrapText(itemLines(o).join(' · ').toUpperCase(), Math.floor((w - 12) / 6)).slice(0, 3).forEach((l, k) => this.text(x + 6, y + 46 + k * 8, l, C.ink, { shadow: false }));
+    };
+    card(cx - 230, 36, 220, 'HAS ENCONTRADO', it, C.goldL);
+    S.slots.forEach((s, i) => { const o = G.equip[s]; if (o) card(cx + 10, 36 + i * 76, 220, `LLEVAS (${SLOT_LABEL[s].toUpperCase()})`, o); });
+    const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO']]);
+    const by = 36 + Math.max(1, S.slots.length) * 76 + 8;
+    opts.forEach(([id, t], i) => {
+      const w = 260, x = cx - w / 2, yy = by + i * 20, hot = this.hit(x, yy, w, 16);
+      this.hot.push({ x, y: yy, w, h: 16, id });
+      this.panel(x, yy, w, 16, hot);
+      this.text(x + 6, yy + 5, `[${i + 1}]`, C.dim);
+      this.text(cx + 10, yy + 5, t, hot ? C.goldL : C.gold, { align: 'center' });
+    });
+    this.text(cx, by + opts.length * 20 + 4, 'EL OBJETO QUE NO TE QUEDES SE DESTRUYE', C.red, { align: 'center', shadow: false });
   }
   // Mercader: lista de útiles con precio (se paga con el botín que llevas encima)
   shop(G) {

@@ -34,6 +34,7 @@ const ALLIES = {
   bear:   { name: 'Oso',      hp: 260, dmg: 30, spd: 2.7, r: 0.45, h: 1.05, cd: 1.0, spr: 'bear' },
   spider: { name: 'Araña',    hp: 40,  dmg: 11, spd: 3.8, r: 0.28, h: 0.55, cd: 0.55, spr: 'spider', life: 16, poison: 3 },
   shadow: { name: 'Sombra',   hp: 55,  dmg: 17, spd: 4.0, r: 0.28, h: 0.95, cd: 0.45, spr: 'shadow', life: 12 },
+  undead: { name: 'Siervo no muerto', hp: 60, dmg: 14, spd: 2.8, r: 0.3, h: 0.95, cd: 0.7, spr: 'skeleton', life: 30 },
   fiend:  { name: 'Demonio',  hp: 110, dmg: 24, spd: 3.3, r: 0.32, h: 0.9,  cd: 0.8, spr: 'fiend', life: 22 },
 };
 

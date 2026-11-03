@@ -774,6 +774,12 @@ function drawItemIcon(slot, gem) {
     } else if (slot === 'amuleto') {
       for (let k = 0; k < 7; k++) { set(2 + k, k, G0); set(11 - k, k, G0); }
       for (let y = 7; y < 13; y++) for (let x = 4; x < 10; x++) { const d = Math.abs(x - 6.5) + Math.abs(y - 9.5); if (d < 3.6) set(x, y, d < 1.6 ? gl : gem, true); else if (d < 4.4) set(x, y, G1); }
+    } else if (slot === 'arma') {
+      for (let k = 0; k < 9; k++) { set(3 + k, 10 - k, S1); set(4 + k, 10 - k, S0); }
+      for (let k = -2; k <= 2; k++) set(4 + k, 9 + k, G0); set(2, 12, G1); set(3, 11, G1); set(10, 3, gem, true);
+    } else if (slot === 'escudo') {
+      for (let y = 1; y < 13; y++) for (let x = 2; x < 12; x++) { const w = y < 8 ? 5 : 5 - (y - 7) * 0.9; if (Math.abs(x - 6.5) > w) continue; set(x, y, x < 7 ? S1 : S0); }
+      for (let y = 5; y < 8; y++) for (let x = 6; x < 8; x++) set(x, y, gem, true);
     } else {
       for (let y = 1; y < 13; y++) for (let x = 1; x < 13; x++) {
         if (y < 3 && x > 4 && x < 9) continue; // cuello
@@ -809,7 +815,7 @@ function initSprites() {
   SPR.keys = KEYS.map(k => drawKeySpr(k.col));
   SPR.coins = drawCoins();
   SPR.torchItem = drawTorchItem();
-  for (const s of ['anillo', 'amuleto', 'armadura']) for (const r of ['comun', 'raro', 'epico']) SPR[`icon_${s}_${r}`] = drawItemIcon(s, { comun: [170, 170, 160], raro: [70, 130, 255], epico: [190, 80, 255] }[r]);
+  for (const s of ['anillo', 'amuleto', 'armadura', 'arma', 'escudo']) for (const r of ['comun', 'raro', 'epico', 'legendario']) SPR[`icon_${s}_${r}`] = drawItemIcon(s, { comun: [170, 170, 160], raro: [70, 130, 255], epico: [190, 80, 255], legendario: [255, 170, 40] }[r]);
   SPR.merchant = [0, 1, 2, 3].map(drawMerchant); SPR.smith = [0, 1, 2, 3].map(drawSmith); SPR.anvil = [drawAnvil()];
   for (const k of ['melee', 'dagger', 'staff', 'bow']) SPR['ghost_' + k] = [drawGhost(k, 0), drawGhost(k, 1)];
   SPR.potionIcon = SPR.potion;
