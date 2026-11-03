@@ -1346,3 +1346,15 @@ function boot() {
   });
 }
 requestAnimationFrame(() => setTimeout(boot, 30));
+
+// Web publicada: si el navegador sirvió una página antigua de su caché, se recarga con la última versión.
+// version.json se pide siempre fresco; la recarga usa ?v=<versión> para saltarse la caché de la página.
+(function checkVersion() {
+  const meta = document.querySelector('meta[name=version]');
+  if (!meta || meta.content === 'dev' || location.protocol === 'file:') return;
+  fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !j.v || j.v === meta.content) return;
+    if (new URLSearchParams(location.search).get('v') === j.v) return; // ya se intentó: no entrar en bucle
+    location.replace(location.pathname + '?v=' + encodeURIComponent(j.v));
+  }).catch(() => {});
+})();
