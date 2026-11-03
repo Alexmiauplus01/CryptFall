@@ -573,7 +573,7 @@ class Renderer {
         for (let k = 0; k < 3; k++) { const t = 0.08 + k * 0.06, fx = lerp(nx, ex, t), fy = lerp(ny, ey, t), hw = 7 - k; this.pline(fx - hw, fy + 2, fx + hw, fy - 2, rgb(190, 40, 30), 2); }
         if (p.element) this.glow(ex, ey, 18, glowCol, 0.35 + 0.15 * Math.sin(time * 8));
       }
-      if (a > 0.4) this.glow(cx, cy, 26, p.element ? glowCol : [255, 235, 160], 0.6 * a);
+      if (a > 0.4) this.glow(cx, cy, 14, p.element ? glowCol : [255, 235, 160], 0.35 * a);
       return;
     }
     // ---------- dagas gemelas: una en cada mano
