@@ -97,7 +97,8 @@ function ghostList() { try { return JSON.parse(localStorage.getItem(GHOST_KEY) |
 function spawnGhost(g, x, y) {
   const c = CLASSES[g.cls] || CLASSES.luchador, cm = classMods(g.cls), w = WEAPONS[g.weapon] || WEAPONS.sword;
   const lvl = g.lvlNow || g.lvl, n = G.dg ? G.dg.n : 1;
-  const sprK = w.kind === 'cast' ? 'ghost_staff' : w.kind === 'shoot' ? 'ghost_bow' : (g.weapon === 'dagger' || g.weapon === 'daggers') ? 'ghost_dagger' : 'ghost_melee';
+  const base = lineageOf(g.cls)[0], skin = SPR['ghostskin_' + base] ? 'ghostskin_' + base : null;
+  const sprK = skin || (w.kind === 'cast' ? 'ghost_staff' : w.kind === 'shoot' ? 'ghost_bow' : (g.weapon === 'dagger' || g.weapon === 'daggers') ? 'ghost_dagger' : 'ghost_melee');
   const def = Object.assign({}, ENEMY.ghost, {
     name: `Fantasma de ${c.name}`, spr: sprK,
     hp: 150 * cm.hp * (1 + 0.15 * (lvl - 1)) * (1 + 0.3 * (n - 1)),

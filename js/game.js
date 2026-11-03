@@ -1436,6 +1436,11 @@ function boot() {
 }
 requestAnimationFrame(() => setTimeout(boot, 30));
 
+// Juego sin conexión: el service worker solo existe en la web publicada (no al abrir el archivo en local)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && document.querySelector('meta[name=version]') && document.querySelector('meta[name=version]').content !== 'dev') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
 // Web publicada: si el navegador sirvió una página antigua de su caché, se recarga con la última versión.
 // version.json se pide siempre fresco; la recarga usa ?v=<versión> para saltarse la caché de la página.
 (function checkVersion() {

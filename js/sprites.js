@@ -561,6 +561,8 @@ function loadAssets() {
     SPR.daggerL = flipSprite(SPR.dagger);
     SPR.claws_wolfL = flipSprite(SPR.claws_wolf);
     SPR.claws_bearL = flipSprite(SPR.claws_bear);
+    // aspectos de las clases principales (Pixellab): los fantasmas rencorosos los usan con un halo azulado
+    for (const k of ['ladron', 'luchador', 'mago']) if (SPR['skin_' + k]) SPR['ghostskin_' + k] = [ghostly(SPR['skin_' + k], 0), ghostly(SPR['skin_' + k], 1)];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
     for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
     // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
@@ -741,6 +743,25 @@ function drawGhost(kind, frame) {
     if (kind === 'staff') { for (let y = 4; y < 34; y++) set(20, y + bob, [120, 160, 210], true); for (let y = 1; y < 5; y++) for (let x = 19; x < 22; x++) set(x, y + bob, [220, 150, 255], true); }
     if (kind === 'bow') for (let y = 8; y < 28; y++) set(20 + Math.round(Math.sin((y - 8) / 20 * Math.PI) * 2), y + bob, W, true);
   });
+}
+
+// versión fantasmal de un sprite: tonos azulados que brillan en la oscuridad y un halo tramado alrededor
+function ghostly(spr, frame) {
+  const P = 3, w = spr.w + P * 2, h = spr.h + P * 2, px = new Uint32Array(w * h), src = spr.px;
+  const at = (x, y) => (x >= 0 && y >= 0 && x < spr.w && y < spr.h) ? src[y * spr.w + x] : 0;
+  for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) {
+    const c = src[y * spr.w + x]; if (!(c >>> 24)) continue;
+    const l = ((c & 255) + ((c >> 8) & 255) + ((c >> 16) & 255)) / 3;
+    px[(y + P) * w + x + P] = rgb(Math.min(255, l * 0.5 + 25), Math.min(255, l * 0.78 + 45), Math.min(255, l * 0.95 + 80), 250);
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (px[y * w + x]) continue;
+    let d = 9;
+    for (let ey = -P; ey <= P; ey++) for (let ex = -P; ex <= P; ex++) if (at(x - P + ex, y - P + ey) >>> 24) d = Math.min(d, Math.max(Math.abs(ex), Math.abs(ey)));
+    if (d > P) continue;
+    if (d === 1 || (d === 2 && ((x + y + frame) & 1)) || (d === 3 && ((x + y * 2 + frame) % 4 === 0))) px[y * w + x] = rgb(d === 1 ? 150 : 90, d === 1 ? 220 : 170, 255, 250);
+  }
+  return { w, h, px, flash: px.map(c => c ? rgb(255, 255, 255, 250) : 0) };
 }
 
 function initSprites() {
