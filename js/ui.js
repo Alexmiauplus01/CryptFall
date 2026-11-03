@@ -339,7 +339,7 @@ class UI {
       yy += 3;
     }
   }
-  // Cambio de objeto: el encontrado frente a los que llevas en ese hueco; el que no se queda se destruye
+  // Cambio de objeto: el encontrado frente a los que llevas en ese hueco; el que no se queda se deja en el suelo
   swap(G) {
     const S = G.swap; if (!S) return;
     this.darken(VX, VY, VW, VH, 0.35);
@@ -365,7 +365,7 @@ class UI {
       this.text(x + 6, yy + 5, `[${i + 1}]`, C.dim);
       this.text(cx + 10, yy + 5, t, hot ? C.goldL : C.gold, { align: 'center' });
     });
-    this.text(cx, by + opts.length * 20 + 4, 'EL OBJETO QUE NO TE QUEDES SE DESTRUYE', C.red, { align: 'center', shadow: false });
+    this.text(cx, by + opts.length * 20 + 4, 'LO QUE NO TE QUEDES SE QUEDA EN EL SUELO', C.red, { align: 'center', shadow: false });
   }
   // Mercader: lista de útiles con precio (se paga con el botín que llevas encima)
   shop(G) {

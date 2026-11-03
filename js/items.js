@@ -1,5 +1,5 @@
 // Equipo: 2 anillos, amuleto, armadura, arma y escudo. Sin mochila: lo que encuentras se equipa en el momento
-// (si el hueco está ocupado, el juego pregunta y el objeto descartado se destruye).
+// (si el hueco está ocupado, el juego pregunta y el objeto descartado se queda en el suelo hasta que sales).
 // Rarezas: común, raro, épico (poder único) y legendario (gran mejora + efecto poderoso; los jefes tienen el suyo).
 const RARITY = {
   comun: { name: 'Común', col: [200, 196, 186], k: 1 },
@@ -204,11 +204,13 @@ function equipItem(slot, it) {
   logMsg(`${name} · ${RARITY[it.rar].name}: ${itemLines(it).join(' · ')}`, it.rar === 'legendario' ? C.gold : it.rar === 'epico' ? C.orange : it.rar === 'raro' ? C.blue : C.ink);
   if (it.rar === 'legendario' || it.rar === 'epico') { G.flashFx = 0.6; jot('item' + (it.legend || it.special) + G.dg.n, `Encontré ${name.toLowerCase()} en el ${levelName(G.z)}. Siento su poder.`); }
 }
-// decisión del cuadro de cambio: slot = hueco a sustituir (el objeto viejo se destruye) o null = descartar el nuevo
+// decisión del cuadro de cambio: slot = hueco a sustituir o null = quedarte con lo que llevas
 function resolveSwap(slot) {
   const S = G.swap; if (!S) return;
-  if (slot) { const old = G.equip[slot]; equipItem(slot, S.item); if (old) logMsg(`${itemName(old)} se hace pedazos`, C.dim); }
-  else { G.pickups.push({ type: 'item', item: S.item, x: G.p.x, y: G.p.y, t: 0, declined: true }); logMsg(`Dejas ${itemName(S.item).toLowerCase()} en el suelo`, C.dim); }
+  // lo que no te quedas (el viejo o el nuevo) se queda en el suelo; al salir de la mazmorra se pierde
+  const left = slot ? G.equip[slot] : S.item;
+  if (slot) equipItem(slot, S.item);
+  if (left) { G.pickups.push({ type: 'item', item: left, x: G.p.x, y: G.p.y, t: 0, declined: true }); logMsg(`Dejas ${itemName(left).toLowerCase()} en el suelo`, C.dim); }
   G.swap = null; G.state = 'play'; lockMouse();
 }
 function dropItem(src, x, y, opt) { G.pickups.push({ type: 'item', item: makeItem(src, null, opt), x, y, t: rand(0, 6) }); }

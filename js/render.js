@@ -6,6 +6,22 @@ const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v +
 const TORCH_COL = [1.0, 0.84, 0.64];
 const AMBIENT_K = 0.3;   // ambiente muy bajo: la luz viene de antorchas, braseros y hechizos
 const SCENE_LIGHT_K = 1.15; // las luces del escenario destacan más sobre la oscuridad
+// arco en primera persona: el sprite reflejado (la cuerda mira al jugador) y sin la cuerda pintada,
+// que se dibuja aparte tensándose hacia la cámara
+let BOW_FP = null;
+function bowFP(src) {
+  if (BOW_FP && BOW_FP.src === src) return BOW_FP;
+  const w = src.w, h = src.h, px = new Uint32Array(w * h), A = (x, y) => x >= 0 && x < w && (src.px[y * w + x] >>> 24) > 0;
+  let top = -1, bot = -1, tx = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!A(x, y)) continue;
+    if (top < 0) { top = y; tx = x; } bot = y;
+    if (!A(x - 1, y) && !A(x + 1, y) && y > 12 && y < h - 12) continue; // pixel suelto = cuerda
+    px[y * w + (w - 1 - x)] = src.px[y * w + x];
+  }
+  BOW_FP = { src, w, h, px, ax: w - 1 - 30, ay: Math.round(h * 0.49), tip: [w - 1 - (tx + 1.5), top + 3, bot - 3] };
+  return BOW_FP;
+}
 const HS = 2; // escala de manos y armas en primera persona
 const HAND_TILT = 0.55; // inclinación de la muñeca respecto al arma
 
@@ -527,27 +543,37 @@ class Renderer {
       this.glow(ox, oy, 36 + a * 26, glowCol, 0.5 * (0.7 + 0.3 * Math.sin(time * 5) + a));
       return;
     }
-    // ---------- arco: en la mano izquierda, la derecha tensa la cuerda
+    // ---------- arco: en el centro, inclinado hacia la izquierda; la cuerda se tensa hacia la cámara
+    //            y la punta de la flecha marca el centro de la pantalla (hace de mira)
     if (W === 'bow') {
-      // solo el arco: cuerda tensada con la flecha montada; al soltar, la cuerda vuelve y el arco retrocede
-      const gx = VW * 0.38 + bx * 0.5 + rc * 6, gy = VH - 92 + by * 0.6 + rc * 16, ba = -0.32 - rc * 0.1;
-      this.blitRot(weaponSprite('bow', SPR.bow), 34, 86, gx, gy, ba, lm, false, S2);
-      const tip = (v) => [gx + (-(v - 86) * Math.sin(ba)) * S2, gy + ((v - 86) * Math.cos(ba)) * S2];
-      const [tx0, ty0] = tip(6), [tx1, ty1] = tip(168);
-      const mx = lerp(tx0, tx1, 0.5), my = lerp(ty0, ty1, 0.5);
+      const fp = bowFP(SPR.bow), spr = weaponSprite('bow', fp), sc = 1.35;
       const drawn = a < 0.15 ? 1 : Math.max(0, 1 - a * 1.6); // 1 = cuerda tensada
-      const nx = mx + 70 * drawn + 6, ny = my + 48 * drawn;
-      const sc = rgb(225, 215, 185);
-      this.pline(tx0, ty0, nx, ny, sc, 1); this.pline(nx, ny, tx1, ty1, sc, 1);
-      if (drawn > 0.9) { // flecha montada apuntando a la mirilla
-        const cdx = VW * 0.5 - nx, cdy = VH * 0.5 - ny, cl = Math.hypot(cdx, cdy) || 1, ux = cdx / cl, uy = cdy / cl;
-        const ex = nx + ux * 118, ey = ny + uy * 118;
-        this.pline(nx, ny, ex, ey, rgb(110, 74, 40), 3); this.pline(nx, ny, ex, ey, rgb(180, 132, 84), 1);
-        for (let k = 0; k < 9; k++) this.pline(ex + ux * k - uy * (9 - k) * 0.5, ey + uy * k + ux * (9 - k) * 0.5, ex + ux * k + uy * (9 - k) * 0.5, ey + uy * k - ux * (9 - k) * 0.5, rgb(205, 210, 220), 1);
-        for (let k = 0; k < 3; k++) this.pline(nx + ux * (6 + k * 4) - uy * 5, ny + uy * (6 + k * 4) + ux * 5, nx + ux * (6 + k * 4) + uy * 5, ny + uy * (6 + k * 4) - ux * 5, rgb(190, 40, 30), 1);
+      const ox = bx * 0.35, oy = by * 0.35 + rc * 10, cx = VW * 0.5 + ox, cy = VH * 0.5 + oy;
+      const ba = -0.5 - rc * 0.06, c = Math.cos(ba), si = Math.sin(ba);
+      const gx = cx - 2, gy = cy + 15; // empuñadura justo bajo la punta de la flecha
+      this.blitRot(spr, fp.ax, fp.ay, gx, gy, ba, lm, false, sc);
+      const at = (u, v) => [gx + ((u - fp.ax) * c - (v - fp.ay) * si) * sc, gy + ((u - fp.ax) * si + (v - fp.ay) * c) * sc];
+      const [tx0, ty0] = at(fp.tip[0], fp.tip[1]), [tx1, ty1] = at(fp.tip[0], fp.tip[2]);
+      // culatín: tensado, bajo la pantalla por el centro (cerca de la cámara); suelto, la cuerda vuelve a su sitio
+      const rx = lerp(tx0, tx1, 0.5), ry = lerp(ty0, ty1, 0.5);
+      const nx = lerp(rx, cx + 5, drawn), ny = lerp(ry, VH + 14, drawn);
+      const sc2 = rgb(225, 215, 185);
+      this.pline(tx0, ty0, nx, ny, sc2, 1); this.pline(nx, ny, tx1, ty1, sc2, 1);
+      if (drawn > 0.9) {
+        // flecha en perspectiva: gruesa cerca, fina al fondo
+        const ex = cx, ey = cy, seg = 6;
+        for (let k = 0; k < seg; k++) {
+          const t0 = k / seg, t1 = (k + 1) / seg, w = Math.max(2, Math.round(5 - k * 0.6));
+          this.pline(lerp(nx, ex, t0), lerp(ny, ey, t0), lerp(nx, ex, t1), lerp(ny, ey, t1), rgb(110, 74, 40), w);
+          if (w > 2) this.pline(lerp(nx, ex, t0) - 1, lerp(ny, ey, t0), lerp(nx, ex, t1) - 1, lerp(ny, ey, t1), rgb(180, 132, 84), 1);
+        }
+        const dx = ex - nx, dy = ey - ny, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+        for (let k = 0; k < 6; k++) { const hw = (6 - k) * 0.55; this.pline(ex - ux * (6 - k) - uy * hw, ey - uy * (6 - k) + ux * hw, ex - ux * (6 - k) + uy * hw, ey - uy * (6 - k) - ux * hw, rgb(205, 210, 220), 1); }
+        this.pline(ex, ey, ex, ey, rgb(240, 240, 245), 1);
+        for (let k = 0; k < 3; k++) { const t = 0.08 + k * 0.06, fx = lerp(nx, ex, t), fy = lerp(ny, ey, t), hw = 7 - k; this.pline(fx - hw, fy + 2, fx + hw, fy - 2, rgb(190, 40, 30), 2); }
         if (p.element) this.glow(ex, ey, 18, glowCol, 0.35 + 0.15 * Math.sin(time * 8));
       }
-      if (a > 0.4) this.glow(mx - 10, my - 6, 26, p.element ? glowCol : [255, 235, 160], 0.6 * a);
+      if (a > 0.4) this.glow(cx, cy, 26, p.element ? glowCol : [255, 235, 160], 0.6 * a);
       return;
     }
     // ---------- dagas gemelas: una en cada mano
