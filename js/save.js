@@ -44,7 +44,7 @@ function saveRun() {
   const data = {
     v: SAVE_VER, time: Date.now(),
     player: { cls: p.cls, lvl: p.lvl, xp: p.xp, hp: p.hp, slot: p.slot, off: p.off, torchFuel: p.torchFuel, form: p.form, x: p.x, y: p.y, a: p.a },
-    upg: G.upg, forge: G.forge, inv: G.inv, equip: G.equip, phoenixUsed: !!G.phoenixUsed, keys: G.keys, loot: G.loot, bank: G.bank, kills: G.kills, totalTime: G.totalTime, t: G.t,
+    upg: G.upg, forge: G.forge, inv: G.inv, equip: G.equip, phoenixUsed: !!G.phoenixUsed, phylUsed: !!G.phylUsed, keys: G.keys, loot: G.loot, bank: G.bank, kills: G.kills, totalTime: G.totalTime, t: G.t,
     journal: G.journal, met: G.met, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
     dg: { n: G.dg.n, name: G.dg.name, zs: G.dg.zs, start: G.dg.start, lockRooms: G.dg.lockRooms.map(c => ({ z: c.z, ri: c.ri })) },
     z: G.z, levels: G.dg.zs.map(z => packLevel(G.dg.lv(z), G.dg.lv(z) === G.lv)),
@@ -62,7 +62,7 @@ function loadRun() {
   const eq = d.equip || {};
   G.equip = { anillo1: eq.anillo1 || null, anillo2: eq.anillo2 || null, amuleto: eq.amuleto || null, armadura: eq.armadura || null, arma: eq.arma || null, escudo: eq.escudo || null };
   for (const s in G.equip) if (G.equip[s] && !G.equip[s].kind) G.equip[s] = null; // objetos del formato anterior
-  G.swap = null; G.wskin = null; G.phoenixUsed = !!d.phoenixUsed;
+  G.swap = null; G.wskin = null; G.phoenixUsed = !!d.phoenixUsed; G.phylUsed = !!d.phylUsed;
   G.upg = d.upg || {}; G.forge = d.forge || {}; G.forgeOpts = null; G.inv = d.inv; G.keys = d.keys; G.loot = d.loot; G.bank = d.bank;
   G.kills = d.kills; G.totalTime = d.totalTime; G.journal = d.journal; G.jpage = -1; G.met = d.met || {}; G.pending = 0; G.evolveReady = false;
   G.log = []; G.toasts = []; G.allies = []; G.choice = null; G.won = false; G.arena = null; G.boss = null;

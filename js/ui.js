@@ -319,12 +319,25 @@ class UI {
       const sub = !it ? '-' : !on ? (s === 'arma' ? `NO LA LLEVAS EN LA MANO (${WT_NAME[it.wtype].toUpperCase()})` : 'SOLO CON EL ESCUDO EN LA MANO') : itemLines(it)[0].toUpperCase();
       this.text(sx + 28, sy + 14, String(tr(sub)).slice(0, 33), C.dim, { shadow: false });
     });
+    if (tip && tip.legend && LEGEND[tip.legend].set) this.setPanel(LEGEND[tip.legend].set, 8, 150, 222);
     if (tip) {
       const ls = itemLines(tip).join(' · ').toUpperCase();
       this.text(rx + 6, y0 + 186, `${itemName(tip).toUpperCase().slice(0, 25)} · ${RARITY[tip.rar].name.toUpperCase()}`, itemCol(tip), { shadow: false });
       wrapText(ls, 37).slice(0, 2).forEach((l, k) => this.text(rx + 6, y0 + 196 + k * 9, l, C.ink, { shadow: false }));
     } else this.text(rx + 6, y0 + 196, 'LO QUE ENCUENTRAS SE EQUIPA AL MOMENTO', C.dim, { shadow: false });
     this.text(cx, VH - 10, G.touchMode ? 'TOCA FUERA PARA CERRAR' : G.padMode ? 'B PARA CERRAR' : 'I PARA CERRAR · H BEBER POCIÓN', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // bonificaciones de un set (2, 4 y 5 piezas); las conseguidas, resaltadas
+  setPanel(set, x, y, w) {
+    const S = SETS[set], n = setCount(set);
+    this.panel(x, y, w, 92); this.darken(x, y, w, 92, 0.6);
+    this.text(x + 6, y + 5, `${S.name.toUpperCase()} (${n}/5)`, C.gold, { shadow: false });
+    let yy = y + 17;
+    for (const k of [2, 4, 5]) {
+      const on = n >= k;
+      wrapText(`${k}: ${S.bonus[k]}`.toUpperCase(), Math.floor((w - 12) / 6)).slice(0, 3).forEach(l => { this.text(x + 6, yy, l, on ? C.goldL : C.dim, { shadow: false }); yy += 8; });
+      yy += 3;
+    }
   }
   // Cambio de objeto: el encontrado frente a los que llevas en ese hueco; el que no se queda se destruye
   swap(G) {
@@ -341,6 +354,7 @@ class UI {
       wrapText(itemLines(o).join(' · ').toUpperCase(), Math.floor((w - 12) / 6)).slice(0, 3).forEach((l, k) => this.text(x + 6, y + 46 + k * 8, l, C.ink, { shadow: false }));
     };
     card(cx - 230, 36, 220, 'HAS ENCONTRADO', it, C.goldL);
+    if (it.legend && LEGEND[it.legend].set) this.setPanel(LEGEND[it.legend].set, cx - 230, 110, 220);
     S.slots.forEach((s, i) => { const o = G.equip[s]; if (o) card(cx + 10, 36 + i * 76, 220, `LLEVAS (${SLOT_LABEL[s].toUpperCase()})`, o); });
     const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO']]);
     const by = 36 + Math.max(1, S.slots.length) * 76 + 8;

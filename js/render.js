@@ -531,7 +531,7 @@ class Renderer {
     if (W === 'bow') {
       // solo el arco: cuerda tensada con la flecha montada; al soltar, la cuerda vuelve y el arco retrocede
       const gx = VW * 0.38 + bx * 0.5 + rc * 6, gy = VH - 92 + by * 0.6 + rc * 16, ba = -0.32 - rc * 0.1;
-      this.blitRot(SPR.bow, 34, 86, gx, gy, ba, lm, false, S2);
+      this.blitRot(weaponSprite('bow', SPR.bow), 34, 86, gx, gy, ba, lm, false, S2);
       const tip = (v) => [gx + (-(v - 86) * Math.sin(ba)) * S2, gy + ((v - 86) * Math.cos(ba)) * S2];
       const [tx0, ty0] = tip(6), [tx1, ty1] = tip(168);
       const mx = lerp(tx0, tx1, 0.5), my = lerp(ty0, ty1, 0.5);

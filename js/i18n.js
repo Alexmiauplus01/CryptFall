@@ -64,18 +64,41 @@ const EN_DATA = {
   epic: { anillo: ['Ring of blood', 'You steal 3% of damage as health'], amuleto: ['Phoenix amulet', 'Once per dungeon it revives you with 40% health'], armadura: ['Armor of thorns', 'Returns 30% of damage to whoever hits you'], arma: ['Runic weapon', 'Its blows burn, chill or poison'], escudo: ['Spiked shield', 'When blocking you return 40% of the blow'] },
   legend: {
     nigromante: ['Necromancer ring', (it) => `You steal ${Math.round(it.val * 100)}% of damage as health · ${Math.round(it.fx * 100)}% chance to raise the enemy you kill as an ally`],
+    filacteria: ['Phylactery', (it) => `+${Math.round(it.val * 100)}% health · once per dungeon you return to life with ${Math.round(it.fx * 100)}% and two servants`],
+    mortaja: ['Lich shroud', (it) => `-${Math.round(it.val * 100)}% damage taken · slows enemies within ${it.fx.toFixed(1)}`],
+    nig_arma: [{ sword: 'Necromancer blade', greatsword: 'Necromancer reaper', dagger: 'Ritual dagger', staff: 'Necromancer staff', bow: 'Bone bow' }, (it) => `+${Math.round(it.val * 100)}% damage · every hit heals you for ${Math.round(it.fx * 100)}% of the damage`],
+    nig_escudo: ['Bone shield', (it) => `Blocks ${Math.round(it.val * 100)}% more · every block heals ${Math.round(it.fx * 100)}% of your health`],
     reina: ['Heart of the Spider Queen', (it) => `+${Math.round(it.val * 100)}% health · your blows poison and ${Math.round(it.fx * 100)}% of your victims leave an allied spider`],
+    viuda: ['Widow ring', (it) => `+${Math.round(it.val * 100)}% damage · +${Math.round(it.fx * 100)}% damage to poisoned enemies`],
+    caparazon: ['Chitin carapace', (it) => `-${Math.round(it.val * 100)}% damage taken · whoever hits you is poisoned and takes ${Math.round(it.fx * 100)}%`],
+    reina_arma: [{ sword: 'Queen sting', greatsword: 'Queen leg', dagger: 'Queen fang', staff: 'Queen scepter', bow: 'Silk bow' }, (it) => `+${Math.round(it.val * 100)}% damage · strong poison and ${Math.round(it.fx * 100)}% chance to hatch a spider on hit`],
+    reina_escudo: ['Web shield', (it) => `Blocks ${Math.round(it.val * 100)}% more · blocking traps the attacker for ${it.fx.toFixed(0)} s`],
     guardian: ['Guardian plate', (it) => `-${Math.round(it.val * 100)}% damage taken · a ring of fire bursts when you are hit`],
+    brasas: ['Ember ring', (it) => `+${Math.round(it.val * 100)}% damage · your blows burn for ${it.fx.toFixed(0)} s`],
+    igneo: ['Igneous heart', (it) => `+${it.val.toFixed(1)} health per second · every kill heals you ${Math.round(it.fx * 100)}%`],
+    guardian_arma: [{ sword: 'Guardian edge', greatsword: 'Guardian greatsword', dagger: 'Igneous dagger', staff: 'Ember staff', bow: 'Ember bow' }, (it) => `+${Math.round(it.val * 100)}% damage · every third hit bursts into flames`],
+    guardian_escudo: ['Igneous aegis', (it) => `Blocks ${Math.round(it.val * 100)}% more · blocking bursts a ring of fire`],
     primigenio: ['Primordial eye', (it) => `+${Math.round(it.val * 100)}% crit · every ${it.fx.toFixed(1)} s it fires void orbs at the nearest enemy`],
+    lagrima: ['Void tear', (it) => `+${Math.round(it.val * 100)}% crit · crits deal ${Math.round(it.fx * 100)}% more damage`],
+    manto: ['Void mantle', (it) => `Dodge ${Math.round(it.val * 100)}% faster · dodging leaves a void blast`],
+    vacio_arma: [{ sword: 'Void blade', greatsword: 'Void greatsword', dagger: 'Void dagger', staff: 'Void staff', bow: 'Void bow' }, (it) => `+${Math.round(it.val * 100)}% crit · every crit fires a void orb`],
+    vacio_escudo: ['Void mirror', (it) => `Blocks ${Math.round(it.val * 100)}% more · blocking reflects projectiles`],
     solar: ['Solar blade', (it) => `+${Math.round(it.val * 100)}% damage · every third hit bursts into flames`],
     titan: ['Mountainbreaker', (it) => `+${Math.round(it.val * 100)}% damage · every hit sends out a shockwave`],
     colmillo: ['Shadow fang', (it) => `+${Math.round(it.val * 100)}% crit · killing hides you and restores ${Math.round(it.fx * 100)}% health`],
     archimago: ['Archmage staff', (it) => `+${Math.round(it.val * 100)}% damage · +1 projectile that pierces one more enemy`],
+    almas: ['Bow of souls', (it) => `+${Math.round(it.val * 100)}% damage · your arrows pierce ${it.fx.toFixed(0)} more enemies`],
     egida: ['Aegis', (it) => `Blocks ${Math.round(it.val * 100)}% more · blocking reflects projectiles`],
   },
+  sets: {
+    nigromante: ['Necromancer Regalia', { 2: 'Your undead have +50% health and damage', 4: 'Up to 6 undead and +20% chance to raise them', 5: 'Every 20 s two servants rise at your side' }],
+    reina: ['Silk of the Queen', { 2: 'Your poison deals +50% damage', 4: '+20% chance for your victims to leave spiders', 5: 'Every victim leaves an allied spider' }],
+    guardian: ['Guardian Bulwark', { 2: '-15% damage taken', 4: 'The ring of fire recharges twice as fast', 5: 'Dropping below 30% health makes you invulnerable for 3 s (every 60 s)' }],
+    vacio: ['Sight of the Void', { 2: '+10% crit', 4: 'Void orbs twice as fast (even without the ring)', 5: 'Crits deal triple damage' }],
+  },
   slotLabel: { anillo1: 'Ring 1', anillo2: 'Ring 2', amuleto: 'Amulet', armadura: 'Armor', arma: 'Weapon', escudo: 'Shield' },
-  wtName: { sword: 'sword', greatsword: 'greatsword', dagger: 'dagger', staff: 'staff' },
-  baseName: { anillo: ['Copper ring', 'Silver ring', 'Signet'], amuleto: ['Pendant', 'Amulet', 'Talisman'], armadura: ['Doublet', 'Chainmail', 'Breastplate'], sword: ['Short sword', 'Longsword', 'Steel blade'], greatsword: ['Claymore', 'Greatsword', 'Zweihander'], dagger: ['Dirk', 'Dagger', 'Stiletto'], staff: ['Staff', 'Rod', 'Crozier'], escudo: ['Buckler', 'Oak shield', 'Pavise'] },
+  wtName: { sword: 'sword', greatsword: 'greatsword', dagger: 'dagger', staff: 'staff', bow: 'bow' },
+  baseName: { anillo: ['Copper ring', 'Silver ring', 'Signet'], amuleto: ['Pendant', 'Amulet', 'Talisman'], armadura: ['Doublet', 'Chainmail', 'Breastplate'], sword: ['Short sword', 'Longsword', 'Steel blade'], greatsword: ['Claymore', 'Greatsword', 'Zweihander'], dagger: ['Dirk', 'Dagger', 'Stiletto'], staff: ['Staff', 'Rod', 'Crozier'], bow: ['Short bow', 'Longbow', 'Composite bow'], escudo: ['Buckler', 'Oak shield', 'Pavise'] },
   slots: { anillo: 'Ring', amuleto: 'Amulet', armadura: 'Armor', arma: 'Weapon', escudo: 'Shield' },
   actions: { up: 'Move forward', down: 'Move back', left: 'Strafe left', right: 'Strafe right', turnL: 'Turn left', turnR: 'Turn right', attack: 'Attack', block: 'Block', dash: 'Dodge', skill1: 'Skill 1', skill2: 'Skill 2', skill3: 'Skill 3', shield: 'Shield', weapon: 'Switch weapon', potion: 'Drink potion', map: 'Map', journal: 'Journal', inventory: 'Inventory', pause: 'Pause' },
   dgPre: ['The Catacombs', 'The Crypt', 'The Sunken Fortress', 'The Ossuary', 'The Vaults', 'The Desecrated Sanctum', 'The Buried Tower', 'The Galleries'],
@@ -102,6 +125,7 @@ function snapshotData() {
   s.dgPre = DG_PRE.slice(); s.dgSuf = DG_SUF.slice();
   s.slots = { anillo: 'Anillo', amuleto: 'Amuleto', armadura: 'Armadura', arma: 'Arma', escudo: 'Escudo' };
   s.legend = Object.fromEntries(Object.entries(LEGEND).map(([k, L]) => [k, [L.name, L.desc]]));
+  s.sets = Object.fromEntries(Object.entries(SETS).map(([k, S]) => [k, [S.name, Object.assign({}, S.bonus)]]));
   s.slotLabel = Object.assign({}, SLOT_LABEL); s.wtName = Object.assign({}, WT_NAME);
   ES_DATA = s;
 }
@@ -129,6 +153,7 @@ function applyData(D) {
   DG_PRE.splice(0, DG_PRE.length, ...D.dgPre); DG_SUF.splice(0, DG_SUF.length, ...D.dgSuf);
   SLOT_NAME = D.slots;
   for (const k in D.legend) if (LEGEND[k]) [LEGEND[k].name, LEGEND[k].desc] = D.legend[k];
+  for (const k in D.sets) if (SETS[k]) { SETS[k].name = D.sets[k][0]; SETS[k].bonus = Object.assign({}, D.sets[k][1]); }
   Object.assign(SLOT_LABEL, D.slotLabel); Object.assign(WT_NAME, D.wtName);
   // temas ya construidos y fantasmas de la partida en curso
   if (G.dg) for (const z of G.dg.zs) { const lv = G.dg.lv(z); if (lv.themeObj) lv.themeObj.name = THEMES[lv.theme % THEMES.length].name; }
@@ -174,7 +199,7 @@ const EN_UI = {
   'YA TIENES LA VIDA AL MÁXIMO': 'YOUR HEALTH IS ALREADY FULL', 'EL NIVEL SE REVELA EN TU MAPA': 'THE LEVEL IS REVEALED ON YOUR MAP', 'LA RUNA TE DEVUELVE A LA SALIDA': 'THE RUNE TAKES YOU BACK TO THE EXIT',
   'LA MOCHILA ESTÁ LLENA': 'YOUR BACKPACK IS FULL', 'CONTINÚAS LA PARTIDA': 'GAME RESUMED', 'EL FANTASMA DESCANSA AL FIN': 'THE GHOST RESTS AT LAST', '¡EL GUARDIÁN HA CAÍDO!': 'THE GUARDIAN HAS FALLEN!',
   'GIRA EL MÓVIL': 'TURN YOUR PHONE', 'CARGANDO LA MAZMORRA…': 'LOADING THE DUNGEON…', 'VACÍA': 'EMPTY', 'DOS MANOS': 'TWO HANDS', 'SALIR DE PANTALLA COMPLETA': 'EXIT FULLSCREEN', 'PANTALLA COMPLETA': 'FULLSCREEN',
-  'VIDA': 'HEALTH', '¿CAMBIAR DE EQUIPO?': 'SWAP EQUIPMENT?', 'HAS ENCONTRADO': 'YOU FOUND', 'EQUIPAR EL NUEVO': 'EQUIP THE NEW ONE', 'QUEDARME CON LO QUE LLEVO': 'KEEP WHAT I HAVE',
+  'VIDA': 'HEALTH', '¡INQUEBRANTABLE!': 'UNBREAKABLE!', '¡LA FILACTERIA TE DEVUELVE A LA VIDA!': 'THE PHYLACTERY BRINGS YOU BACK TO LIFE!', '¿CAMBIAR DE EQUIPO?': 'SWAP EQUIPMENT?', 'HAS ENCONTRADO': 'YOU FOUND', 'EQUIPAR EL NUEVO': 'EQUIP THE NEW ONE', 'QUEDARME CON LO QUE LLEVO': 'KEEP WHAT I HAVE',
   'EL OBJETO QUE NO TE QUEDES SE DESTRUYE': 'THE ITEM YOU DO NOT KEEP IS DESTROYED', 'LO QUE ENCUENTRAS SE EQUIPA AL MOMENTO': 'WHAT YOU FIND IS EQUIPPED ON THE SPOT', 'SOLO CON EL ESCUDO EN LA MANO': 'ONLY WITH THE SHIELD IN HAND',
   '¡UN LEGENDARIO DEL CAÍDO!': 'A LEGENDARY FROM THE FALLEN!', 'LEGENDARIO': 'LEGENDARY', 'ESPACIO': 'SPACE', 'CRUZ ARRIBA': 'D-PAD UP', 'CRUZ ABAJO': 'D-PAD DOWN', 'CRUZ IZQ.': 'D-PAD LEFT', 'CRUZ DER.': 'D-PAD RIGHT', 'FLECHA ARRIBA': 'UP ARROW', 'FLECHA ABAJO': 'DOWN ARROW',
   'FLECHA IZQ.': 'LEFT ARROW', 'FLECHA DER.': 'RIGHT ARROW', 'SHIFT DER.': 'RIGHT SHIFT', 'CTRL DER.': 'RIGHT CTRL', 'BLOQ MAYÚS': 'CAPS LOCK', 'INTRO': 'ENTER', 'RETROCESO': 'BACKSPACE',
@@ -205,7 +230,7 @@ const EN_RX = [
   [/^EMPUÑAS: (.+?)( \(DOS MANOS\))?$/, (m, a, b) => `YOU WIELD: ${tr(a)}${b ? ' (TWO HANDS)' : ''}`], [/^FLECHAS DE (.+)$/, '$1 ARROWS'], [/^LA (.+) GIRA EN LA (.+)$/, 'THE $1 TURNS IN THE $2'],
   [/^UN FANTASMA RENCOROSO DE NIVEL (\d+) TE RECONOCE\.\.\.$/, 'A VENGEFUL GHOST OF LEVEL $1 RECOGNIZES YOU...'], [/^(.+): (\d+) NIVELES$/, '$1: $2 LEVELS'], [/^MANDO CONECTADO: (.+)$/, 'CONTROLLER CONNECTED: $1'],
   [/^(.+) · (COMÚN|RARO|ÉPICO|LEGENDARIO)$/, '$1 · $2'], [/^(.+) · (COMÚN|RARO|ÉPICO|LEGENDARIO): (.+)$/, '$1 · $2: $3'],
-  [/^LLEVAS \((.+)\)$/, 'EQUIPPED ($1)'], [/^CAMBIAR POR EL (.+)$/, 'REPLACE $1'], [/^NO LA LLEVAS EN LA MANO \((.+)\)$/, (m, a) => `NOT IN YOUR HAND (${tr(a)})`],
+  [/^LLEVAS \((.+)\)$/, 'EQUIPPED ($1)'], [/^SET (.+) \((\d)\/5\)$/, 'SET $1 ($2/5)'], [/^(.+) \((\d)\/5\)$/, '$1 ($2/5)'], [/^DEJAS (.+) EN EL SUELO$/, 'YOU LEAVE $1 ON THE FLOOR'], [/^CAMBIAR POR EL (.+)$/, 'REPLACE $1'], [/^NO LA LLEVAS EN LA MANO \((.+)\)$/, (m, a) => `NOT IN YOUR HAND (${tr(a)})`],
   [/^(.+) SE HACE PEDAZOS$/, '$1 SHATTERS'], [/^DEJAS (.+): SE HACE PEDAZOS$/, 'YOU LEAVE $1: IT SHATTERS'], [/^ARMA: (.+)$/, 'WEAPON: $1'], [/^(.+): VACÍO$/, '$1: EMPTY'],
   [/^\+(\d+)% DE DAÑO$/, '+$1% DAMAGE'], [/^\+(\d+)% DE CRÍTICO$/, '+$1% CRIT CHANCE'], [/^\+(\d+)% DE VELOCIDAD DE ATAQUE$/, '+$1% ATTACK SPEED'], [/^\+(\d+)% DE VIDA MÁXIMA$/, '+$1% MAX HEALTH'],
   [/^\+([\d.]+) DE VIDA POR SEGUNDO$/, '+$1 HEALTH PER SECOND'], [/^\+(\d+)% DE EXPERIENCIA$/, '+$1% EXPERIENCE'], [/^\+(\d+)% DE ALCANCE DE LA ANTORCHA$/, '+$1% TORCH RANGE'], [/^-(\d+)% DE DAÑO RECIBIDO$/, '-$1% DAMAGE TAKEN'],
@@ -246,7 +271,8 @@ function buildNameMap() {
   for (const k in S.rarity) put(S.rarity[k], E.rarity[k]);
   for (const sl in S.epic) put(S.epic[sl][0], E.epic[sl][0]);
   for (const sl in S.slots) put(S.slots[sl], E.slots[sl]);
-  for (const k in S.legend) put(S.legend[k][0], E.legend[k][0]);
+  for (const k in S.legend) { const a = S.legend[k][0], b = E.legend[k] && E.legend[k][0]; if (typeof a === 'string') put(a, b); else if (a && b) for (const w in a) put(a[w], b[w]); }
+  for (const k in S.sets) put(S.sets[k][0], E.sets[k] && E.sets[k][0]);
   for (const k in S.slotLabel) put(S.slotLabel[k], E.slotLabel[k]);
   for (const k in S.elements) put(S.elements[k], E.elements[k]);
   NAME_MAP = m;
@@ -256,6 +282,7 @@ function buildNameMap() {
   const bases = [], afx = [];
   for (const sl in S.baseName) S.baseName[sl].forEach((b, i) => bases.push([b.toUpperCase(), E.baseName[sl][i].toUpperCase()]));
   for (const sl in S.affix) S.affix[sl].forEach((a, i) => afx.push([a[0].toUpperCase(), E.affix[sl][i][0].toUpperCase()]));
+  for (const [es, en] of afx.slice()) { const g = /A$/.test(es) ? es.slice(0, -1) + 'O' : /O$/.test(es) ? es.slice(0, -1) + 'A' : null; if (g && !es.includes(' ')) afx.push([g, en]); }
   ITEM_RX = new RegExp(`^(${bases.map(b => esc(b[0])).join('|')}) (${afx.map(a => esc(a[0])).join('|')})$`);
   ITEM_MAP = Object.fromEntries(bases.concat(afx));
 }

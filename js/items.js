@@ -11,7 +11,7 @@ const SLOTS = ['anillo1', 'anillo2', 'amuleto', 'armadura', 'arma', 'escudo'];
 const SLOT_KIND = { anillo1: 'anillo', anillo2: 'anillo', amuleto: 'amuleto', armadura: 'armadura', arma: 'arma', escudo: 'escudo' };
 const SLOT_LABEL = { anillo1: 'Anillo 1', anillo2: 'Anillo 2', amuleto: 'Amuleto', armadura: 'Armadura', arma: 'Arma', escudo: 'Escudo' };
 // armas que pueden aparecer (las que el jugador puede usar)
-const WTYPES = ['sword', 'greatsword', 'dagger', 'staff'];
+const WTYPES = ['sword', 'greatsword', 'dagger', 'staff', 'bow'];
 const AFFIX = {
   anillo: [
     { stat: 'dmg', v: 0.05, name: 'de la ira', desc: (x) => `+${Math.round(x * 100)}% de daño` },
@@ -46,29 +46,60 @@ const EPIC = {
   arma: { id: 'elemental', name: 'Arma rúnica', desc: 'Sus golpes queman, hielan o envenenan' },
   escudo: { id: 'reflejo', name: 'Escudo de púas', desc: 'Al bloquear devuelves el 40% del golpe' },
 };
-// legendarios: gran mejora + efecto poderoso. Los de jefe solo los suelta ese jefe
-const LEGEND = {
-  nigromante: { kind: 'anillo', boss: 'lich', name: 'Anillo del nigromante', stat: 'leech', v: [0.04, 0.08], fx: [0.15, 0.3], desc: (it) => `Robas el ${Math.round(it.val * 100)}% del daño como vida · ${Math.round(it.fx * 100)}% de levantar como aliado al enemigo que matas` },
-  reina: { kind: 'amuleto', boss: 'queen', name: 'Corazón de la Reina Araña', stat: 'hp', v: [0.12, 0.2], fx: [0.25, 0.4], desc: (it) => `+${Math.round(it.val * 100)}% de vida · tus golpes envenenan y el ${Math.round(it.fx * 100)}% de tus víctimas suelta una araña aliada` },
-  guardian: { kind: 'armadura', boss: 'boss', name: 'Coraza del Guardián', stat: 'armor', v: [0.18, 0.26], fx: [0.8, 1.2], desc: (it) => `-${Math.round(it.val * 100)}% de daño recibido · al recibir un golpe estalla un anillo de fuego` },
-  primigenio: { kind: 'anillo', boss: 'voidlord', name: 'Ojo primigenio', stat: 'crit', v: [0.1, 0.15], fx: [3, 4.5], desc: (it) => `+${Math.round(it.val * 100)}% de crítico · cada ${it.fx.toFixed(1)} s lanza orbes del vacío al enemigo más cercano` },
-  solar: { kind: 'arma', wtype: 'sword', name: 'Hoja solar', stat: 'wdmg', v: [0.25, 0.35], fx: [3, 3], desc: (it) => `+${Math.round(it.val * 100)}% de daño · cada tercer golpe estalla en llamas` },
-  titan: { kind: 'arma', wtype: 'greatsword', name: 'Rompemontañas', stat: 'wdmg', v: [0.25, 0.35], fx: [0.4, 0.6], desc: (it) => `+${Math.round(it.val * 100)}% de daño · cada golpe lanza una onda de choque` },
-  colmillo: { kind: 'arma', wtype: 'dagger', name: 'Colmillo de sombra', stat: 'wcrit', v: [0.12, 0.18], fx: [0.05, 0.08], desc: (it) => `+${Math.round(it.val * 100)}% de crítico · al matar te ocultas y recuperas un ${Math.round(it.fx * 100)}% de vida` },
-  archimago: { kind: 'arma', wtype: 'staff', name: 'Báculo del archimago', stat: 'wdmg', v: [0.2, 0.3], fx: [1, 1], desc: (it) => `+${Math.round(it.val * 100)}% de daño · +1 proyectil y atraviesan a un enemigo más` },
-  egida: { kind: 'escudo', name: 'Égida', stat: 'block', v: [0.3, 0.4], fx: [1, 1], desc: (it) => `Bloquea un ${Math.round(it.val * 100)}% más · al bloquear devuelves los proyectiles` },
+// Legendarios. Cada jefe tiene un SET de 5 piezas (anillo, amuleto, armadura, arma y escudo) con bonificaciones
+// al llevar 2, 4 y 5 piezas; además hay legendarios sueltos de arma y escudo (cofres y fantasmas).
+const SETS = {
+  nigromante: { boss: 'lich', name: 'Ajuar del Nigromante', bonus: { 2: 'Tus no muertos tienen +50% de vida y daño', 4: 'Hasta 6 no muertos y +20% de probabilidad de levantarlos', 5: 'Cada 20 s se levantan dos siervos a tu lado' } },
+  reina: { boss: 'queen', name: 'Seda de la Reina', bonus: { 2: 'Tu veneno hace +50% de daño', 4: '+20% de probabilidad de que tus víctimas suelten arañas', 5: 'Cada víctima suelta una araña aliada' } },
+  guardian: { boss: 'boss', name: 'Bastión del Guardián', bonus: { 2: '-15% de daño recibido', 4: 'El anillo de fuego se recarga el doble de rápido', 5: 'Al bajar del 30% de vida eres invulnerable 3 s (cada 60 s)' } },
+  vacio: { boss: 'voidlord', name: 'Visión del Vacío', bonus: { 2: '+10% de crítico', 4: 'Orbes del vacío el doble de rápido (aunque no lleves el anillo)', 5: 'Los críticos hacen el triple de daño' } },
 };
+const P = (n) => Math.round(n * 100);
+const LEGEND = {
+  // ---- Ajuar del Nigromante (el Liche)
+  nigromante: { set: 'nigromante', kind: 'anillo', name: 'Anillo del nigromante', stat: 'leech', v: [0.04, 0.08], fx: [0.15, 0.3], desc: (it) => `Robas el ${P(it.val)}% del daño como vida · ${P(it.fx)}% de levantar como aliado al enemigo que matas` },
+  filacteria: { set: 'nigromante', kind: 'amuleto', name: 'Filacteria', stat: 'hp', v: [0.1, 0.18], fx: [0.4, 0.6], desc: (it) => `+${P(it.val)}% de vida · una vez por mazmorra vuelves a la vida con el ${P(it.fx)}% y dos siervos` },
+  mortaja: { set: 'nigromante', kind: 'armadura', name: 'Mortaja del liche', stat: 'armor', v: [0.12, 0.18], fx: [2.2, 3], desc: (it) => `-${P(it.val)}% de daño recibido · ralentiza a los enemigos a ${it.fx.toFixed(1)} de distancia` },
+  nig_arma: { set: 'nigromante', kind: 'arma', name: { sword: 'Hoja del nigromante', greatsword: 'Segadora del nigromante', dagger: 'Daga ritual', staff: 'Báculo del nigromante', bow: 'Arco de hueso' }, stat: 'wdmg', v: [0.2, 0.3], fx: [0.03, 0.06], desc: (it) => `+${P(it.val)}% de daño · cada golpe te cura el ${P(it.fx)}% del daño` },
+  nig_escudo: { set: 'nigromante', kind: 'escudo', name: 'Escudo de huesos', stat: 'block', v: [0.25, 0.35], fx: [0.03, 0.05], desc: (it) => `Bloquea un ${P(it.val)}% más · cada bloqueo te cura el ${P(it.fx)}% de la vida` },
+  // ---- Seda de la Reina (la Reina Araña)
+  reina: { set: 'reina', kind: 'amuleto', name: 'Corazón de la Reina Araña', stat: 'hp', v: [0.12, 0.2], fx: [0.25, 0.4], desc: (it) => `+${P(it.val)}% de vida · tus golpes envenenan y el ${P(it.fx)}% de tus víctimas suelta una araña aliada` },
+  viuda: { set: 'reina', kind: 'anillo', name: 'Anillo de la viuda', stat: 'dmg', v: [0.1, 0.16], fx: [0.4, 0.6], desc: (it) => `+${P(it.val)}% de daño · +${P(it.fx)}% de daño a enemigos envenenados` },
+  caparazon: { set: 'reina', kind: 'armadura', name: 'Caparazón quitinoso', stat: 'armor', v: [0.14, 0.2], fx: [0.2, 0.3], desc: (it) => `-${P(it.val)}% de daño recibido · quien te golpea queda envenenado y recibe el ${P(it.fx)}%` },
+  reina_arma: { set: 'reina', kind: 'arma', name: { sword: 'Aguijón de la Reina', greatsword: 'Pata de la Reina', dagger: 'Colmillo de la Reina', staff: 'Cetro de la Reina', bow: 'Arco de seda' }, stat: 'wdmg', v: [0.2, 0.3], fx: [0.1, 0.15], desc: (it) => `+${P(it.val)}% de daño · veneno potente y ${P(it.fx)}% de que nazca una araña al golpear` },
+  reina_escudo: { set: 'reina', kind: 'escudo', name: 'Escudo de telaraña', stat: 'block', v: [0.25, 0.35], fx: [2, 3], desc: (it) => `Bloquea un ${P(it.val)}% más · al bloquear, el atacante queda atrapado ${it.fx.toFixed(0)} s` },
+  // ---- Bastión del Guardián (el Guardián)
+  guardian: { set: 'guardian', kind: 'armadura', name: 'Coraza del Guardián', stat: 'armor', v: [0.18, 0.26], fx: [0.8, 1.2], desc: (it) => `-${P(it.val)}% de daño recibido · al recibir un golpe estalla un anillo de fuego` },
+  brasas: { set: 'guardian', kind: 'anillo', name: 'Anillo de brasas', stat: 'dmg', v: [0.1, 0.16], fx: [3, 4], desc: (it) => `+${P(it.val)}% de daño · tus golpes queman ${it.fx.toFixed(0)} s` },
+  igneo: { set: 'guardian', kind: 'amuleto', name: 'Corazón ígneo', stat: 'regen', v: [1, 1.8], fx: [0.02, 0.04], desc: (it) => `+${it.val.toFixed(1)} de vida por segundo · cada enemigo que matas te cura el ${P(it.fx)}%` },
+  guardian_arma: { set: 'guardian', kind: 'arma', name: { sword: 'Filo del Guardián', greatsword: 'Espadón del Guardián', dagger: 'Daga ígnea', staff: 'Báculo de brasas', bow: 'Arco de brasas' }, stat: 'wdmg', v: [0.25, 0.35], fx: [3, 3], desc: (it) => `+${P(it.val)}% de daño · cada tercer golpe estalla en llamas` },
+  guardian_escudo: { set: 'guardian', kind: 'escudo', name: 'Égida ígnea', stat: 'block', v: [0.3, 0.4], fx: [1, 1], desc: (it) => `Bloquea un ${P(it.val)}% más · al bloquear estalla un anillo de fuego` },
+  // ---- Visión del Vacío (el Ojo Primigenio)
+  primigenio: { set: 'vacio', kind: 'anillo', name: 'Ojo primigenio', stat: 'crit', v: [0.1, 0.15], fx: [3, 4.5], desc: (it) => `+${P(it.val)}% de crítico · cada ${it.fx.toFixed(1)} s lanza orbes del vacío al enemigo más cercano` },
+  lagrima: { set: 'vacio', kind: 'amuleto', name: 'Lágrima del vacío', stat: 'crit', v: [0.06, 0.1], fx: [0.5, 0.8], desc: (it) => `+${P(it.val)}% de crítico · los críticos hacen un ${P(it.fx)}% más de daño` },
+  manto: { set: 'vacio', kind: 'armadura', name: 'Manto del vacío', stat: 'dash', v: [0.2, 0.3], fx: [1, 1.5], desc: (it) => `Esquiva ${P(it.val)}% más rápido · al esquivar dejas un estallido del vacío` },
+  vacio_arma: { set: 'vacio', kind: 'arma', name: { sword: 'Hoja del vacío', greatsword: 'Espadón del vacío', dagger: 'Daga del vacío', staff: 'Báculo del vacío', bow: 'Arco del vacío' }, stat: 'wcrit', v: [0.1, 0.15], fx: [0.6, 0.9], desc: (it) => `+${P(it.val)}% de crítico · cada crítico dispara un orbe del vacío` },
+  vacio_escudo: { set: 'vacio', kind: 'escudo', name: 'Espejo del vacío', stat: 'block', v: [0.25, 0.35], fx: [1, 1], desc: (it) => `Bloquea un ${P(it.val)}% más · al bloquear devuelves los proyectiles` },
+  // ---- sueltos (cofres y fantasmas)
+  solar: { kind: 'arma', wtype: 'sword', name: 'Hoja solar', stat: 'wdmg', v: [0.25, 0.35], fx: [3, 3], desc: (it) => `+${P(it.val)}% de daño · cada tercer golpe estalla en llamas` },
+  titan: { kind: 'arma', wtype: 'greatsword', name: 'Rompemontañas', stat: 'wdmg', v: [0.25, 0.35], fx: [0.4, 0.6], desc: (it) => `+${P(it.val)}% de daño · cada golpe lanza una onda de choque` },
+  colmillo: { kind: 'arma', wtype: 'dagger', name: 'Colmillo de sombra', stat: 'wcrit', v: [0.12, 0.18], fx: [0.05, 0.08], desc: (it) => `+${P(it.val)}% de crítico · al matar te ocultas y recuperas un ${P(it.fx)}% de vida` },
+  archimago: { kind: 'arma', wtype: 'staff', name: 'Báculo del archimago', stat: 'wdmg', v: [0.2, 0.3], fx: [1, 1], desc: (it) => `+${P(it.val)}% de daño · +1 proyectil y atraviesan a un enemigo más` },
+  almas: { kind: 'arma', wtype: 'bow', name: 'Arco de las almas', stat: 'wdmg', v: [0.25, 0.35], fx: [2, 2], desc: (it) => `+${P(it.val)}% de daño · tus flechas atraviesan a ${it.fx.toFixed(0)} enemigos más` },
+  egida: { kind: 'escudo', name: 'Égida', stat: 'block', v: [0.3, 0.4], fx: [1, 1], desc: (it) => `Bloquea un ${P(it.val)}% más · al bloquear devuelves los proyectiles` },
+};
+for (const id in LEGEND) if (LEGEND[id].set) LEGEND[id].boss = SETS[LEGEND[id].set].boss;
 const BASE_NAME = {
   anillo: ['Anillo de cobre', 'Anillo de plata', 'Sortija'], amuleto: ['Colgante', 'Amuleto', 'Talismán'], armadura: ['Jubón', 'Cota de malla', 'Coraza'],
   sword: ['Espada corta', 'Espada larga', 'Hoja de acero'], greatsword: ['Mandoble', 'Espadón', 'Montante'], dagger: ['Puñal', 'Daga', 'Estilete'], staff: ['Bastón', 'Vara', 'Báculo'],
-  escudo: ['Rodela', 'Escudo de roble', 'Pavés'],
+  bow: ['Arco corto', 'Arco largo', 'Arco compuesto'], escudo: ['Rodela', 'Escudo de roble', 'Pavés'],
 };
-const WT_NAME = { sword: 'espada', greatsword: 'espadón', dagger: 'daga', staff: 'bastón' };
+const WT_NAME = { sword: 'espada', greatsword: 'espadón', dagger: 'daga', staff: 'bastón', bow: 'arco' };
 
 // ---------------------------------------------------------------- creación
 function rollRarity(src) {
   const r = Math.random();
-  if (src === 'boss') return r < 0.08 ? 'legendario' : r < 0.28 ? 'epico' : r < 0.7 ? 'raro' : 'comun';
+  if (src === 'boss') return r < 0.12 ? 'legendario' : r < 0.32 ? 'epico' : r < 0.72 ? 'raro' : 'comun';
   if (src === 'ghost') return r < 0.08 ? 'epico' : r < 0.6 ? 'raro' : 'comun';
   if (src === 'vault') return r < 0.006 ? 'legendario' : r < 0.04 ? 'epico' : r < 0.3 ? 'raro' : 'comun';
   return r < 0.003 ? 'legendario' : r < 0.023 ? 'epico' : r < 0.2 ? 'raro' : 'comun';
@@ -89,9 +120,10 @@ function makeItem(src, kind, opt = {}) {
   let rar = opt.rar || rollRarity(src);
   const P = itemPower(src);
   if (rar === 'legendario') {
-    // jefe: su legendario propio; si no, uno de arma/escudo que pueda usar la clase
-    let pool = Object.entries(LEGEND).filter(([, L]) => opt.boss ? L.boss === opt.boss : !L.boss && kinds.includes(L.kind) && (!L.wtype || classWTypes().includes(L.wtype)));
-    if (opt.boss && !pool.length) pool = Object.entries(LEGEND).filter(([, L]) => !L.boss && kinds.includes(L.kind) && (!L.wtype || classWTypes().includes(L.wtype)));
+    // jefe: una pieza de su set que la clase pueda usar; si no, un legendario suelto
+    const usable = ([, L]) => kinds.includes(L.kind) && (!L.wtype || classWTypes().includes(L.wtype));
+    let pool = Object.entries(LEGEND).filter(e => (opt.boss ? e[1].boss === opt.boss : !e[1].set) && usable(e));
+    if (!pool.length) pool = Object.entries(LEGEND).filter(e => !e[1].set && usable(e));
     if (pool.length) {
       const [id, L] = pick(pool);
       return { kind: L.kind, wtype: L.wtype || (L.kind === 'arma' ? pick(classWTypes()) : undefined), rar, legend: id, stat: L.stat, val: Math.round(rand(L.v[0], L.v[1]) * P * 1000) / 1000, fx: Math.round(rand(L.fx[0], L.fx[1]) * 100) / 100 };
@@ -104,14 +136,22 @@ function makeItem(src, kind, opt = {}) {
   if (rar === 'epico') { it.special = EPIC[kind].id; if (kind === 'arma') it.elem = pick(['burn', 'slow', 'poison']); }
   return it;
 }
+// concordancia en castellano: "Arco afilado", "Espada afilada", "Rodela reforzada"
+const FEM_BASE = /^(Espada|Hoja|Daga|Vara|Rodela|Cota|Coraza|Sortija)/;
+function agree(base, adj) {
+  const fem = FEM_BASE.test(base);
+  if (fem && /^(reforzado)$/.test(adj)) return adj.slice(0, -1) + 'a';
+  if (!fem && /^(afilada|certera|ligera)$/.test(adj)) return adj.slice(0, -1) + 'o';
+  return adj;
+}
 function itemName(it) {
-  if (it.legend) return LEGEND[it.legend].name;
+  if (it.legend) { const n = LEGEND[it.legend].name; return typeof n === 'string' ? n : n[it.wtype] || Object.values(n)[0]; }
   if (it.special) return EPIC[it.kind].name + (it.kind === 'arma' ? ` (${WT_NAME[it.wtype]})` : '');
-  const bases = BASE_NAME[it.kind === 'arma' ? it.wtype : it.kind];
-  return `${bases[it.base % bases.length]} ${AFFIX[it.kind][it.af].name}`;
+  const bases = BASE_NAME[it.kind === 'arma' ? it.wtype : it.kind], base = bases[it.base % bases.length];
+  return `${base} ${agree(base, AFFIX[it.kind][it.af].name)}`;
 }
 function itemLines(it) {
-  if (it.legend) return [LEGEND[it.legend].desc(it)];
+  if (it.legend) { const L = LEGEND[it.legend], out = [L.desc(it)]; if (L.set) out.push(`Set ${SETS[L.set].name} (${setCount(L.set)}/5)`); return out; }
   const out = [AFFIX[it.kind][it.af].desc(it.val)];
   if (it.special) out.push(EPIC[it.kind].desc);
   if (it.kind === 'arma' && !it.special) out.push(`Arma: ${WT_NAME[it.wtype]}`);
@@ -140,6 +180,11 @@ function eqStat(stat) {
 }
 function eqSpecial(id) { return eqItems().some(it => it.special === id); }
 function eqLegend(id) { return eqItems().find(it => it.legend === id) || null; }
+// piezas activas de un set
+function setCount(set) { return eqItems().filter(it => it.legend && LEGEND[it.legend].set === set).length; }
+function critMul() { const l = eqLegend('lagrima'); return Math.max(setCount('vacio') >= 5 ? 3 : 2, 2 + (l ? l.fx : 0)); }
+function setArmor() { return setCount('guardian') >= 2 ? 0.15 : 0; }
+function setCrit() { return setCount('vacio') >= 2 ? 0.1 : 0; }
 
 // ---------------------------------------------------------------- recoger y cambiar
 function takeItem(it) {
@@ -163,48 +208,101 @@ function equipItem(slot, it) {
 function resolveSwap(slot) {
   const S = G.swap; if (!S) return;
   if (slot) { const old = G.equip[slot]; equipItem(slot, S.item); if (old) logMsg(`${itemName(old)} se hace pedazos`, C.dim); }
-  else { logMsg(`Dejas ${itemName(S.item).toLowerCase()}: se hace pedazos`, C.dim); Sfx.play('door'); }
+  else { G.pickups.push({ type: 'item', item: S.item, x: G.p.x, y: G.p.y, t: 0, declined: true }); logMsg(`Dejas ${itemName(S.item).toLowerCase()} en el suelo`, C.dim); }
   G.swap = null; G.state = 'play'; lockMouse();
 }
 function dropItem(src, x, y, opt) { G.pickups.push({ type: 'item', item: makeItem(src, null, opt), x, y, t: rand(0, 6) }); }
 
 // ---------------------------------------------------------------- efectos de combate
-function equipHit(e, dmg) {
-  const w = G.equip && itemActive('arma', G.equip.arma) ? G.equip.arma : null;
+function raiseUndead(x, y) {
+  const lim = setCount('nigromante') >= 4 ? 6 : 4;
+  if (G.allies.filter(a => a.type === 'undead' && !a.dead).length >= lim) return;
+  const a = spawnAlly('undead', x, y);
+  if (setCount('nigromante') >= 2) { a.hp *= 1.5; a.maxHp *= 1.5; a.dmg *= 1.5; }
+}
+function equipHit(e, dmg, crit) {
+  const w = G.equip && itemActive('arma', G.equip.arma) ? G.equip.arma : null, wl = w && w.legend;
   if (w && w.special === 'elemental' && !e.dead) applyFx(e, w.elem === 'burn' ? { burn: 3 } : w.elem === 'slow' ? { slow: 1.5 } : { poison: 4 });
-  if (eqLegend('reina') && !e.dead) applyFx(e, { poison: 4 });
-  if (w && w.legend === 'solar') { G.solarN = (G.solarN || 0) + 1; if (G.solarN % 3 === 0) { aoe(e.x, e.y, 1.6, dmg * 0.8, { burn: 3, kb: 4 }); vfxExplosion(e.x, e.y, 0.8); } }
-  if (w && w.legend === 'titan') { const fx = w.fx; later(0.05, () => { aoe(e.x, e.y, 1.8, dmg * fx, { kb: 9 }); vfxShock(e.x, e.y, 1.8); }); }
+  if ((eqLegend('reina') || wl === 'reina_arma') && !e.dead) applyFx(e, { poison: wl === 'reina_arma' ? 6 : 4 });
+  if (wl === 'reina_arma' && Math.random() < w.fx && G.allies.filter(a => a.type === 'spider').length < 8) spawnAlly('spider', e.x, e.y);
+  const br = eqLegend('brasas'); if (br && !e.dead) applyFx(e, { burn: br.fx });
+  const vd = eqLegend('viuda'); if (vd && e.poison > 0 && !e.dead) damageEnemy(e, dmg * vd.fx, { silent: true });
+  if (wl === 'nig_arma') healP(dmg * w.fx);
+  if (wl === 'solar' || wl === 'guardian_arma') { G.solarN = (G.solarN || 0) + 1; if (G.solarN % 3 === 0) { aoe(e.x, e.y, 1.6, dmg * 0.8, { burn: 3, kb: 4 }); vfxExplosion(e.x, e.y, 0.8); } }
+  if (wl === 'titan') { const fx = w.fx; later(0.05, () => { aoe(e.x, e.y, 1.8, dmg * fx, { kb: 9 }); vfxShock(e.x, e.y, 1.8); }); }
+  if (wl === 'vacio_arma' && crit) { const a = Math.atan2(e.y - G.p.y, e.x - G.p.x); fireProj({ a, spd: 10, dmg: dmg * w.fx, spr: 'orbPurple', size: 0.3, pierce: 2, life: 1.2 }); }
 }
 function equipOnKill(e) {
-  const nec = eqLegend('nigromante'), rq = eqLegend('reina'), fang = eqLegend('colmillo');
-  if (nec && !e.def.boss && Math.random() < nec.fx && G.allies.filter(a => a.type === 'undead').length < 4) spawnAlly('undead', e.x, e.y);
-  if (rq && !e.def.boss && Math.random() < rq.fx) spawnAlly('spider', e.x, e.y);
+  const nec = eqLegend('nigromante'), rq = eqLegend('reina'), fang = eqLegend('colmillo'), ig = eqLegend('igneo');
+  if (!e.def.boss) {
+    const raise = (nec ? nec.fx : 0) + (nec && setCount('nigromante') >= 4 ? 0.2 : 0);
+    if (raise && Math.random() < raise) raiseUndead(e.x, e.y);
+    const sp = setCount('reina') >= 5 ? 1 : (rq ? rq.fx : 0) + (setCount('reina') >= 4 ? 0.2 : 0);
+    if (sp && Math.random() < sp && G.allies.filter(a => a.type === 'spider' && !a.dead).length < 8) spawnAlly('spider', e.x, e.y);
+  }
   if (fang) { G.p.stealth = Math.max(G.p.stealth, 2); healP(G.p.maxHp * fang.fx); }
+  if (ig) healP(G.p.maxHp * ig.fx);
 }
+function fireRing(k) {
+  const p = G.p;
+  if ((G.guardCd || 0) > 0) return;
+  G.guardCd = setCount('guardian') >= 4 ? 1.75 : 3.5;
+  aoe(p.x, p.y, 2.6, (18 + 10 * (G.dg ? G.dg.n : 1)) * k * (p.dmgMul || 1), { burn: 2, kb: 7 }); vRing(p.x, p.y, 0.3, 2.6, 0.3, VR.fire.slice(0, 5), 36); Sfx.play('nova');
+}
+function nearestTo(x, y, r) { let best = null, bd = r; for (const e of G.enemies) { const q = Math.hypot(e.x - x, e.y - y); if (!e.dead && q < bd) { bd = q; best = e; } } return best; }
 function equipOnHurt(d, sx, sy) {
   const p = G.p, g = eqLegend('guardian');
-  if (g && (G.guardCd || 0) <= 0) { G.guardCd = 3.5; aoe(p.x, p.y, 2.6, (18 + d) * g.fx * (p.dmgMul || 1), { burn: 2, kb: 7 }); vRing(p.x, p.y, 0.3, 2.6, 0.3, VR.fire.slice(0, 5), 36); }
-  const blocking = p.wantBlock && offhandOf(p) === 'shield';
-  if (blocking && eqSpecial('reflejo') && sx !== undefined) { let best = null, bd = 2.2; for (const e of G.enemies) { const q = Math.hypot(e.x - sx, e.y - sy); if (!e.dead && q < bd) { bd = q; best = e; } } if (best) damageEnemy(best, d * 0.4, { silent: true }); }
+  if (g) fireRing(g.fx);
+  const cap = eqLegend('caparazon');
+  if (cap && sx !== undefined) { const a = nearestTo(sx, sy, 2.2); if (a) { applyFx(a, { poison: 5 }); damageEnemy(a, d * cap.fx, { silent: true }); } }
+  // Bastión completo: por debajo del 30% de vida, invulnerable 3 s cada 60 s
+  if (setCount('guardian') >= 5 && p.hp - d < p.maxHp * 0.3 && (G.unbreakT || 0) <= 0) { G.unbreakT = 60; p.inv = 3; toast('¡INQUEBRANTABLE!', true); vfxDome('gold', 1); Sfx.play('level'); }
+}
+// al bloquear con el escudo un golpe frontal
+function equipOnBlock(d, sx, sy) {
+  const p = G.p;
+  if (eqSpecial('reflejo') && sx !== undefined) { const a = nearestTo(sx, sy, 2.2); if (a) damageEnemy(a, d * 0.4, { silent: true }); }
+  const bone = eqLegend('nig_escudo'); if (bone) healP(p.maxHp * bone.fx);
+  const web = eqLegend('reina_escudo'); if (web && sx !== undefined) { const a = nearestTo(sx, sy, 2.4); if (a) applyFx(a, { slow: web.fx, stun: 0.6 }); }
+  if (eqLegend('guardian_escudo')) fireRing(1);
+}
+function equipOnDash() {
+  const m = eqLegend('manto');
+  if (m) { aoe(G.p.x, G.p.y, 2, (14 + 6 * (G.dg ? G.dg.n : 1)) * m.fx * (G.p.dmgMul || 1), { kb: 5 }); vfxBlink(G.p.x, G.p.y, 'void'); }
 }
 function equipTick(dt) {
-  G.guardCd = (G.guardCd || 0) - dt;
-  const eye = eqLegend('primigenio');
-  if (eye) {
-    G.eyeT = (G.eyeT || eye.fx) - dt;
+  G.guardCd = (G.guardCd || 0) - dt; G.unbreakT = (G.unbreakT || 0) - dt;
+  const p = G.p;
+  // orbes del vacío (anillo o set de 4)
+  const eye = eqLegend('primigenio'), v4 = setCount('vacio') >= 4;
+  if (eye || v4) {
+    const per = (eye ? eye.fx : 3.5) / (v4 ? 2 : 1);
+    G.eyeT = Math.min(G.eyeT === undefined ? per : G.eyeT, per) - dt;
     if (G.eyeT <= 0) {
-      G.eyeT = eye.fx;
+      G.eyeT = per;
       const t = nearestEnemy(9, true);
-      if (t) { const a = Math.atan2(t.y - G.p.y, t.x - G.p.x); for (let i = -1; i <= 1; i++) fireProj({ a: a + i * 0.12, spd: 9, dmg: 14 * (G.p.dmgMul || 1), spr: 'orbPurple', size: 0.3, pierce: 1, life: 1.4 }); Sfx.play('shoot'); }
+      if (t) { const a = Math.atan2(t.y - p.y, t.x - p.x); for (let i = -1; i <= 1; i++) fireProj({ a: a + i * 0.12, spd: 9, dmg: 14 * (p.dmgMul || 1), spr: 'orbPurple', size: 0.3, pierce: 1, life: 1.4 }); Sfx.play('shoot'); }
     }
   }
+  // mortaja: aura que ralentiza
+  const mo = eqLegend('mortaja');
+  if (mo) { G.auraT = (G.auraT || 0) - dt; if (G.auraT <= 0) { G.auraT = 0.3; for (const e of G.enemies) if (!e.dead && Math.hypot(e.x - p.x, e.y - p.y) < mo.fx) e.slow = Math.max(e.slow, 0.5); } }
+  // Ajuar completo: dos siervos cada 20 s
+  if (setCount('nigromante') >= 5) { G.raiseT = (G.raiseT === undefined ? 20 : G.raiseT) - dt; if (G.raiseT <= 0) { G.raiseT = 20; raiseUndead(p.x + 0.8, p.y); raiseUndead(p.x - 0.8, p.y); } }
 }
-// Égida: bloqueando, los proyectiles enemigos rebotan
+// Égida y Espejo del vacío: bloqueando, los proyectiles enemigos rebotan
 function equipReflect(pr) {
   const p = G.p;
-  if (!(p.wantBlock && offhandOf(p) === 'shield' && eqLegend('egida'))) return false;
+  if (!(p.wantBlock && offhandOf(p) === 'shield' && (eqLegend('egida') || eqLegend('vacio_escudo')))) return false;
   pr.friendly = true; pr.vx = -pr.vx; pr.vy = -pr.vy; pr.hit = new Set(); pr.pierce = 1; pr.life = 1.5; pr.dmg *= 1.5;
+  return true;
+}
+// Filacteria: vuelve a la vida una vez por mazmorra
+function phylactery() {
+  const f = eqLegend('filacteria'); if (!f || G.phylUsed) return false;
+  const p = G.p; G.phylUsed = true; p.hp = p.maxHp * f.fx; p.inv = 2.5; G.flashFx = 1;
+  raiseUndead(p.x + 0.8, p.y); raiseUndead(p.x - 0.8, p.y);
+  Sfx.play('portal'); toast('¡LA FILACTERIA TE DEVUELVE A LA VIDA!', true);
   return true;
 }
 

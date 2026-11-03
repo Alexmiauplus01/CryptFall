@@ -135,7 +135,7 @@ function newDungeon(n) {
   G.dg = new Dungeon(n);
   G.lv = null; G.loot = 0; G.keys = []; G.journal = []; G.jpage = -1; G.arena = null; G.boss = null; G.t = 0;
   for (const z of G.dg.zs) populateLevel(G.dg.lv(z));
-  placeGhost(G.dg); G.elite = null; G.phoenixUsed = false;
+  placeGhost(G.dg); G.elite = null; G.phoenixUsed = false; G.phylUsed = false; G.raiseT = undefined; G.unbreakT = 0;
   enterLevel(G.dg.start.z, G.dg.start, true);
   jot('start', `Llego a ${G.dg.name}. Dicen que sus niveles guardan riquezas olvidadas... y un Guardián. Debo salir con vida y con el botín.`);
   if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); }
@@ -376,6 +376,7 @@ function hurtPlayer(d, sx, sy) {
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (Math.abs(da) < 1.25) { // el escudo cubre el frente
       d *= 0.2 * Math.max(0.15, 1 - eqStat('block')); p.inv = 0.25; G.shake = Math.max(G.shake, 0.12);
+      equipOnBlock(d * 5, sx, sy);
       vfxImpact(p.x + Math.cos(p.a) * 0.7, p.y + Math.sin(p.a) * 0.7, 0.45, 'impact', 1);
       Sfx.play('hit');
     }
@@ -395,6 +396,7 @@ function hurtPlayer(d, sx, sy) {
 }
 
 function die() {
+  if (phylactery()) return;
   if (eqSpecial('fenix') && !G.phoenixUsed) { // el amuleto del fénix te devuelve a la vida una vez por mazmorra
     const p = G.p; G.phoenixUsed = true; p.hp = p.maxHp * 0.4; p.inv = 2.5; G.flashFx = 1; G.shake = 0.5;
     Sfx.play('portal'); toast('¡EL FÉNIX TE DEVUELVE A LA VIDA!', true); vfxPowerUp('fire');
@@ -421,7 +423,7 @@ function castSpell() {
   const arch = eqLegend('archimago') ? 1 : 0, n = p.multi + arch, spread = 0.1, sb = stealthBonus();
   for (let i = 0; i < n; i++) {
     const crit = Math.random() < p.crit;
-    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce + arch, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
+    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? critMul() : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce + arch, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
   }
   Sfx.play('shoot');
 }
@@ -432,7 +434,7 @@ function shootArrow() {
   const n = p.multi, sb = stealthBonus();
   for (let i = 0; i < n; i++) {
     const crit = Math.random() < p.crit;
-    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * 0.08, spd: 17, dmg: w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : arrowSprFor(el), size: el || crit ? 0.3 : 0.22, fx: arrowFxFor(el), life: 1.3 });
+    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * 0.08, spd: 17, dmg: w.dmg * p.dmgMul * (crit ? critMul() : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce + (eqLegend('almas') ? 2 : 0), spr: crit ? 'orbGold' : arrowSprFor(el), size: el || crit ? 0.3 : 0.22, fx: arrowFxFor(el), life: 1.3 });
   }
   Sfx.play('shoot');
 }
@@ -461,9 +463,9 @@ function meleeHit() {
     if (Math.abs(da) > w.arc / 2 && d > e.def.r + 0.45) continue;
     if (!lv.los(p.x, p.y, e.x, e.y)) continue;
     const crit = Math.random() < p.crit;
-    const dd = w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1);
+    const dd = w.dmg * p.dmgMul * (crit ? critMul() : 1) * sb * rand(0.9, 1.1);
     damageEnemy(e, dd, { kx: dx / (d || 1) * w.kb, ky: dy / (d || 1) * w.kb, crit });
-    forgeHit(e, dd); equipHit(e, dd);
+    forgeHit(e, dd); equipHit(e, dd, crit);
     if (hits < 4) vfxImpact(e.x, e.y, 0.5, shadow ? 'arcane' : 'steel', 0.7);
     if (shadow) applyFx(e, { slow: 1.5 });
     if (holy) healP(p.maxHp * 0.012);
@@ -563,7 +565,7 @@ function updateProjs(dt) {
             pr.hit.add(e);
             damageEnemy(e, pr.dmg, { kx: pr.vx * 0.12, ky: pr.vy * 0.12, crit: pr.crit });
             hitFx(e, pr.fx, pr);
-            if (pr.basic) { forgeHit(e, pr.dmg); equipHit(e, pr.dmg); }
+            if (pr.basic) { forgeHit(e, pr.dmg); equipHit(e, pr.dmg, pr.crit); }
             if (!pr.explode) vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] === 'fire' ? 'impact' : PROJ_RAMP[pr.spr] || 'impact', 0.6);
             if (pr.explode) { explodeAt(pr.x, pr.y, pr.explode); pr.dead = true; break; }
             if (pr.pierce-- <= 0) { pr.dead = true; break; }
@@ -937,7 +939,8 @@ function updatePickups(dt) {
       if (d < p.magnet * 0.6 || k.mag) { k.mag = true; k.x += dx / d * 6 * dt; k.y += dy / d * 6 * dt; }
       if (d < 0.5) { k.dead = true; G.loot += k.v; Sfx.play('coin'); logMsg(`+${k.v} de oro`, C.gold); }
     } else if (k.type === 'item') {
-      if (d < 0.7) { k.dead = true; takeItem(k.item); }
+      if (k.declined) { if (d > 1.2) k.declined = false; } // lo dejaste: vuelve a preguntar si te alejas y regresas
+      else if (d < 0.7) { k.dead = true; takeItem(k.item); }
     } else if (k.type === 'torch') {
       if (d < 0.7) { k.dead = true; G.inv.torch++; Sfx.play('gem'); toast('+1 ANTORCHA', false); logMsg(`Recoges una antorcha (${G.inv.torch})`, C.orange); }
     } else if (k.type === 'key') {
@@ -1115,6 +1118,7 @@ function tryDash() {
   const dX = Math.cos(p.a), dY = Math.sin(p.a), rX = -dY, rY = dX;
   let mx = dX * f + rX * s, my = dY * f + rY * s; const l = Math.hypot(mx, my) || 1;
   p.dashDx = mx / l; p.dashDy = my / l; p.dashT = 0.2; p.dashCd = p.dashMax; p.inv = Math.max(p.inv, 0.3);
+  equipOnDash();
   const ds = classPassive(p.cls, 'dashStealth', 0);
   if (ds) { p.stealth = Math.max(p.stealth, ds); smokeFx(p.x, p.y); }
   Sfx.play('dash');
