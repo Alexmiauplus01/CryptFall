@@ -320,11 +320,11 @@ function tintSprite(spr, mul, glow) {
   return { w: spr.w, h: spr.h, px, flash: spr.flash, grip: spr.grip };
 }
 const RAR_TINT = { comun: null, raro: [[0.85, 0.97, 1.2], false], epico: [[0.95, 0.7, 1.25], false], legendario: [[1.3, 1.05, 0.55], true] };
-function weaponSprite(type, base) {
+function weaponSprite(type, base, tag = '') {
   const it = G.equip && G.equip.arma, wt = type === 'daggers' ? 'dagger' : type;
   if (!it || it.wtype !== wt || !RAR_TINT[it.rar]) return base;
   G.wskin = G.wskin || {};
-  const key = type + (base === SPR.daggerL ? 'L' : '') + it.rar;
+  const key = type + tag + (base === SPR.daggerL ? 'L' : '') + it.rar;
   return G.wskin[key] || (G.wskin[key] = tintSprite(base, RAR_TINT[it.rar][0], RAR_TINT[it.rar][1]));
 }
 function shieldSprite() {
