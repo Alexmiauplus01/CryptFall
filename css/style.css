@@ -2,7 +2,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { display: flex; align-items: center; justify-content: center; }
 #screen { position: relative; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); }
 #view {
-  width: 100%; height: 100%;
+  width: 100%; height: 100%; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   image-rendering: pixelated; image-rendering: crisp-edges; image-rendering: pixelated;
   display: block;
 }
@@ -25,3 +25,8 @@ body.crt #view { border-radius: 3% / 5%; filter: contrast(1.12) saturate(1.18) b
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   color: #e8b850; background: #000; font: bold 18px/1.4 monospace; letter-spacing: 3px; text-align: center;
 }
+/* aviso para móviles en vertical */
+#rotate { display: none; position: fixed; inset: 0; z-index: 5; align-items: center; justify-content: center; text-align: center;
+  background: #000; color: #e8b850; font: bold 18px/1.6 monospace; letter-spacing: 2px; }
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+html, body { touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }

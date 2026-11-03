@@ -112,7 +112,7 @@ function newRun(cls) {
   newDungeon(1);
   logMsg(`Entras en la mazmorra como ${CLASSES[cls].name}`, C.ink);
   logMsg('Saquea lo que puedas y sal con vida', C.dim);
-  logMsg('Está oscuro: pulsa I y enciende una antorcha', C.orange);
+  logMsg(G.touchMode ? 'Está oscuro: toca I y enciende una antorcha' : 'Está oscuro: pulsa I y enciende una antorcha', C.orange);
 }
 
 // ---------------------------------------------------------------- Mazmorras: niveles, escaleras, puertas, llaves
@@ -203,7 +203,7 @@ function jot(id, text) {
   if (G.journal.some(e => e.id === id)) return;
   G.journal.push({ id, text, done: false });
   G.jpage = -1;
-  if (G.state === 'play' && !G.toasts.some(t => t.text.startsWith('Diario'))) toast('Diario actualizado [J]', false);
+  if (G.state === 'play' && !G.toasts.some(t => t.text.startsWith('Diario'))) toast(G.touchMode ? 'Diario actualizado' : 'Diario actualizado [J]', false);
 }
 function strike(id) { const e = G.journal.find(e => e.id === id); if (e && !e.done) { e.done = true; G.jpage = -1; } }
 
@@ -322,6 +322,7 @@ function updateRooms(dt) {
 
 // ---------------------------------------------------------------- Utilidades de juego
 function lockMouse() {
+  if (G.touchMode) return;
   if (document.pointerLockElement === canvas) return;
   try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* sin bloqueo de ratón */ }
 }
@@ -977,8 +978,7 @@ function updatePlayer(dt) {
   const p = G.p, lv = G.lv;
   const turn = ((keys.ArrowRight || keys.KeyE) ? 1 : 0) - ((keys.ArrowLeft || keys.KeyQ) ? 1 : 0);
   p.a += turn * 2.5 * dt;
-  let f = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0);
-  let s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  let [f, s] = moveInput();
   const len = Math.hypot(f, s); if (len > 1) { f /= len; s /= len; }
   const dX = Math.cos(p.a), dY = Math.sin(p.a), rX = -dY, rY = dX;
   const mx = dX * f + rX * s, my = dY * f + rY * s;
@@ -1018,11 +1018,18 @@ function updatePlayer(dt) {
   }
 }
 
+// avance (f) y lateral (s) entre -1 y 1: teclado o joystick táctil
+function moveInput() {
+  let f = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0);
+  let s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  if (G.stick) { f += G.stick.f; s += G.stick.s; }
+  return [clamp(f, -1, 1), clamp(s, -1, 1)];
+}
+
 function tryDash() {
   const p = G.p;
   if (G.state !== 'play' || p.dashCd > 0) return;
-  let f = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0);
-  let s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  let [f, s] = moveInput();
   if (!f && !s) f = 1;
   const dX = Math.cos(p.a), dY = Math.sin(p.a), rX = -dY, rY = dX;
   let mx = dX * f + rX * s, my = dY * f + rY * s; const l = Math.hypot(mx, my) || 1;
@@ -1170,6 +1177,7 @@ function render() {
     else if (G.state === 'exitask') ui.exitAsk(G);
     else if (G.state === 'escaped') ui.escaped(G);
   }
+  if (G.touchMode) drawTouchUI(ui);
   ui.end();
   canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : (ui.hot.some(h => ui.hit(h.x, h.y, h.w, h.h)) ? 'pointer' : 'default');
 }
@@ -1218,8 +1226,11 @@ canvas.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas) { if (G.state === 'play') G.p.a += e.movementX * 0.0024 * G.cfg.sens; return; }
   const m = toCanvas(e); ui.mouse.x = m.x; ui.mouse.y = m.y;
 });
-canvas.addEventListener('mousedown', (e) => {
-  const m = toCanvas(e); ui.mouse.x = m.x; ui.mouse.y = m.y;
+canvas.addEventListener('mousedown', (e) => { const m = toCanvas(e); handleClick(m.x, m.y, e.button); });
+// un clic (o un toque en pantallas táctiles) en coordenadas del lienzo
+function handleClick(x, y, button = 0) {
+  ui.mouse.x = x; ui.mouse.y = y;
+  const e = { button };
   switch (G.state) {
     case 'title': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h && h.id === 'options') G.state = 'options'; else if (e.button === 0) startRun(); break; }
     case 'options': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) optAction(h.id); else G.state = 'title'; break; }
@@ -1245,7 +1256,7 @@ canvas.addEventListener('mousedown', (e) => {
       if (e.button === 2) { if (G.p.off === 'shield' && WEAPONS[G.p.weapon].hands === 1) G.p.wantBlock = true; else tryDash(); }
       break;
   }
-});
+}
 document.addEventListener('mouseup', (e) => { if (e.button === 0) mouse.fire = false; if (e.button === 2 && G.p) G.p.wantBlock = false; });
 canvas.addEventListener('wheel', (e) => {
   if (G.state !== 'play') return;

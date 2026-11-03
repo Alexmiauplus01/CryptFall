@@ -18,4 +18,6 @@ Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra
 | Shift | Esquivar |
 | P · N | Pausa y opciones · Sonido |
 
+**En el móvil** (en horizontal): joystick a la izquierda, desliza a la derecha para girar, y botones para atacar, esquivar, habilidades, pausa, diario, inventario y armas.
+
 Caminar contra una pared abre puertas, usa llaves y escaleras, y descubre pasadizos secretos.

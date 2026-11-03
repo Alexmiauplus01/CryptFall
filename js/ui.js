@@ -53,7 +53,7 @@ class UI {
     // cabecera
     this.text(cx - 6, VY + 5, levelName(G.z).toUpperCase(), C.ink, { align: 'right' });
     this.text(cx + 6, VY + 5, `BOTÍN ${G.loot}`, C.gold, { grad: GOLD_GRAD });
-    this.text(cx, VY + 15, G.dg.name.toUpperCase(), C.dim, { align: 'center' });
+    if (!G.touchMode) this.text(cx, VY + 15, G.dg.name.toUpperCase(), C.dim, { align: 'center' });
     // llaves conseguidas
     G.keys.forEach((k, i) => { const kc = KEYS[k].col, x = cx - G.keys.length * 5 + i * 10, y = VY + 25; this.rect(x, y, 7, 3, rgb(kc[0], kc[1], kc[2])); this.rect(x + 2, y + 3, 1, 4, rgb(kc[0], kc[1], kc[2])); this.rect(x + 3, y + 5, 2, 1, rgb(kc[0], kc[1], kc[2])); });
     if (G.boss && !G.boss.dead && !G.boss.sleep && G.enemies.includes(G.boss)) {
@@ -161,9 +161,9 @@ class UI {
     this.text(cx, 76, 'ENTRA. SAQUEA. SAL CON VIDA.', C.dim, { align: 'center' });
     const px = cx - 120, py = 80;
     this.panel(px, py, 240, 127);
-    const rows = [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I  ·  J', 'INVENTARIO · DIARIO'], ['P  ·  N', 'PAUSA · SONIDO']];
+    const rows = G.touchMode ? [['DEDO IZQUIERDO', 'JOYSTICK: MOVERSE'], ['DESLIZAR A LA DER.', 'GIRAR'], ['ATACAR', 'MANTENER PULSADO'], ['R  C  V', 'HABILIDADES'], ['>>', 'ESQUIVAR'], ['II  J  I', 'PAUSA · DIARIO · INVENTARIO'], ['<>', 'CAMBIAR DE ARMA'], ['ESC', 'BLOQUEAR CON ESCUDO'], ['PAREDES', 'CAMINA CONTRA ELLAS'], ['EN LOS MENÚS', 'TOCA PARA ELEGIR']] : [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I  ·  J', 'INVENTARIO · DIARIO'], ['P  ·  N', 'PAUSA · SONIDO']];
     rows.forEach(([k, v], i) => { this.text(px + 10, py + 9 + i * 11, k, C.gold); this.text(px + 230, py + 9 + i * 11, v, C.ink, { align: 'right' }); });
-    if (((G.time * 2) | 0) & 1) this.text(cx, 214, 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
+    if (((G.time * 2) | 0) & 1) this.text(cx, 214, G.touchMode ? 'TOCA PARA ENTRAR' : 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
     const ox = VW - 86, oy = VH - 22, oh = this.hit(ox, oy, 80, 16);
     this.hot.push({ x: ox, y: oy, w: 80, h: 16, id: 'options' });
     this.panel(ox, oy, 80, 16, oh); this.text(ox + 40, oy + 5, 'OPCIONES (O)', oh ? C.goldL : C.gold, { align: 'center' });
@@ -184,7 +184,7 @@ class UI {
     if (!ups.length) this.text(cx - 105, 74, 'SIN MEJORAS AÚN', C.dim, { align: 'center' });
     ups.forEach((u, i) => { this.text(cx - 192, 74 + i * 10, u.name, u.passive ? C.orange : C.ink); this.text(cx - 18, 74 + i * 10, `NV ${L(u.id)}`, C.gold, { align: 'right' }); });
     this.optionsPanel(G, cx + 10, 56);
-    this.text(cx, 56 + Math.max(h, 102) + 10, 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(cx, 56 + Math.max(h, 102) + 10, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
   // Opciones (se guardan en el navegador): sensibilidad, volumen, sonido, límite de FPS y filtro CRT
@@ -244,7 +244,7 @@ class UI {
     slot(1, 'ESCUDO', one ? (off === 'shield' ? 'CLIC: BAJAR EL ESCUDO (F)' : 'CLIC: ALZAR EL ESCUDO (F)') : 'NECESITAS UN ARMA DE UNA MANO', null, 'shield', one);
     slot(2, `LLAVES: ${G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ') : 'NINGUNA'}`.toUpperCase(), `${G.keys.length}/${G.dg.lockRooms.length} DE ESTA MAZMORRA`, G.keys.length ? SPR.keys[G.keys[0]] : null, null, true);
     slot(3, `BOTÍN: ${G.loot} ORO`, `A SALVO EN ESTA PARTIDA: ${G.bank}`, SPR.coins, null, true);
-    this.text(cx, y + 182, 'I PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(cx, y + 182, G.touchMode ? 'TOCA FUERA PARA CERRAR' : 'I PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
   // sprite escalado para iconos (vecino más próximo, encajado en caja de lado s)
   blit(spr, cx, cy, s) {
@@ -345,7 +345,7 @@ class UI {
     this.text(cx, 28, 'HAS CAÍDO', C.red, { align: 'center', scale: 4, grad: RED_GRAD, shadow: 'outline' });
     this.text(cx, 64, s.name.toUpperCase(), C.dim, { align: 'center' });
     this.statRows(cx, 78, [['BOTÍN PERDIDO', s.lost], ['ORO A SALVO', s.bank], ['NIVEL', s.lvl], ['ABATIDOS', s.kills], ['TIEMPO', s.time]]);
-    if (((G.time * 2) | 0) & 1) this.text(cx, 176, 'HAZ CLIC PARA RENACER', C.goldL, { align: 'center', shadow: 'outline' });
+    if (((G.time * 2) | 0) & 1) this.text(cx, 176, G.touchMode ? 'TOCA PARA RENACER' : 'HAZ CLIC PARA RENACER', C.goldL, { align: 'center', shadow: 'outline' });
   }
   statRows(cx, y, rows) {
     this.panel(cx - 100, y, 200, rows.length * 12 + 10);
@@ -428,7 +428,7 @@ class UI {
     // pie: paginación
     if (s0 > 0) this.text(bx + 8, by + bh - 12, '< A', faded, { shadow: false });
     if (s0 < spreads - 1) this.text(bx + bw - 8, by + bh - 12, 'D >', faded, { align: 'right', shadow: false });
-    this.text(VX + VW / 2, VY + VH - 10, 'J PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(VX + VW / 2, VY + VH - 10, G.touchMode ? 'TOCA EL CENTRO PARA CERRAR · LOS LADOS PASAN PÁGINA' : 'J PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
   flashTint(x, y, w, h) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
