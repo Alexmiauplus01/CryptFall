@@ -67,7 +67,7 @@ function fireProj(o) {
     y: o.y !== undefined ? o.y : p.y + Math.sin(p.a) * 0.35 + Math.cos(p.a) * 0.12,
     vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: o.r || 0.17, life: o.life || 1.6, friendly: true,
     dmg: o.dmg, crit: !!o.crit, pierce: o.pierce || 0, hit: new Set(), spr: o.spr, size: o.size || 0.32,
-    fx: o.fx || null, explode: o.explode || null,
+    fx: o.fx || null, explode: o.explode || null, basic: !!o.basic,
   });
 }
 
@@ -139,6 +139,8 @@ function applyStats() {
     if (m.dmg) dmg *= m.dmg; if (m.spd) spd *= m.spd; if (m.rate) rate *= m.rate; if (m.armor) armor *= m.armor;
     if (m.leech) leech += m.leech; if (m.crit) crit += m.crit; if (m.regenPct) regenPct += m.regenPct;
   }
+  const fs = { dmg, rate, crit, leech }; forgeStats(fs); dmg = fs.dmg; rate = fs.rate; crit = fs.crit; leech = fs.leech;
+  p.slashRamp = forgeRamp() || undefined;
   if (p.form === 'wolf') { spd *= 1.35; rate *= 1.25; dmg *= 1.1; }
   else if (p.form === 'bear') { spd *= 0.85; dmg *= 1.4; armor *= 0.55; }
   const rh = classPassive(p.cls, 'rageHp', 0);

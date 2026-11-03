@@ -56,9 +56,17 @@ class UI {
     if (!G.touchMode) this.text(cx, VY + 15, G.dg.name.toUpperCase(), C.dim, { align: 'center' });
     // llaves conseguidas
     G.keys.forEach((k, i) => { const kc = KEYS[k].col, x = cx - G.keys.length * 5 + i * 10, y = VY + 25; this.rect(x, y, 7, 3, rgb(kc[0], kc[1], kc[2])); this.rect(x + 2, y + 3, 1, 4, rgb(kc[0], kc[1], kc[2])); this.rect(x + 3, y + 5, 2, 1, rgb(kc[0], kc[1], kc[2])); });
+    const elite = G.elite && !G.elite.dead && !G.elite.sleep && G.enemies.includes(G.elite) ? G.elite : null;
+    if (elite && !(G.boss && !G.boss.dead && !G.boss.sleep && G.enemies.includes(G.boss))) {
+      const w = 160, x = cx - w / 2, y = VY + 27;
+      this.text(cx, y, `${elite.def.name.toUpperCase()} · NV ${elite.ghost.lvlNow}`, C.cyan, { align: 'center' });
+      this.rect(x, y + 9, w, 6, C.dark);
+      const fw = Math.round((w - 4) * Math.max(0, elite.hp / elite.maxHp));
+      for (let j = 0; j < 2; j++) this.rect(x + 2, y + 11 + j, fw, 1, [rgb(170, 240, 255), rgb(70, 160, 220)][j]);
+    }
     if (G.boss && !G.boss.dead && !G.boss.sleep && G.enemies.includes(G.boss)) {
       const w = 180, x = cx - w / 2, y = VY + 27;
-      this.text(cx, y, 'EL GUARDIÁN', C.red, { align: 'center', grad: RED_GRAD });
+      this.text(cx, y, G.boss.def.name, C.red, { align: 'center', grad: RED_GRAD });
       this.rect(x, y + 9, w, 7, C.dark);
       const fw = Math.round((w - 4) * Math.max(0, G.boss.hp / G.boss.maxHp));
       for (let j = 0; j < 3; j++) this.rect(x + 2, y + 11 + j, fw, 1, [rgb(255, 110, 80), rgb(210, 40, 24), rgb(120, 16, 10)][j]);
@@ -79,6 +87,8 @@ class UI {
     this.darken(BOX_LOG.x, BOX_LOG.y, BOX_LOG.w, BOX_LOG.h, 0.5);
     this.darken(BOX_STAT.x, BOX_STAT.y, BOX_STAT.w, BOX_STAT.h, 0.5);
     this.minimap(G); this.log(G); this.stats(G); this.skills(G);
+    const pl = 'P' + G.z, pw = textWidth(pl) + 6, px0 = BOX_MAP.x - pw - 2, py0 = BOX_MAP.y + BOX_MAP.h - 13;
+    this.darken(px0, py0, pw, 13, 0.45); this.text(px0 + 3, py0 + 3, pl, C.goldL, { shadow: false });
   }
 
   minimap(G) {
@@ -161,9 +171,15 @@ class UI {
     this.text(cx, 76, 'ENTRA. SAQUEA. SAL CON VIDA.', C.dim, { align: 'center' });
     const px = cx - 120, py = 80;
     this.panel(px, py, 240, 127);
-    const rows = G.touchMode ? [['DEDO IZQUIERDO', 'JOYSTICK: MOVERSE'], ['DESLIZAR A LA DER.', 'GIRAR'], ['ATACAR', 'MANTENER PULSADO'], ['R  C  V', 'HABILIDADES'], ['>>', 'ESQUIVAR'], ['II  J  I', 'PAUSA · DIARIO · INVENTARIO'], ['<>', 'CAMBIAR DE ARMA'], ['ESC', 'BLOQUEAR CON ESCUDO'], ['PAREDES', 'CAMINA CONTRA ELLAS'], ['EN LOS MENÚS', 'TOCA PARA ELEGIR']] : [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I  ·  J', 'INVENTARIO · DIARIO'], ['P  ·  N', 'PAUSA · SONIDO']];
+    const rows = G.touchMode ? [['DEDO IZQUIERDO', 'JOYSTICK: MOVERSE'], ['DESLIZAR A LA DER.', 'GIRAR'], ['ATACAR', 'MANTENER PULSADO'], ['R  C  V', 'HABILIDADES'], ['>>', 'ESQUIVAR'], ['II  J  I', 'PAUSA · DIARIO · INVENTARIO'], ['<>', 'CAMBIAR DE ARMA'], ['ESC', 'BLOQUEAR CON ESCUDO'], ['PAREDES', 'CAMINA CONTRA ELLAS'], ['EN LOS MENÚS', 'TOCA PARA ELEGIR']] : [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I · J · M', 'INVENTARIO · DIARIO · MAPA'], ['P  ·  N', 'PAUSA · SONIDO']];
     rows.forEach(([k, v], i) => { this.text(px + 10, py + 9 + i * 11, k, C.gold); this.text(px + 230, py + 9 + i * 11, v, C.ink, { align: 'right' }); });
-    if (((G.time * 2) | 0) & 1) this.text(cx, 214, G.touchMode ? 'TOCA PARA ENTRAR' : 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
+    if (G.hasSave) { // continuar la partida guardada o empezar otra
+      [['continue', 'CONTINUAR'], ['new', 'NUEVA PARTIDA']].forEach(([id, t], i) => {
+        const bw = 104, bx = cx - bw - 4 + i * (bw + 8), by = 208, hot = this.hit(bx, by, bw, 16);
+        this.hot.push({ x: bx, y: by, w: bw, h: 16, id });
+        this.panel(bx, by, bw, 16, hot || (i === 0 && ((G.time * 2) | 0) & 1)); this.text(bx + bw / 2, by + 5, t, hot ? C.goldL : C.gold, { align: 'center' });
+      });
+    } else if (((G.time * 2) | 0) & 1) this.text(cx, 214, G.touchMode ? 'TOCA PARA ENTRAR' : 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
     const ox = VW - 86, oy = VH - 22, oh = this.hit(ox, oy, 80, 16);
     this.hot.push({ x: ox, y: oy, w: 80, h: 16, id: 'options' });
     this.panel(ox, oy, 80, 16, oh); this.text(ox + 40, oy + 5, 'OPCIONES (O)', oh ? C.goldL : C.gold, { align: 'center' });
@@ -171,7 +187,7 @@ class UI {
     this.text(BOX_LOG.x + 4, BOX_LOG.y + 10, '* LA CRIPTA TE ESPERA BAJO TUS PIES.', C.dim, { shadow: false });
     const m = G.meta;
     const ver = document.querySelector('meta[name=version]');
-    if (ver) this.text(4, VH - 9, 'V ' + ver.content.toUpperCase(), rgb(90, 76, 60), { shadow: false });
+    if (ver) this.text(30, VH - 9, 'V ' + ver.content.toUpperCase(), rgb(90, 76, 60), { shadow: false });
     if (m && (m.escapes || m.deaths)) this.text(cx, 224, `ORO A SALVO ${m.gold} · FUGAS ${m.escapes} · MAYOR BOTÍN ${m.bestLoot}`, C.dim, { align: 'center' });
   }
 
@@ -186,13 +202,13 @@ class UI {
     if (!ups.length) this.text(cx - 105, 74, 'SIN MEJORAS AÚN', C.dim, { align: 'center' });
     ups.forEach((u, i) => { this.text(cx - 192, 74 + i * 10, u.name, u.passive ? C.orange : C.ink); this.text(cx - 18, 74 + i * 10, `NV ${L(u.id)}`, C.gold, { align: 'right' }); });
     this.optionsPanel(G, cx + 10, 56);
-    this.text(cx, 56 + Math.max(h, 102) + 10, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(cx, 56 + Math.max(h, 118) + 10, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
   // Opciones (se guardan en el navegador): sensibilidad, volumen, sonido, límite de FPS y filtro CRT
   optionsPanel(G, x, y) {
     const o = G.cfg, w = 190;
-    this.panel(x, y, w, 102);
+    this.panel(x, y, w, 118);
     this.text(x + w / 2, y + 4, 'OPCIONES', C.dim, { align: 'center' });
     const arrows = (yy, label, val, idm, idp) => {
       this.text(x + 8, yy, label, C.ink);
@@ -211,42 +227,135 @@ class UI {
     toggle(y + 52, 'SONIDO', o.muted ? 'NO' : 'SÍ', 'mute');
     toggle(y + 68, 'FOTOGRAMAS', `${o.fps} FPS`, 'fps');
     toggle(y + 84, 'FILTRO CRT', o.crt ? 'SÍ' : 'NO', 'crt');
+    toggle(y + 100, 'MÚSICA', o.music === false ? 'NO' : 'SÍ', 'music');
   }
   options(G) {
     this.darken(VX, VY, VW, VH, 0.5);
     const cx = VX + VW / 2;
     this.text(cx, 30, 'OPCIONES', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
     this.optionsPanel(G, cx - 95, 70);
-    this.text(cx, 190, 'HAZ CLIC FUERA O PULSA O PARA VOLVER', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(cx, 200, 'HAZ CLIC FUERA O PULSA O PARA VOLVER', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
-  // Inventario: antorchas (se encienden y se ponen en la mano izquierda), escudo, llaves y botín
+  // Inventario: antorchas (se encienden y se ponen en la mano izquierda), pociones, pergaminos, runas, escudo, llaves y botín
   inventory(G) {
     this.darken(VX, VY, VW, VH, 0.5);
-    const p = G.p, cx = VX + VW / 2, x = cx - 150, w = 300, y = 34;
-    this.text(cx, 12, 'INVENTARIO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
-    this.panel(x, y, w, 196);
-    const one = WEAPONS[p.weapon].hands === 1;
-    // mano izquierda
-    const off = offhandOf(p);
-    this.text(x + 10, y + 8, 'MANO IZQUIERDA', C.dim);
-    this.text(x + w - 10, y + 8, off === 'torch' ? `ANTORCHA (${fmtTime(p.torchFuel)})` : off === 'shield' ? 'ESCUDO' : one ? 'VACÍA' : 'ARMA A DOS MANOS', off === 'torch' ? C.orange : off === 'shield' ? C.cyan : C.ink, { align: 'right' });
-    // objetos
-    const slot = (i, label, sub, spr, id, enabled) => {
-      const sx = x + 10, sy = y + 26 + i * 34, sw = w - 20, sh = 30, hot = enabled && this.hit(sx, sy, sw, sh);
-      if (id) this.hot.push({ x: sx, y: sy, w: sw, h: sh, id });
+    const p = G.p, cx = VX + VW / 2, x = cx - 160, w = 320, y = 30, inv = G.inv;
+    this.text(cx, 10, 'INVENTARIO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.panel(x, y, w, 212);
+    const one = WEAPONS[p.weapon].hands === 1, off = offhandOf(p);
+    this.text(x + 8, y + 6, `MANO IZQ.: ${off === 'torch' ? `ANTORCHA (${fmtTime(p.torchFuel)})` : off === 'shield' ? 'ESCUDO' : one ? 'VACÍA' : 'ARMA A DOS MANOS'}`, off === 'torch' ? C.orange : C.ink);
+    this.text(x + w - 8, y + 6, `ORO ${G.loot}`, C.gold, { align: 'right' });
+    const rows = [];
+    const tLabel = off === 'torch' ? 'GUARDAR' : p.torchFuel > 0 ? 'EMPUÑAR' : 'ENCENDER';
+    rows.push({ id: 'torch', spr: SPR.torchItem, label: `ANTORCHAS x${inv.torch}${p.torchFuel > 0 && off !== 'torch' ? ' (+1 A MEDIAS)' : ''}`, sub: one ? `${tLabel} · ARDE ${TORCH_FUEL / 60} MIN` : 'NECESITAS UN ARMA DE UNA MANO', on: one && (inv.torch > 0 || p.torchFuel > 0) });
+    if (inv.potion) rows.push({ id: 'potion', spr: SPR.potion, label: `POCIONES DE VIDA x${inv.potion}`, sub: 'BEBER: CURA LA MITAD DE LA VIDA (H)', on: true });
+    if (inv.map) rows.push({ id: 'map', spr: null, label: `PERGAMINOS DE MAPA x${inv.map}`, sub: 'LEER: REVELA ESTE NIVEL', on: true });
+    if (inv.rune) rows.push({ id: 'rune', spr: null, label: `RUNAS DE REGRESO x${inv.rune}`, sub: 'USAR: VUELVES A LA SALIDA', on: true });
+    rows.push({ id: 'shield', spr: null, label: 'ESCUDO', sub: one ? (off === 'shield' ? 'BAJAR (F)' : 'ALZAR (F)') : 'NECESITAS UN ARMA DE UNA MANO', on: one });
+    rows.push({ id: null, spr: G.keys.length ? SPR.keys[G.keys[0]] : null, label: `LLAVES: ${G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ') : 'NINGUNA'}`.toUpperCase(), sub: `${G.keys.length}/${G.dg.lockRooms.length} DE ESTA MAZMORRA · A SALVO: ${G.bank} ORO`, on: true });
+    const fx = Object.keys(G.forge || {}).filter(k => G.forge[k]);
+    if (fx.length) rows.push({ id: null, spr: null, label: 'ARMA FORJADA', sub: fx.map(k => `${FORGE.find(f => f.id === k).name} ${G.forge[k]}`).join(' · ').toUpperCase(), on: true });
+    const rh = Math.min(28, Math.floor(184 / rows.length));
+    rows.forEach((r, i) => {
+      const sx = x + 8, sy = y + 18 + i * rh, sw = w - 16, sh = rh - 3, hot = r.id && r.on && this.hit(sx, sy, sw, sh);
+      if (r.id) this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: r.id });
       this.panel(sx, sy, sw, sh, hot);
-      this.rect(sx + 3, sy + 3, 24, 24, rgb(24, 16, 10));
-      if (spr) this.blit(spr, sx + 15, sy + 15, 22);
-      this.text(sx + 34, sy + 6, label, enabled ? C.goldL : C.dim);
-      this.text(sx + 34, sy + 17, sub, C.dim, { shadow: false });
-    };
-    const tLabel = off === 'torch' ? 'GUARDAR LA ANTORCHA' : p.torchFuel > 0 ? 'EMPUÑAR LA ANTORCHA' : 'ENCENDER UNA ANTORCHA';
-    slot(0, `ANTORCHAS x${G.inv.torch}${p.torchFuel > 0 && off !== 'torch' ? ' + 1 A MEDIAS' : ''}`, one ? `[1] / CLIC: ${tLabel} · ARDE ${TORCH_FUEL / 60} MIN` : 'NECESITAS UN ARMA DE UNA MANO', SPR.torchItem, 'torch', one && (G.inv.torch > 0 || p.torchFuel > 0));
-    slot(1, 'ESCUDO', one ? (off === 'shield' ? 'CLIC: BAJAR EL ESCUDO (F)' : 'CLIC: ALZAR EL ESCUDO (F)') : 'NECESITAS UN ARMA DE UNA MANO', null, 'shield', one);
-    slot(2, `LLAVES: ${G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ') : 'NINGUNA'}`.toUpperCase(), `${G.keys.length}/${G.dg.lockRooms.length} DE ESTA MAZMORRA`, G.keys.length ? SPR.keys[G.keys[0]] : null, null, true);
-    slot(3, `BOTÍN: ${G.loot} ORO`, `A SALVO EN ESTA PARTIDA: ${G.bank}`, SPR.coins, null, true);
-    this.text(cx, y + 182, G.touchMode ? 'TOCA FUERA PARA CERRAR' : 'I PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
+      if (r.spr) this.blit(r.spr, sx + 12, sy + (sh >> 1), sh - 6);
+      this.text(sx + 26, sy + 3, r.label, r.on ? C.goldL : C.dim);
+      this.text(sx + 26, sy + 13, r.sub.slice(0, 46), C.dim, { shadow: false });
+    });
+    this.text(cx, y + 202, G.touchMode ? 'TOCA FUERA PARA CERRAR' : 'I PARA CERRAR · H BEBER POCIÓN', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // Mercader: lista de útiles con precio (se paga con el botín que llevas encima)
+  shop(G) {
+    this.darken(VX, VY, VW, VH, 0.5);
+    const cx = VX + VW / 2, x = cx - 150, w = 300, y = 46;
+    this.text(cx, 12, 'EL MERCADER', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 32, '"LA OSCURIDAD ES BUEN NEGOCIO, VIAJERO."', C.dim, { align: 'center' });
+    this.panel(x, y, w, 170);
+    this.text(x + w - 8, y + 6, `TU ORO: ${G.loot}`, C.gold, { align: 'right' });
+    SHOP_ITEMS.forEach((it, i) => {
+      const sx = x + 8, sy = y + 18 + i * 34, sw = w - 16, sh = 30, cost = shopPrice(it), ok = G.loot >= cost, hot = this.hit(sx, sy, sw, sh);
+      this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: it.id });
+      this.panel(sx, sy, sw, sh, hot && ok);
+      const spr = it.id === 'torch' ? SPR.torchItem : it.id === 'potion' ? SPR.potion : null;
+      if (spr) this.blit(spr, sx + 14, sy + 15, 22);
+      this.text(sx + 30, sy + 5, `[${i + 1}] ${it.name.toUpperCase()}`, ok ? C.goldL : C.dim);
+      this.text(sx + 30, sy + 17, `${it.desc.toUpperCase()} · TIENES ${G.inv[it.id] || 0}`, C.dim, { shadow: false });
+      this.text(sx + sw - 8, sy + 11, `${cost} ORO`, ok ? C.gold : C.red, { align: 'right' });
+    });
+    this.text(cx, y + 158, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // Herrero: tres mejoras a elegir; la primera es gratis y cada una cuesta más que la anterior
+  forge(G) {
+    this.darken(VX, VY, VW, VH, 0.5);
+    const cx = VX + VW / 2, cost = forgePrice(), ok = G.loot >= cost;
+    this.text(cx, 12, 'EL HERRERO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 32, cost === 0 ? '"LA PRIMERA TE LA REGALO. LAS DEMÁS SE PAGAN."' : `"ESTA TE COSTARÁ ${cost} DE ORO." · TIENES ${G.loot}`, cost === 0 ? C.green : ok ? C.dim : C.red, { align: 'center' });
+    const opts = G.forgeOpts || [], cw = 136, gap = 10, n = opts.length, x0 = Math.round(cx - (n * cw + (n - 1) * gap) / 2), y = 48, ch = 130;
+    if (!n) this.text(cx, 110, 'TU ARMA YA NO ADMITE MÁS MEJORAS', C.dim, { align: 'center' });
+    opts.forEach((f, i) => {
+      const x = x0 + i * (cw + gap), hot = this.hit(x, y, cw, ch), l = FL(f.id) + 1;
+      this.hot.push({ x, y, w: cw, h: ch, id: i });
+      this.panel(x, y, cw, ch, hot && ok);
+      this.text(x + 6, y + 6, `[${i + 1}]`, C.dim);
+      this.text(x + cw - 6, y + 6, `NV ${l}/3`, C.orange, { align: 'right' });
+      wrapText(f.name.toUpperCase(), 20).forEach((t, k) => this.text(x + cw / 2, y + 22 + k * 10, t, ok ? C.gold : C.dim, { align: 'center', grad: ok ? GOLD_GRAD : null }));
+      wrapText(f.desc(l).toUpperCase(), 21).forEach((t, k) => this.text(x + cw / 2, y + 48 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+      this.text(x + cw / 2, y + ch - 14, cost ? `${cost} ORO` : 'GRATIS', cost === 0 ? C.green : ok ? C.gold : C.red, { align: 'center' });
+    });
+    const fx = Object.keys(G.forge || {}).filter(k => G.forge[k]);
+    this.text(cx, y + ch + 10, fx.length ? ('TU ARMA: ' + fx.map(k => `${FORGE.find(f => f.id === k).name} ${G.forge[k]}`).join(' · ')).toUpperCase().slice(0, 76) : 'TU ARMA AÚN NO TIENE MEJORAS', C.dim, { align: 'center' });
+    this.text(cx, y + ch + 30, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // Mapa completo de un nivel (lo explorado), ampliado para que quepa; A/D cambian entre niveles visitados
+  mapScreen(G) {
+    this.darken(VX, VY, VW, VH, 0.2);
+    const z = G.mapZ, lv = G.dg.lv(z), seen = lv.seen, p = G.p, cur = z === G.z;
+    // fondo de pergamino oscuro
+    for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) { const k = 0.28 + (hash2(x >> 1, y >> 1, 5) - 0.5) * 0.04; this.buf[y * SW + x] = rgb(70 * k + 10, 54 * k + 8, 40 * k + 6); }
+    let x0 = MW, y0 = MH, x1 = 0, y1 = 0;
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (seen[y * MW + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    if (x1 < x0) { x0 = 0; y0 = 0; x1 = MW - 1; y1 = MH - 1; }
+    x0 -= 1; y0 -= 1; x1 += 1; y1 += 1;
+    const aw = 330, ah = 226, cs = clamp(Math.min(Math.floor(aw / (x1 - x0 + 1)), Math.floor(ah / (y1 - y0 + 1))), 2, 7);
+    const ox = 12 + Math.floor((aw - (x1 - x0 + 1) * cs) / 2) - x0 * cs, oy = 32 + Math.floor((ah - (y1 - y0 + 1) * cs) / 2) - y0 * cs;
+    const cell = (x, y, c, inset = 0) => this.rect(ox + x * cs + inset, oy + y * cs + inset, cs - inset * 2, cs - inset * 2, c);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (x < 0 || y < 0 || x >= MW || y >= MH || !seen[y * MW + x]) continue;
+      const i = y * MW + x, v = lv.cells[i];
+      if (v === 0) cell(x, y, lv.roomOf[i] >= 0 ? ((x + y) & 1 ? rgb(150, 124, 92) : rgb(142, 116, 86)) : rgb(110, 90, 68));
+      else if (v === W_DOOR) cell(x, y, rgb(200, 128, 52));
+      else if (v >= W_LOCK && v < W_UP) { const k = KEYS[v - W_LOCK].col; cell(x, y, rgb(k[0], k[1], k[2])); }
+      else if (v === W_UP) cell(x, y, rgb(130, 255, 255));
+      else if (v === W_DOWN) cell(x, y, rgb(210, 110, 255));
+      else if (v === W_EXIT) cell(x, y, rgb(110, 255, 110));
+      else if (v === W_BARS) cell(x, y, rgb(220, 60, 40));
+      else if (lv.at(x - 1, y) === 0 || lv.at(x + 1, y) === 0 || lv.at(x, y - 1) === 0 || lv.at(x, y + 1) === 0) cell(x, y, v === 5 ? rgb(255, 160, 60) : rgb(52, 38, 28));
+    }
+    const mark = (wx, wy, c, s) => { const sx = Math.round(ox + wx * cs - s / 2), sy = Math.round(oy + wy * cs - s / 2); this.rect(sx - 1, sy - 1, s + 2, s + 2, C.dark); this.rect(sx, sy, s, s, c); };
+    const isSeen = (x, y) => seen[Math.floor(y) * MW + Math.floor(x)];
+    const pk = cur ? G.pickups : lv.state.pickups;
+    for (const k of pk) if (isSeen(k.x, k.y)) { if (k.type === 'chest' && !k.open) mark(k.x, k.y, C.gold, Math.max(3, cs - 1)); else if (k.type === 'key') mark(k.x, k.y, C.cyan, Math.max(3, cs - 1)); }
+    for (const sh of lv.shrines) if (!sh.used && isSeen(sh.x, sh.y)) mark(sh.x, sh.y, C.blue, Math.max(3, cs - 1));
+    for (const n of lv.npcs) if (isSeen(n.x, n.y)) { mark(n.x, n.y, n.type === 'merchant' ? C.green : C.orange, Math.max(4, cs)); this.text(Math.round(ox + n.x * cs) + 4, Math.round(oy + n.y * cs) - 3, n.type === 'merchant' ? 'M' : 'H', n.type === 'merchant' ? C.green : C.orange); }
+    if (cur) { // jugador: punto y flecha
+      const pcx = ox + p.x * cs, pcy = oy + p.y * cs;
+      for (let t = 0; t < 7; t++) this.px(Math.round(pcx + Math.cos(p.a) * t), Math.round(pcy + Math.sin(p.a) * t), t < 3 ? rgb(255, 255, 255) : C.goldL);
+      this.rect(Math.round(pcx) - 2, Math.round(pcy) - 2, 4, 4, rgb(255, 255, 255));
+    }
+    // cabecera y leyenda
+    this.text(12, 8, `MAPA · ${levelName(z).toUpperCase()}`, C.gold, { scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    const lx = VW - 128;
+    this.text(lx, 10, G.dg.name.toUpperCase().slice(0, 21), C.dim, { shadow: false });
+    const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO']];
+    leg.forEach(([c, t], i) => { this.rect(lx, 30 + i * 12, 6, 6, c); this.text(lx + 10, 30 + i * 12, t, C.ink, { shadow: false }); });
+    const vis = G.dg.zs.filter(q => G.dg.lv(q).visited);
+    this.text(lx, 30 + leg.length * 12 + 8, 'NIVELES:', C.dim, { shadow: false });
+    vis.forEach((q, i) => this.text(lx + 50 + i * 20, 30 + leg.length * 12 + 8, 'P' + q, q === z ? C.goldL : q === G.z ? C.gold : C.dim, { shadow: false }));
+    this.text(lx, VH - 30, G.touchMode ? 'TOCA LOS LADOS: OTRO NIVEL' : 'A / D: OTRO NIVEL', C.dim, { shadow: false });
+    this.text(lx, VH - 18, G.touchMode ? 'TOCA EL CENTRO: CERRAR' : 'M: CERRAR', C.goldL, { shadow: false });
   }
   // sprite escalado para iconos (vecino más próximo, encajado en caja de lado s)
   blit(spr, cx, cy, s) {

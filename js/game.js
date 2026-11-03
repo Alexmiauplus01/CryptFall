@@ -11,6 +11,15 @@ const ENEMY = {
   slime:    { name: 'Légamo', hp: 46, spd: 1.0, dmg: 12, r: 0.38, h: 0.62, z: 0, spr: 'slime', xp: 3 },
   wraith:   { name: 'Espectro', hp: 22, spd: 1.5, dmg: 0, r: 0.3, h: 1.0, z: 0.06, spr: 'wraith', xp: 3, ranged: { cd: 2.6, dmg: 11, spd: 4.2, proj: 'orbGreen', keep: 5.5 } },
   imp:      { name: 'Diablillo', hp: 34, spd: 2.2, dmg: 8, r: 0.3, h: 0.78, z: 0, spr: 'imp', xp: 4, ranged: { cd: 2.0, dmg: 12, spd: 6, proj: 'orbRed', keep: 3.5 } },
+  ghost:    { name: 'Fantasma', hp: 200, spd: 2.1, dmg: 12, r: 0.3, h: 1.0, z: 0.05, spr: 'ghost_melee', xp: 15, elite: true },
+  zombie:   { name: 'Necrófago', hp: 58, spd: 1.0, dmg: 14, r: 0.32, h: 0.95, z: 0, spr: 'zombie', xp: 3 },
+  cultist:  { name: 'Acólito', hp: 30, spd: 1.6, dmg: 0, r: 0.3, h: 1.0, z: 0, spr: 'cultist', xp: 4, ranged: { cd: 2.3, dmg: 12, spd: 6, proj: 'orbPurple', keep: 5 } },
+  spider:   { name: 'Araña', hp: 16, spd: 3.1, dmg: 7, r: 0.3, h: 0.52, z: 0, spr: 'spiderE', xp: 2 },
+  hound:    { name: 'Can infernal', hp: 34, spd: 3.5, dmg: 11, r: 0.32, h: 0.62, z: 0, spr: 'hound', xp: 3 },
+  eye:      { name: 'Ojo del vacío', hp: 40, spd: 1.2, dmg: 0, r: 0.3, h: 0.55, z: 0.35, spr: 'eye', xp: 4, fly: true, ranged: { cd: 1.9, dmg: 12, spd: 7, proj: 'orbPurple', keep: 6 } },
+  lich:     { name: 'EL LICHE', hp: 470, spd: 1.3, dmg: 18, r: 0.5, h: 1.75, z: 0, spr: 'lich', xp: 60, boss: true, ai: 'lich' },
+  queen:    { name: 'LA REINA ARAÑA', hp: 560, spd: 1.9, dmg: 20, r: 0.6, h: 1.3, z: 0, spr: 'queen', xp: 60, boss: true, ai: 'queen' },
+  voidlord: { name: 'EL OJO PRIMIGENIO', hp: 500, spd: 1.0, dmg: 16, r: 0.6, h: 1.6, z: 0.2, spr: 'voidlord', xp: 60, boss: true, ai: 'eye' },
   boss:     { name: 'EL GUARDIÁN', hp: 520, spd: 1.5, dmg: 22, r: 0.55, h: 1.75, z: 0, spr: 'boss', xp: 60, boss: true },
 };
 const DECOR = {
@@ -19,6 +28,9 @@ const DECOR = {
   candles:    { h: 0.3, anim: true },
   barrel:     { h: 0.55 },
   bones:      { h: 0.15 },
+  merchant:   { h: 0.95, anim: true },
+  smith:      { h: 1.0, anim: true },
+  anvil:      { h: 0.34 },
   altar:      { h: 0.72, anim: true },
 };
 const PROJ_LIGHT = {
@@ -52,6 +64,7 @@ const G = {
   flow: new Int16Array(MW * MH), flowT: 0, seen: new Uint8Array(MW * MH),
   pending: 0, bladeAng: 0, novaT: 4, boltT: 2, novaFx: 0, shake: 0, hurtFx: 0, flashFx: 0, hitMark: 0, hadLock: false,
   log: [], toasts: [], opts: [], best: null, final: null, choice: null, evolveReady: false,
+  forge: {}, forgeOpts: null, met: {}, inv: { torch: 0 },
   dg: null, z: 0, loot: 0, bank: 0, keys: [], journal: [], jpage: -1, arena: null, touchCd: 0, fade: 0,
 };
 const TORCH_FUEL = 240; // segundos que arde una antorcha
@@ -104,7 +117,7 @@ function setClass(id, evolving) {
 function newRun(cls) {
   G.upg = {}; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
-  G.inv = { torch: 2 };
+  G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
   G.p.hp = G.p.maxHp;
   G.bladeAng = 0; G.novaT = 4; G.boltT = 2;
   G.state = 'play';
@@ -112,6 +125,7 @@ function newRun(cls) {
   newDungeon(1);
   logMsg(`Entras en la mazmorra como ${CLASSES[cls].name}`, C.ink);
   logMsg('Saquea lo que puedas y sal con vida', C.dim);
+  saveRun();
   logMsg(G.touchMode ? 'Está oscuro: toca I y enciende una antorcha' : 'Está oscuro: pulsa I y enciende una antorcha', C.orange);
 }
 
@@ -120,6 +134,7 @@ function newDungeon(n) {
   G.dg = new Dungeon(n);
   G.lv = null; G.loot = 0; G.keys = []; G.journal = []; G.jpage = -1; G.arena = null; G.boss = null; G.t = 0;
   for (const z of G.dg.zs) populateLevel(G.dg.lv(z));
+  placeGhost(G.dg); G.elite = null;
   enterLevel(G.dg.start.z, G.dg.start, true);
   jot('start', `Llego a ${G.dg.name}. Dicen que sus niveles guardan riquezas olvidadas... y un Guardián. Debo salir con vida y con el botín.`);
   if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); }
@@ -154,13 +169,13 @@ function populateLevel(lv) {
       case 'camara': box = chest(gold * rand(10, 15), 'potion'); if (area > 30) chest(gold * rand(5, 8)); foes(randi(1, 3)); break;
       case 'guarida': {
         const [x, y] = [r.cx + 0.5, r.cy + 0.5]; used.add(r.cy * MW + r.cx);
-        const b = spawnEnemy('boss', x, y); b.sleep = true; b.shoot = 2; b.ring = 6;
+        const b = spawnEnemy(['lich', 'queen', 'boss', 'voidlord'][lv.theme % 4], x, y); b.sleep = true; b.shoot = 2; b.ring = 6; b.summon = 5;
         box = chest(gold * rand(30, 40), 'potion'); foes(2);
         break;
       }
       case 'secreta': box = chest(gold * rand(6, 10), 'potion'); break;
       case 'trampa': box = chest(gold * rand(5, 8)); break;
-      case 'santuario': case 'arena': break;
+      case 'santuario': case 'arena': case 'mercader': case 'herrero': break;
       default:
         foes(Math.max(1, Math.min(5, Math.round(area / 16 + rand(-0.5, 1)) + (lv.z !== 0 ? 1 : 0))));
         if (Math.random() < 0.35) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'gold', x, y, v: Math.round(gold * rand(0.6, 1.4)), t: rand(0, 6) }); }
@@ -183,6 +198,7 @@ function enterLevel(z, at, first) {
   G.lv = lv; G.z = z; G.floor = G.dg.diff(z);
   if (!lv.themeObj) lv.themeObj = buildTheme(lv.theme);
   G.theme = lv.themeObj; R.setTheme(G.theme);
+  if (G.state !== 'title') Sfx.playMusic(lv.theme % 4);
   G.enemies = lv.state.enemies; G.pickups = lv.state.pickups; G.traps = lv.state.traps; G.zones = lv.state.zones;
   G.projs = []; G.parts = []; G.fx = []; G.timers = []; G.vfx = []; G.vlights = []; G.arcs = []; G.sfx = []; G.aura = null; G.dome = null;
   G.decor = lv.decor; G.seen = lv.seen;
@@ -196,6 +212,7 @@ function enterLevel(z, at, first) {
     if (!lv.visited) jot('lvl' + z, `${z < G.zPrev ? 'Bajé' : 'Subí'} al ${levelName(z)}. ${G.theme.name}: ${z < 0 ? 'el aire huele a tierra húmeda y a muerte.' : z > 0 ? 'corrientes de aire frío recorren los pasillos.' : 'la luz de la entrada aún se adivina.'}`);
   }
   lv.visited = true;
+  if (!first) saveRun();
 }
 
 // diario: entradas con id (no se repiten); se tachan al resolverse
@@ -256,7 +273,7 @@ function leaveDungeon() {
   const m = G.meta;
   G.bank += G.loot;
   m.gold += G.loot; m.escapes++; m.bestLoot = Math.max(m.bestLoot, G.loot); m.bestDepth = Math.max(m.bestDepth, G.dg.n);
-  saveMeta();
+  saveMeta(); clearSave();
   G.final = { name: G.dg.name, loot: G.loot, bank: G.bank, n: G.dg.n, lvl: G.p.lvl, kills: G.kills, time: fmtTime(G.totalTime) };
   G.state = 'escaped'; Sfx.play('portal');
 }
@@ -265,6 +282,7 @@ function nextDungeon() {
   p.hp = p.maxHp; G.flashFx = 1;
   newDungeon(G.dg.n + 1);
   G.state = 'play'; lockMouse();
+  saveRun();
 }
 function fmtTime(t) { return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`; }
 
@@ -304,6 +322,7 @@ function updateRooms(dt) {
       }
     }
   }
+  updateNpcs();
   // pinchos: suben y bajan; hieren al pisarlos subidos
   for (const s of lv.spikes) {
     s.up = ((G.time + s.ph) % 2.2) < 0.75;
@@ -374,9 +393,10 @@ function hurtPlayer(d, sx, sy) {
 
 function die() {
   G.state = 'dead';
-  Sfx.play('die');
+  Sfx.play('die'); Sfx.stopMusic();
   if (document.exitPointerLock) document.exitPointerLock();
   const m = G.meta; m.deaths++; saveMeta();
+  recordGhost(); clearSave();
   G.final = { name: G.dg.name, lost: G.loot, bank: G.bank, n: G.dg.n, lvl: G.p.lvl, kills: G.kills, time: fmtTime(G.totalTime) };
   logMsg('Has caído en la oscuridad...', C.red);
 }
@@ -393,7 +413,7 @@ function castSpell() {
   const n = p.multi, spread = 0.1, sb = stealthBonus();
   for (let i = 0; i < n; i++) {
     const crit = Math.random() < p.crit;
-    fireProj({ a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
+    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * spread, spd: 13, dmg: sp.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : sp.proj, size: crit ? 0.42 : 0.32, fx: sp.fx });
   }
   Sfx.play('shoot');
 }
@@ -404,7 +424,7 @@ function shootArrow() {
   const n = p.multi, sb = stealthBonus();
   for (let i = 0; i < n; i++) {
     const crit = Math.random() < p.crit;
-    fireProj({ a: p.a + (i - (n - 1) / 2) * 0.08, spd: 17, dmg: w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : arrowSprFor(el), size: el || crit ? 0.3 : 0.22, fx: arrowFxFor(el), life: 1.3 });
+    fireProj({ basic: true, a: p.a + (i - (n - 1) / 2) * 0.08, spd: 17, dmg: w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), crit, pierce: p.pierce, spr: crit ? 'orbGold' : arrowSprFor(el), size: el || crit ? 0.3 : 0.22, fx: arrowFxFor(el), life: 1.3 });
   }
   Sfx.play('shoot');
 }
@@ -433,7 +453,9 @@ function meleeHit() {
     if (Math.abs(da) > w.arc / 2 && d > e.def.r + 0.45) continue;
     if (!lv.los(p.x, p.y, e.x, e.y)) continue;
     const crit = Math.random() < p.crit;
-    damageEnemy(e, w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1), { kx: dx / (d || 1) * w.kb, ky: dy / (d || 1) * w.kb, crit });
+    const dd = w.dmg * p.dmgMul * (crit ? 2 : 1) * sb * rand(0.9, 1.1);
+    damageEnemy(e, dd, { kx: dx / (d || 1) * w.kb, ky: dy / (d || 1) * w.kb, crit });
+    forgeHit(e, dd);
     if (hits < 4) vfxImpact(e.x, e.y, 0.5, shadow ? 'arcane' : 'steel', 0.7);
     if (shadow) applyFx(e, { slow: 1.5 });
     if (holy) healP(p.maxHp * 0.012);
@@ -489,7 +511,7 @@ function updateTorch(dt) {
   if (offhandOf(p) !== 'torch') return;
   p.torchFuel -= dt;
   if (p.torchFuel <= 0) {
-    p.torchFuel = 0; p.off = 'none';
+    p.torchFuel = 0; p.off = 'none'; Sfx.play('torchOut');
     toast('TU ANTORCHA SE APAGA', false);
     logMsg(G.inv.torch ? `Se consume la antorcha. Te quedan ${G.inv.torch} (I)` : 'Se consume tu última antorcha...', C.orange);
   }
@@ -500,6 +522,9 @@ function closeInventory() { if (G.state !== 'inventory') return; G.state = 'play
 function invAction(id) {
   if (id === 'torch') equipTorch();
   else if (id === 'shield') { const p = G.p; if (WEAPONS[p.weapon].hands !== 1) { toast('NECESITAS UNA MANO LIBRE', false); return; } toggleOffhand(); }
+  else if (id === 'potion') drinkPotion();
+  else if (id === 'map') { readMap(); }
+  else if (id === 'rune') { closeInventory(); useRune(); }
   else if (id === 'close') closeInventory();
 }
 
@@ -530,6 +555,7 @@ function updateProjs(dt) {
             pr.hit.add(e);
             damageEnemy(e, pr.dmg, { kx: pr.vx * 0.12, ky: pr.vy * 0.12, crit: pr.crit });
             hitFx(e, pr.fx, pr);
+            if (pr.basic) forgeHit(e, pr.dmg);
             if (!pr.explode) vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] === 'fire' ? 'impact' : PROJ_RAMP[pr.spr] || 'impact', 0.6);
             if (pr.explode) { explodeAt(pr.x, pr.y, pr.explode); pr.dead = true; break; }
             if (pr.pierce-- <= 0) { pr.dead = true; break; }
@@ -549,10 +575,16 @@ function updateProjs(dt) {
 // ---------------------------------------------------------------- Enemigos
 function pickType() {
   const t = G.t, f = G.floor;
-  const pool = [['skeleton', 10], ['bat', 6]];
-  if (t > 14 || f > 1) pool.push(['slime', 3 + f]);
-  if (t > 28 || f > 1) pool.push(['wraith', 1.5 + f * 1.2]);
-  if (t > 42 || f > 2) pool.push(['imp', 1.5 + f]);
+  const pool = [['skeleton', 8], ['bat', 5]];
+  if (t > 14 || f > 1) pool.push(['slime', 2 + f * 0.6]);
+  if (t > 28 || f > 1) pool.push(['wraith', 1 + f * 0.8]);
+  if (t > 42 || f > 2) pool.push(['imp', 1 + f * 0.6]);
+  // fauna propia de cada tema: Cripta, Catacumbas, Foso Infernal, El Vacío
+  const th = G.lv ? G.lv.theme % 4 : 0;
+  if (th === 0) { pool.push(['zombie', 6]); if (t > 20 || f > 1) pool.push(['cultist', 2 + f]); }
+  if (th === 1) { pool.push(['spider', 8]); pool.push(['slime', 3]); }
+  if (th === 2) { pool.push(['hound', 6]); pool.push(['imp', 3 + f]); }
+  if (th === 3) { pool.push(['eye', 5 + f]); pool.push(['wraith', 3]); }
   let tot = 0; for (const [, w] of pool) tot += w;
   let r = Math.random() * tot;
   for (const [n, w] of pool) { if ((r -= w) <= 0) return n; }
@@ -576,7 +608,8 @@ function spawnEnemy(type, x, y) {
 function findSpawn(minD, maxD, needHidden) {
   const lv = G.lv, p = G.p;
   for (let i = 0; i < 40; i++) {
-    const c = pick(lv.floorCells), x = c[0] + 0.5, y = c[1] + 0.5;
+    const c = pick(lv.floorCells), x = c[0] + 0.5, y = c[1] + 0.5, ri = lv.roomOf[c[1] * MW + c[0]];
+    if (ri >= 0 && ['secreta', 'mercader', 'herrero', 'santuario', 'entrada'].includes(lv.rooms[ri].type)) continue;
     const d = Math.hypot(x - p.x, y - p.y);
     if (d < minD || d > maxD) continue;
     if (needHidden && lv.los(p.x, p.y, x, y)) continue;
@@ -602,9 +635,10 @@ function updateSpawner(dt) {
 
 function wakeEnemy(e) {
   e.sleep = false;
+  if (e.ghost && G.elite !== e) { G.elite = e; toast(`¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(`Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
   if (e.def.boss && !G.boss) {
     G.boss = e;
-    toast('¡EL GUARDIÁN DESPIERTA!', true); logMsg('Un rugido sacude la mazmorra...', C.red);
+    toast(`¡${e.def.name} DESPIERTA!`, true); logMsg('Un rugido sacude la mazmorra...', C.red);
     Sfx.play('boss'); G.shake = 0.6;
   }
 }
@@ -637,6 +671,8 @@ function dropGem(x, y, v) {
 
 function killEnemy(e) {
   e.dead = true; G.kills++;
+  forgeOnKill(e);
+  if (e.ghost) onGhostKilled(e);
   const d = e.def, col = d.spr === 'slime' ? rgb(120, 220, 90) : d.spr === 'imp' || d.boss ? rgb(255, 90, 40) : rgb(220, 210, 180);
   burst(e.x, e.y, 0.3, d.boss ? 40 : 10, col, 2.5, 0.8, false, 0.06);
   if (d.boss) {
@@ -655,8 +691,8 @@ function onBossDead(e) {
   G.boss = null;
   G.flashFx = 1; G.shake = 0.7;
   Sfx.play('portal');
-  toast('¡EL GUARDIÁN HA CAÍDO!', true); logMsg('Su tesoro es tuyo. Ahora, a la salida', C.cyan);
-  jot('boss', `El Guardián de ${G.dg.name} ha caído. Solo queda volver a la salida con vida.`);
+  toast(`¡${e.def.name} HA CAÍDO!`, true); logMsg('Su tesoro es tuyo. Ahora, a la salida', C.cyan);
+  jot('boss', `${e.def.name.charAt(0) + e.def.name.slice(1).toLowerCase()}, guardián de ${G.dg.name}, ha caído. Solo queda volver a la salida con vida.`);
 }
 
 function updateEnemies(dt) {
@@ -754,7 +790,8 @@ function updateEnemies(dt) {
 }
 
 function bossAI(e, dt, dx, dy, dist) {
-  const rage = e.hp < e.maxHp * 0.5;
+  const rage = e.hp < e.maxHp * 0.5, ai = e.def.ai;
+  if (ai) return bossAI2(e, dt, dx, dy, rage, ai);
   e.shoot -= dt; e.ring -= dt;
   if (e.shoot <= 0 && e.los) {
     e.shoot = rage ? 1.5 : 2.3;
@@ -769,6 +806,29 @@ function bossAI(e, dt, dx, dy, dist) {
     Sfx.play('boss'); G.shake = Math.max(G.shake, 0.25);
   }
   if (rage) e.spd = ENEMY.boss.spd * 1.5;
+}
+// invocar esbirros alrededor del jefe
+function bossSummon(e, type, n) {
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU + rand(0, 0.5), x = e.x + Math.cos(a) * 1.4, y = e.y + Math.sin(a) * 1.4;
+    if (G.lv.blocked(x, y, 0.25)) continue;
+    spawnEnemy(type, x, y); vfxBlink(x, y, 'void');
+  }
+  Sfx.play('summon');
+}
+function bossAI2(e, dt, dx, dy, rage, ai) {
+  e.shoot -= dt; e.ring -= dt; e.summon -= dt;
+  const base = Math.atan2(dy, dx);
+  if (ai === 'lich') { // abanicos arcanos e invoca esqueletos
+    if (e.shoot <= 0 && e.los) { e.shoot = rage ? 1.3 : 2; const n = rage ? 5 : 3; for (let i = 0; i < n; i++) enemyShot(e.x, e.y, base + (i - (n - 1) / 2) * 0.22, 6, 13 * e.dmgM, 'orbBlue', 0.45); Sfx.play('enemyShoot'); }
+    if (e.summon <= 0) { e.summon = rage ? 7 : 10; bossSummon(e, 'skeleton', rage ? 4 : 3); }
+  } else if (ai === 'queen') { // crías y escupitajos
+    if (e.shoot <= 0 && e.los) { e.shoot = rage ? 1.6 : 2.4; for (let i = 0; i < 4; i++) enemyShot(e.x, e.y, base + rand(-0.3, 0.3), rand(4.5, 6.5), 10 * e.dmgM, 'orbGreen', 0.4); Sfx.play('enemyShoot'); }
+    if (e.summon <= 0) { e.summon = rage ? 5.5 : 8; bossSummon(e, 'spider', rage ? 5 : 3); }
+  } else if (ai === 'eye') { // espirales de orbes
+    if (e.ring <= 0) { e.ring = 0.18; e.spin = (e.spin || 0) + (rage ? 0.5 : 0.38); const arms = rage ? 4 : 3; for (let k = 0; k < arms; k++) enemyShot(e.x, e.y, e.spin + k / arms * TAU, 3.4, 9 * e.dmgM, 'orbPurple', 0.38); }
+    if (e.shoot <= 0 && e.los) { e.shoot = 3; for (let i = 0; i < 3; i++) enemyShot(e.x, e.y, base + (i - 1) * 0.1, 8, 14 * e.dmgM, 'orbPurple', 0.5); Sfx.play('enemyShoot'); }
+  }
 }
 
 // ---------------------------------------------------------------- Habilidades pasivas
@@ -992,7 +1052,8 @@ function updatePlayer(dt) {
   } else {
     lv.move(p, p.vx * dt, p.vy * dt, 0.22);
   }
-  if (len > 0) p.bob += dt * 9 * (p.spd / 3.6);
+  if (len > 0) { const ob = p.bob; p.bob += dt * 9 * (p.spd / 3.6); if (Math.floor(ob / Math.PI) !== Math.floor(p.bob / Math.PI)) Sfx.play('step'); }
+  if (offhandOf(p) === 'torch' && Math.random() < dt * 2.5) Sfx.play('crackle');
   p.inv -= dt; p.dashCd -= dt; p.shootCd -= dt; p.anim = Math.max(0, p.anim - dt * 5);
   for (let i = 0; i < 3; i++) p.skillCd[i] -= dt;
   const rg = p.regen + p.regenPct * p.maxHp;
@@ -1062,6 +1123,7 @@ function update(dt) {
   G.novaFx = Math.max(0, G.novaFx - dt * 2.5);
   G.hitMark = Math.max(0, G.hitMark - dt);
   G.touchCd -= dt; G.fade = Math.max(0, G.fade - dt * 2.5);
+  if (G.time - (G.savedAt || 0) > 20) saveRun();
   // mapa explorado
   const cx = p.x | 0, cy = p.y | 0;
   for (let y = cy - 6; y <= cy + 6; y++) for (let x = cx - 6; x <= cx + 6; x++) {
@@ -1136,6 +1198,9 @@ function dynLights() {
     if (e.type === 'imp') out.push({ x: e.x, y: e.y, c: [0.7, 0.3, 0.05], rad: 2 });
     else if (e.type === 'wraith') out.push({ x: e.x, y: e.y, c: [0.15, 0.35, 0.5], rad: 2.2 });
     else if (e.def.boss) out.push({ x: e.x, y: e.y, c: [0.9, 0.25, 0.1], rad: 3.5 });
+    else if (e.type === 'hound') out.push({ x: e.x, y: e.y, c: [0.8, 0.35, 0.05], rad: 2 });
+    else if (e.type === 'eye' || e.type === 'cultist') out.push({ x: e.x, y: e.y, c: [0.45, 0.15, 0.6], rad: 1.8 });
+    else if (e.ghost) out.push({ x: e.x, y: e.y, c: [0.25, 0.55, 0.9], rad: 3 });
   }
   if (p.anim > 0.05) out.push({ x: p.x + Math.cos(p.a) * 0.6, y: p.y + Math.sin(p.a) * 0.6, c: PROJ_LIGHT.orbBlue.map(v => v * p.anim), rad: 3.5 });
   if (G.novaFx > 0) out.push({ x: p.x, y: p.y, c: [0.6 * G.novaFx, 1.2 * G.novaFx, 1.7 * G.novaFx], rad: 7 });
@@ -1163,7 +1228,7 @@ function render() {
   if (p.stealth > 0) R.tint(Math.min(0.32, p.stealth * 0.5), [50, 30, 110]);
 
   ui.begin(R.buf);
-  if (G.state === 'title') ui.title(G);
+  if (G.state === 'title') { if (G.hasSave === undefined) G.hasSave = hasSave(); ui.title(G); }
   else if (G.state === 'options') ui.options(G);
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
@@ -1174,6 +1239,9 @@ function render() {
     else if (G.state === 'dead') ui.dead(G);
     else if (G.state === 'journal') ui.journal(G);
     else if (G.state === 'inventory') ui.inventory(G);
+    else if (G.state === 'shop') ui.shop(G);
+    else if (G.state === 'map') ui.mapScreen(G);
+    else if (G.state === 'forge') ui.forge(G);
     else if (G.state === 'exitask') ui.exitAsk(G);
     else if (G.state === 'escaped') ui.escaped(G);
   }
@@ -1195,6 +1263,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (G.state === 'inventory') { if (e.code === 'KeyI' || e.code === 'Escape') closeInventory(); if (e.code === 'KeyT' || dig === 0) equipTorch(); return; }
+  if (G.state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') closeMap(); if (e.code === 'KeyA' || e.code === 'ArrowLeft') mapStep(1); if (e.code === 'KeyD' || e.code === 'ArrowRight') mapStep(-1); return; }
+  if (G.state === 'shop') { if (dig !== undefined) buyItem(SHOP_ITEMS[dig].id); else if (e.code === 'Digit4' || e.code === 'Numpad4') buyItem(SHOP_ITEMS[3].id); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
+  if (G.state === 'forge') { if (dig !== undefined) forgeBuy(dig); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
   if (G.state === 'exitask') { if (dig === 0) leaveDungeon(); else if (dig === 1 || e.code === 'Escape') stayInDungeon(); return; }
   if (G.state === 'escaped') { if (dig === 0) nextDungeon(); else if (dig === 1) retire(); return; }
   if (G.state === 'classselect' || G.state === 'evolve') { if (dig !== undefined) pickChoice(dig); return; }
@@ -1203,6 +1274,8 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyF') toggleOffhand();
     if (e.code === 'KeyJ') { openJournal(); return; }
     if (e.code === 'KeyI') { openInventory(); return; }
+    if (e.code === 'KeyH') drinkPotion();
+    if (e.code === 'KeyM') { openMap(); return; }
     const si = SKILL_KEYS.indexOf(e.code);
     if (si >= 0) useSkill(si);
   }
@@ -1211,6 +1284,7 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') tryDash();
     if (e.code === 'KeyP') pauseGame();
   } else if (G.state === 'paused' && e.code === 'KeyP') resumeGame();
+  else if (G.state === 'title' && e.code === 'Enter' && hasSave()) loadRun();
   else if ((G.state === 'title' || G.state === 'dead') && e.code === 'Enter') startRun();
   else if (G.state === 'title' && e.code === 'KeyO') G.state = 'options';
   else if (G.state === 'options' && (e.code === 'KeyO' || e.code === 'Escape')) G.state = 'title';
@@ -1232,7 +1306,7 @@ function handleClick(x, y, button = 0) {
   ui.mouse.x = x; ui.mouse.y = y;
   const e = { button };
   switch (G.state) {
-    case 'title': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h && h.id === 'options') G.state = 'options'; else if (e.button === 0) startRun(); break; }
+    case 'title': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h && h.id === 'options') G.state = 'options'; else if (h && h.id === 'continue') loadRun(); else if (h && h.id === 'new') startRun(); else if (e.button === 0 && !hasSave()) startRun(); break; }
     case 'options': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) optAction(h.id); else G.state = 'title'; break; }
     case 'dead': if (e.button === 0) startRun(); break;
     case 'classselect': case 'evolve': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) pickChoice(h.id); break; }
@@ -1247,6 +1321,9 @@ function handleClick(x, y, button = 0) {
       break;
     }
     case 'inventory': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) invAction(h.id); else closeInventory(); break; }
+    case 'map': { const m = ui.mouse; if (m.x < VW * 0.25) mapStep(1); else if (m.x > VW * 0.75) mapStep(-1); else closeMap(); break; }
+    case 'shop': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else buyItem(h.id); } else closeNpc(); break; }
+    case 'forge': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else forgeBuy(h.id); } else closeNpc(); break; }
     case 'exitask': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) leaveDungeon(); else stayInDungeon(); } break; }
     case 'escaped': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) nextDungeon(); else retire(); } break; }
     case 'levelup': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) chooseUpgrade(h.id); break; }
@@ -1265,12 +1342,21 @@ canvas.addEventListener('wheel', (e) => {
   equipSlot((G.p.slot + (e.deltaY > 0 ? 1 : n - 1)) % n);
 }, { passive: false });
 document.addEventListener('contextmenu', (e) => e.preventDefault());
-document.addEventListener('visibilitychange', () => { if (document.hidden) { for (const k in keys) keys[k] = false; mouse.fire = false; if (G.state === 'play') pauseGame(); } });
+window.addEventListener('pagehide', () => saveRun());
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveRun(); for (const k in keys) keys[k] = false; mouse.fire = false; if (G.state === 'play') pauseGame(); } });
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === canvas) { G.hadLock = true; if (G.state === 'paused') resumeGame(); }
   else if (G.state === 'play' && G.hadLock) pauseGame();
 });
 
+function openMap() { if (G.state !== 'play') return; G.state = 'map'; G.mapZ = G.z; mouse.fire = false; if (document.exitPointerLock) document.exitPointerLock(); }
+function closeMap() { if (G.state !== 'map') return; G.state = 'play'; lockMouse(); }
+// cambiar el nivel mostrado entre los ya visitados (dir 1 = hacia arriba)
+function mapStep(dir) {
+  const vis = G.dg.zs.filter(z => G.dg.lv(z).visited); // ordenados de arriba a abajo
+  const i = vis.indexOf(G.mapZ), j = clamp(i - dir, 0, vis.length - 1);
+  G.mapZ = vis[j];
+}
 function openJournal() { if (G.state !== 'play') return; G.state = 'journal'; G.jpage = -1; mouse.fire = false; if (document.exitPointerLock) document.exitPointerLock(); Sfx.play('door'); }
 function closeJournal() { if (G.state !== 'journal') return; G.state = 'play'; lockMouse(); }
 function stayInDungeon() {
@@ -1280,7 +1366,7 @@ function stayInDungeon() {
   p.x -= Math.cos(p.a) * 0.3; p.y -= Math.sin(p.a) * 0.3; if (G.lv.blocked(p.x, p.y, 0.22)) { p.x += Math.cos(p.a) * 0.3; p.y += Math.sin(p.a) * 0.3; }
   lockMouse();
 }
-function retire() { G.state = 'title'; G.final = null; }
+function retire() { Sfx.playMusic('title'); G.state = 'title'; G.final = null; clearSave(); }
 
 // ---------------------------------------------------------------- Guardado en el navegador (progreso y opciones)
 function loadJSON(k, def) { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return Object.assign(def, v || {}); } catch (e) { return def; } }
@@ -1288,7 +1374,7 @@ function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 function saveMeta() { saveJSON('cryptfall_meta', G.meta); }
 function saveCfg() { saveJSON('cryptfall_opts', G.cfg); }
 function applyCfg() {
-  Sfx.setVolume(G.cfg.muted ? 0 : G.cfg.vol);
+  Sfx.setVolume(G.cfg.muted ? 0 : G.cfg.vol); Sfx.setMusic(G.cfg.music !== false);
   document.body.classList.toggle('crt', !!G.cfg.crt);
 }
 function optAction(id) {
@@ -1300,6 +1386,7 @@ function optAction(id) {
   if (id === 'mute') o.muted = !o.muted;
   if (id === 'fps') o.fps = o.fps === 60 ? 30 : 60;
   if (id === 'crt') o.crt = !o.crt;
+  if (id === 'music') o.music = !o.music;
   applyCfg(); saveCfg(); Sfx.play('gem');
 }
 
@@ -1307,7 +1394,7 @@ function pauseGame() { if (G.state !== 'play') return; G.state = 'paused'; mouse
 function resumeGame() { if (G.state !== 'paused') return; G.state = 'play'; lockMouse(); }
 
 function startRun() {
-  Sfx.init();
+  Sfx.init(); Sfx.playMusic('title');
   openClassSelect();
 }
 
@@ -1331,7 +1418,7 @@ function frame(now) {
 // arranque diferido: deja pintar el aviso de carga antes de generar texturas y mazmorra
 function boot() {
   G.meta = loadJSON('cryptfall_meta', { gold: 0, escapes: 0, deaths: 0, bestLoot: 0, bestDepth: 0 });
-  G.cfg = loadJSON('cryptfall_opts', { sens: 1, vol: 0.8, muted: false, fps: 60, crt: false });
+  G.cfg = loadJSON('cryptfall_opts', { sens: 1, vol: 0.8, muted: false, fps: 60, crt: false, music: true });
   if (G.cfg.fps !== 30) G.cfg.fps = 60;
   applyCfg();
   initSprites();

@@ -32,6 +32,7 @@ class Level {
     this.exit = -1;
     this.spikes = [];
     this.shrines = [];
+    this.npcs = [];
     this.seen = new Uint8Array(MW * MH);
     this.state = { enemies: [], pickups: [], traps: [], zones: [] };
   }

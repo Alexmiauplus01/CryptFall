@@ -19,6 +19,7 @@ function touchButtons() {
   if (offhandOf(p) === 'shield') out.push({ id: 'block', x: VW - 144, y: VH - 22, r: 14, label: 'ESC', hold: true });
   const top = [['pause', 'II'], ['journal', 'J'], ['inventory', 'I']];
   if (cl.slots.length > 1) top.push(['weapon', '<>']);
+  if (G.inv && G.inv.potion) top.push(['potion', '+' + G.inv.potion]);
   top.forEach(([id, label], k) => out.push({ id, rect: true, x: VW - 96 - k * 22, y: 6, w: 19, h: 15, label }));
   return out;
 }
@@ -40,6 +41,7 @@ function pressButton(b) {
     case 'pause': pauseGame(); break;
     case 'journal': openJournal(); break;
     case 'inventory': openInventory(); break;
+    case 'potion': drinkPotion(); break;
     case 'weapon': { const n = CLASSES[p.cls].slots.length; equipSlot((p.slot + 1) % n); break; }
     default: if (b.i !== undefined) useSkill(b.i);
   }
@@ -70,6 +72,31 @@ function goFullscreen() {
   } catch (e) { /* sin pantalla completa */ }
 }
 
+// botón de pantalla completa: entra y sale a voluntad (oculto donde el navegador no lo permite)
+(function fullscreenButton() {
+  const btn = document.getElementById('fs'); if (!btn) return;
+  const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen, exit = document.exitFullscreen || document.webkitExitFullscreen;
+  if (!req) { btn.hidden = true; return; }
+  const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const ENTER = 'M1 1h5v2H3v3H1zM10 1h5v5h-2V3h-3zM1 10h2v3h3v2H1zM13 10h2v5h-5v-2h3z', LEAVE = 'M4 1h2v5H1V4h3zM10 1h2v3h3v2h-5zM1 10h5v5H4v-3H1zM10 10h5v2h-3v3h-2z';
+  const sync = () => { document.getElementById('fs-ico').setAttribute('d', isFull() ? LEAVE : ENTER); btn.title = isFull() ? 'Salir de pantalla completa' : 'Pantalla completa'; };
+  const toggle = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    TOUCH.full = true; // ya no hace falta el intento automático del primer toque
+    if (isFull()) { try { exit.call(document); } catch (err) { /* nada */ } return; }
+    try {
+      const pr = req.call(el, { navigationUI: 'hide' });
+      const lock = () => { try { const o = screen.orientation; if (G.touchMode && o && o.lock) o.lock('landscape').catch(() => {}); } catch (err) { /* nada */ } };
+      if (pr && pr.then) pr.then(lock).catch(() => {}); else lock();
+    } catch (err) { /* sin pantalla completa */ }
+  };
+  btn.addEventListener('click', toggle);
+  btn.addEventListener('touchend', toggle, { passive: false });
+  btn.addEventListener('mousedown', (e) => e.stopPropagation());
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  sync();
+})();
+
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
   G.touchMode = true;
@@ -77,6 +104,8 @@ canvas.addEventListener('touchstart', (e) => {
     const c = touchPoint(t);
     if (G.state !== 'play') { handleClick(Math.floor(c.x), Math.floor(c.y), 0); continue; }
     const b = touchButtons().find(b => hitButton(b, c));
+    // tocar el minimapa abre el mapa completo
+    if (!b && c.x >= BOX_MAP.x && c.y >= BOX_MAP.y && c.x < BOX_MAP.x + BOX_MAP.w && c.y < BOX_MAP.y + BOX_MAP.h) { openMap(); continue; }
     if (b) { TOUCH.roles.set(t.identifier, { kind: 'btn', b, lx: c.x }); pressButton(b); continue; }
     if (c.x < VW * 0.45 && !G.stick) {
       TOUCH.roles.set(t.identifier, { kind: 'stick' });

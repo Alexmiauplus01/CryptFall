@@ -13,11 +13,14 @@ Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra
 | Clic / Espacio | Atacar |
 | R · C · V | Habilidades de clase |
 | 1 2 3 / rueda | Cambiar de arma |
-| I · J | Inventario (antorchas) · Diario |
+| I · J · M | Inventario · Diario · Mapa |
+| H | Beber poción |
 | F · Clic der. | Escudo · Bloquear / esquivar |
 | Shift | Esquivar |
 | P · N | Pausa y opciones · Sonido |
 
 **En el móvil** (en horizontal): joystick a la izquierda, desliza a la derecha para girar, y botones para atacar, esquivar, habilidades, pausa, diario, inventario y armas.
+
+Encontrarás un **mercader** y un **herrero** en cada mazmorra, **fantasmas rencorosos** de tus personajes caídos, jefes distintos según la zona, y la partida se guarda sola (CONTINUAR en el título).
 
 Caminar contra una pared abre puertas, usa llaves y escaleras, y descubre pasadizos secretos.

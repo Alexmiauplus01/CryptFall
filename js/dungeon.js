@@ -3,7 +3,7 @@
 // en zonas alcanzables con las llaves anteriores, así que la mazmorra tiene solución por construcción.
 const DG_PRE = ['Las Catacumbas', 'La Cripta', 'La Fortaleza Hundida', 'El Osario', 'Las Bóvedas', 'El Santuario Profanado', 'La Torre Enterrada', 'Las Galerías'];
 const DG_SUF = ['de Ulmar', 'de Vel Kharn', 'del Rey Ciego', 'de Morhaven', 'de Ashgrave', 'de la Orden Gris', 'de Duskmere', 'de los Mil Huesos', 'de Karak Dum'];
-const ROOM_NAME = { normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada' };
+const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada' };
 
 function levelName(z) { return z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }
 // orientación de una celda dentro del nivel, para el diario ("ala norte")
@@ -87,6 +87,14 @@ class Dungeon {
       const lv = this.levels[c.z];
       for (const [i, o] of lv.openings) if (o.rooms.includes(c.ri)) { lv.locks.set(i, k); lv.cells[i] = W_LOCK + k; }
     });
+    // 5b. un mercader y un herrero por mazmorra (en niveles distintos si se puede), en salas tranquilas
+    const calm = [];
+    for (const z of this.zs) this.levels[z].rooms.forEach(r => { if (r.type === 'normal' && r.doors.length && r.w * r.h >= 20) calm.push({ z, r }); });
+    const m = calm.length ? pick(calm) : null;
+    if (m) m.r.type = 'mercader';
+    const others = calm.filter(c => c !== m && (!m || c.z !== m.z));
+    const h = others.length ? pick(others) : calm.find(c => c !== m);
+    if (h) h.r.type = 'herrero';
     // 6. puertas de madera en otros huecos de sala
     for (const z of this.zs) {
       const lv = this.levels[z];
@@ -165,6 +173,17 @@ class Dungeon {
 
   // contenido fijo de la sala que necesita luz o celdas (altar, pinchos); el resto lo coloca el juego
   furnish(lv, r) {
+    if (r.type === 'mercader') {
+      const n = lv.addDecor('merchant', r.cx + 0.5, r.cy + 0.5, false); n.npc = 'merchant';
+      lv.lights.push({ x: r.cx + 0.5, y: r.cy + 0.5, c: [1.0, 0.75, 0.35], rad: 4.2 });
+      lv.npcs.push({ type: 'merchant', x: r.cx + 0.5, y: r.cy + 0.5 });
+    }
+    if (r.type === 'herrero') {
+      lv.addDecor('smith', r.cx + 0.5, r.cy + 0.5, false);
+      lv.addDecor('anvil', r.cx + 0.5 + (r.w > 5 ? 1 : 0.6), r.cy + 0.5, false);
+      lv.addDecor('brazier', r.cx + 0.5 - (r.w > 5 ? 1.2 : 0.8), r.cy + 0.5, true);
+      lv.npcs.push({ type: 'smith', x: r.cx + 0.5, y: r.cy + 0.5 });
+    }
     if (r.type === 'santuario') { r.shrine = lv.addDecor('altar', r.cx + 0.5, r.cy + 0.5, true); r.shrine.used = false; lv.shrines.push(r.shrine); }
     if (r.type === 'trampa') {
       for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {

@@ -261,6 +261,87 @@ function drawImp(g, ge, w, h, f) {
   poly(g, [[21.5, 17], [22.3, 19], [23, 17]], '#fff8e8'); poly(g, [[25, 17], [25.7, 19], [26.5, 17]], '#fff8e8');
 }
 
+// ---------- enemigos por tema (provisionales)
+function drawZombie(g, ge, w, h, f) { // necrófago: cadáver encorvado con harapos
+  const st = f === 1 ? 2 : -2;
+  for (const s of [-1, 1]) line(g, [[24 + s * 5, 44], [24 + s * 6 + (s > 0 ? st : -st) * 0.5, 58], [24 + s * 6, 70]], 4.5, '#5a6a48');
+  curve(g, [[13, 22], [24, 18], [36, 23], [37, 40], [33, 48], [15, 48], [11, 40]], lin(g, 0, 18, 0, 48, [[0, '#6a5a3e'], [1, '#3a3020']]));
+  for (const x of [15, 21, 28, 34]) poly(g, [[x, 46], [x + 3, 46], [x + 1.5, 52]], '#3a3020');
+  line(g, [[14, 24], [8, 34], [6, 42]], 4, '#6e7e58'); line(g, [[34, 24], [42, 31], [44, 40]], 4, '#6e7e58'); // brazos hacia delante
+  ell(g, 26, 14, 7, 7.5, rad(g, 25, 12, 9, '#a2b080', '#6e7e58', '#34402a'));
+  ell(ge, 23, 13, 1.4, 1.1, '#e0ff60'); ell(ge, 29, 13, 1.4, 1.1, '#e0ff60');
+  poly(g, [[22, 18], [30, 18], [28, 21], [24, 21]], '#1a1410');
+}
+function drawCultist(g, ge, w, h, f) { // acólito encapuchado con orbe
+  const sway = f === 1 ? 1 : -1;
+  curve(g, [[24, 6], [33, 12], [36, 30], [40, 60], [40, 70], [8, 70], [8, 60], [12, 30], [15, 12]].map(([x, y]) => [x + (y / 70) * sway, y]), lin(g, 0, 0, 0, 72, [[0, '#4a2a5a'], [1, '#1e0e28']]));
+  line(g, [[24, 26], [24, 68]], 1.2, '#7a3a8a');
+  ell(g, 24, 15, 7.5, 8.5, rad(g, 24, 13, 10, '#6a3a7a', '#3a1a48', '#180a20'));
+  ell(g, 24, 17, 5, 5.6, '#060208');
+  ell(ge, 22, 16.5, 1, 0.8, '#ff60ff'); ell(ge, 26, 16.5, 1, 0.8, '#ff60ff');
+  line(g, [[14, 28], [9, 36]], 3.4, '#3a1a48'); line(g, [[34, 28], [39, 34]], 3.4, '#3a1a48');
+  ell(ge, 40, 31, 4.5, 4.5, '#b040ff'); ell(ge, 40, 31, 2.2, 2.2, '#f0c0ff');
+}
+function drawSpider(g, ge, w, h, f) { // araña: cuerpo bajo y ocho patas
+  const st = f === 1 ? 2 : -2;
+  for (let k = 0; k < 4; k++) for (const s of [-1, 1]) {
+    const bx = 28 + s * 6, by = 20 + k * 2, kx = 28 + s * (14 + k * 2), ky = 10 + k * 3 + (k & 1 ? st : -st), fx = 28 + s * (20 + k * 2), fy = 30 + k;
+    line(g, [[bx, by], [kx, ky], [fx, fy]], 2, '#2a1a14');
+  }
+  ell(g, 28, 20, 11, 8, rad(g, 26, 17, 12, '#6a4a32', '#3a2618', '#140c08')); // abdomen
+  ell(g, 28, 24, 7, 5.5, rad(g, 28, 22, 7, '#5a3a26', '#2a1a10', '#100806'));
+  for (const [x, y] of [[25, 24], [31, 24], [27, 22.5], [29, 22.5]]) ell(ge, x, y, 1, 0.9, '#ff3020');
+  poly(g, [[25, 28], [26.5, 31], [27.5, 28]], '#e8e0c0'); poly(g, [[28.5, 28], [29.5, 31], [31, 28]], '#e8e0c0');
+}
+function drawHound(g, ge, w, h, f) { // can infernal: cuadrúpedo de fuego
+  const st = f === 1 ? 3 : -3;
+  for (const [x, s] of [[16, 1], [22, -1], [36, -1], [42, 1]]) line(g, [[x, 22], [x + s * st, 32], [x + s * st * 0.6, 40]], 3.4, '#4a1208');
+  curve(g, [[12, 16], [30, 12], [46, 16], [46, 26], [30, 28], [12, 26]], lin(g, 0, 10, 0, 28, [[0, '#a02818'], [1, '#3a0a04']]));
+  for (let k = 0; k < 5; k++) poly(ge, [[16 + k * 6, 13], [19 + k * 6, 4 + (k & 1) * 3 + st * 0.5], [22 + k * 6, 13]], k & 1 ? '#ffb030' : '#ff6a10'); // crin de llamas
+  ell(g, 50, 16, 7, 6, rad(g, 50, 14, 8, '#b03020', '#701810', '#2a0604'));
+  poly(g, [[53, 18], [60, 20], [54, 22]], '#2a0604');
+  ell(ge, 51, 14, 1.4, 1, '#ffff60');
+  poly(g, [[46, 11], [48, 4], [50, 11]], '#e8dcc0');
+}
+function drawEye(g, ge, w, h, f) { // ojo del vacío flotante con tentáculos
+  const sw = f === 1 ? 2 : -2;
+  for (let k = -2; k <= 2; k++) curve(g, [[24 + k * 4, 30], [24 + k * 5 + sw, 40], [24 + k * 4 - sw, 50], [25 + k * 4, 50], [26 + k * 5 + sw, 40], [26 + k * 4, 30]], '#3a1a5a');
+  ell(g, 24, 20, 15, 14, rad(g, 20, 15, 16, '#8a5ab0', '#4a2270', '#1a0830'));
+  ell(g, 24, 20, 9, 8, '#f0e8f0');
+  ell(ge, 24 + sw * 0.5, 20, 5, 5.5, '#c040ff'); ell(g, 24 + sw * 0.5, 20, 2.2, 3.4, '#0a0010');
+  ell(ge, 22, 17, 1.2, 1.2, '#ffffff');
+}
+function drawLich(g, ge, w, h, f) { // liche: túnica regia, cráneo y báculo
+  const sway = f === 1 ? 1.5 : -1.5;
+  curve(g, [[40, 14], [56, 22], [62, 60], [68, 92], [12, 92], [18, 60], [24, 22]].map(([x, y]) => [x + (y / 92) * sway, y]), lin(g, 0, 10, 0, 94, [[0, '#2a3a5a'], [1, '#0a0e1a']]));
+  for (const x of [30, 40, 50]) line(g, [[x, 30], [x + sway, 88]], 1.4, '#c0a040');
+  ell(g, 40, 16, 9, 10, rad(g, 40, 14, 11, '#f0ead8', '#b8ae90', '#5a5440'));
+  ell(g, 36, 16, 2.6, 3, '#100c08'); ell(g, 44, 16, 2.6, 3, '#100c08');
+  ell(ge, 36, 16, 1.2, 1.2, '#60e0ff'); ell(ge, 44, 16, 1.2, 1.2, '#60e0ff');
+  poly(g, [[31, 8], [34, 0], [37, 6], [40, -1], [43, 6], [46, 0], [49, 8]], '#d0a030'); // corona
+  line(g, [[66, 18], [64, 92]], 2.4, '#4a3a2a');
+  ell(ge, 66, 14, 6, 6, '#40c0ff'); ell(ge, 66, 14, 3, 3, '#e0ffff');
+  line(g, [[56, 30], [65, 34]], 4, '#2a3a5a');
+}
+function drawQueen(g, ge, w, h, f) { // reina araña: abdomen enorme
+  const st = f === 1 ? 3 : -3;
+  for (let k = 0; k < 4; k++) for (const s of [-1, 1]) line(g, [[44 + s * 10, 46 + k * 4], [44 + s * (28 + k * 3), 22 + k * 6 + (k & 1 ? st : -st)], [44 + s * (38 + k * 2), 64 + k * 2]], 3.6, '#1a0e0a');
+  ell(g, 44, 34, 22, 18, rad(g, 40, 28, 24, '#7a2a3a', '#3a0e18', '#100406'));
+  for (const [x, y] of [[36, 28], [44, 24], [52, 28], [44, 36]]) ell(g, x, y, 3, 2, '#c03050');
+  ell(g, 44, 54, 13, 10, rad(g, 44, 50, 14, '#5a2a2a', '#2a0e0e', '#0a0404'));
+  for (const [x, y] of [[38, 52], [50, 52], [41, 49], [47, 49], [44, 47]]) ell(ge, x, y, 1.6, 1.4, '#ff2020');
+  poly(g, [[38, 60], [40, 68], [42, 60]], '#f0e8d0'); poly(g, [[46, 60], [48, 68], [50, 60]], '#f0e8d0');
+}
+function drawVoidLord(g, ge, w, h, f) { // ojo primigenio
+  const sw = f === 1 ? 3 : -3;
+  for (let k = -3; k <= 3; k++) curve(g, [[40 + k * 6, 50], [40 + k * 8 + sw, 66], [40 + k * 6 - sw, 86], [42 + k * 6, 86], [42 + k * 8 + sw, 66], [43 + k * 6, 50]], '#2a0e4a');
+  ell(g, 40, 34, 28, 26, rad(g, 34, 26, 30, '#9a6ad0', '#4a1a80', '#140428'));
+  ell(g, 40, 34, 18, 15, '#f4eef4');
+  ell(ge, 40 + sw * 0.7, 34, 10, 11, '#e040ff'); ell(g, 40 + sw * 0.7, 34, 4, 7, '#0a0010');
+  ell(ge, 35, 28, 2.4, 2.4, '#ffffff');
+  for (const [x, y] of [[20, 18], [62, 20], [16, 44], [64, 46]]) { ell(g, x, y, 4, 4, '#f0e8f0'); ell(ge, x, y, 2, 2, '#c040ff'); }
+}
+
 function drawBoss(g, ge, w, h, f) {
   const st = f === 1 ? 1.5 : -1.5;
   const steel = (x0, y0, x1, y1) => lin(g, x0, y0, x1, y1, [[0, '#8a8698'], [0.45, '#4a4658'], [1, '#1c1a24']]);
@@ -601,6 +682,65 @@ function drawTorchItem() {
   });
 }
 
+// PNJ provisionales: mercader encapuchado con farol y mochila; herrero con mandil y martillo; yunque
+function drawMerchant(frame) {
+  const robe = [92, 64, 44], robeD = [58, 38, 26], robeL = [128, 92, 60], skin = [196, 150, 112], pack = [120, 82, 40];
+  return pix(22, 34, (set) => {
+    for (let y = 9; y < 34; y++) { const w = 4 + Math.min(6, (y - 9) * 0.35); for (let x = Math.round(11 - w); x <= Math.round(10 + w); x++) set(x, y, x < 9 ? robeL : x > 13 ? robeD : robe); }
+    for (let y = 1; y < 11; y++) for (let x = 6; x < 16; x++) { const d = Math.hypot((x - 10.5) / 5, (y - 6) / 5.2); if (d < 1) set(x, y, d > 0.75 ? robeD : robe); }
+    for (let y = 5; y < 10; y++) for (let x = 8; x < 13; x++) set(x, y, y < 7 ? [24, 16, 12] : skin); // cara en sombra
+    set(9, 7, [255, 220, 120], true); set(12, 7, [255, 220, 120], true); // ojos que brillan
+    for (let y = 12; y < 24; y++) for (let x = 15; x < 21; x++) set(x, y, x === 15 || y === 12 ? PW.d : pack); // mochila
+    for (let y = 18; y < 22; y++) set(3, y, [60, 58, 64]); // asa del farol
+    const fl = frame & 1 ? [255, 230, 140] : [255, 190, 80];
+    for (let y = 22; y < 27; y++) for (let x = 1; x < 6; x++) set(x, y, (x === 1 || x === 5 || y === 22 || y === 26) ? [70, 66, 72] : fl, !(x === 1 || x === 5 || y === 22 || y === 26));
+  });
+}
+function drawSmith(frame) {
+  const skin = [186, 128, 92], skinD = [140, 92, 64], apron = [92, 62, 40], shirt = [70, 74, 88], hair = [60, 40, 30];
+  return pix(24, 34, (set) => {
+    for (let y = 2; y < 9; y++) for (let x = 8; x < 15; x++) set(x, y, y < 4 ? hair : x === 8 ? skinD : skin); // cabeza
+    for (let y = 7; y < 11; y++) for (let x = 9; x < 14; x++) set(x, y, hair); // barba
+    for (let y = 10; y < 26; y++) for (let x = 5; x < 18; x++) set(x, y, x < 7 || x > 15 ? shirt : y > 12 ? (x < 9 ? apron.map(v => v * 1.2) : apron) : shirt); // torso y mandil
+    for (let y = 26; y < 34; y++) { for (let x = 6; x < 10; x++) set(x, y, [50, 40, 34]); for (let x = 13; x < 17; x++) set(x, y, [50, 40, 34]); }
+    // brazo con martillo: arriba o abajo según el fotograma
+    const up = (frame & 2) === 0;
+    const hx = 19, hy = up ? 6 : 16;
+    for (let y = Math.min(hy, 12); y < 14 + (up ? 0 : 4); y++) set(18, y, skin);
+    for (let y = hy - 3; y < hy + 2; y++) for (let x = hx; x < hx + 5; x++) set(x, y, [96, 96, 108]);
+    for (let y = hy + 2; y < hy + 6; y++) set(hx + 2, y, PW.d);
+  });
+}
+function drawAnvil() {
+  return pix(18, 10, (set) => {
+    for (let x = 0; x < 18; x++) for (let y = 0; y < 3; y++) set(x, y, y === 0 ? [140, 140, 150] : [90, 90, 100]);
+    for (let y = 3; y < 7; y++) for (let x = 6; x < 13; x++) set(x, y, [70, 70, 80]);
+    for (let y = 7; y < 10; y++) for (let x = 3; x < 16; x++) set(x, y, [60, 60, 70]);
+  });
+}
+
+function drawGhost(kind, frame) {
+  const c0 = [150, 230, 255], c1 = [90, 170, 230], c2 = [50, 100, 170], eye = [255, 255, 255];
+  return pix(24, 36, (set) => {
+    const bob = frame ? 1 : 0;
+    for (let y = 3; y < 34; y++) {
+      const top = y < 12, w = top ? Math.sqrt(Math.max(0, 25 - (y - 8) * (y - 8))) : 5 + (y - 12) * 0.12;
+      for (let x = Math.round(11.5 - w); x <= Math.round(11.5 + w); x++) {
+        if (y > 28 && ((x + y + bob) % 4 === 0)) continue; // jirones en el borde inferior
+        const k = (x - 11.5) / (w + 0.01);
+        set(x, y + bob - 1, k < -0.4 ? c0 : k > 0.5 ? c2 : c1, true);
+      }
+    }
+    set(9, 7 + bob, eye, true); set(14, 7 + bob, eye, true); set(9, 8 + bob, [20, 30, 60], true); set(14, 8 + bob, [20, 30, 60], true);
+    // arma espectral
+    const W = [210, 250, 255];
+    if (kind === 'melee') for (let y = 6; y < 26; y++) set(20, y + bob, W, true);
+    if (kind === 'dagger') for (let y = 15; y < 24; y++) { set(20, y + bob, W, true); set(2, y + bob, W, true); }
+    if (kind === 'staff') { for (let y = 4; y < 34; y++) set(20, y + bob, [120, 160, 210], true); for (let y = 1; y < 5; y++) for (let x = 19; x < 22; x++) set(x, y + bob, [220, 150, 255], true); }
+    if (kind === 'bow') for (let y = 8; y < 28; y++) set(20 + Math.round(Math.sin((y - 8) / 20 * Math.PI) * 2), y + bob, W, true);
+  });
+}
+
 function initSprites() {
   const fr = (fn, w, h, n, o) => Array.from({ length: n }, (_, f) => paint(w, h, (g, ge) => fn(g, ge, w, h, f), Object.assign({ seed: 11 + f }, o)));
   SPR.skeleton = fr(drawSkeleton, 50, 72, 2);
@@ -609,6 +749,9 @@ function initSprites() {
   SPR.wraith = fr(drawWraith, 48, 72, 2, { keepAlpha: true, cut: 40, outline: false });
   SPR.imp = fr(drawImp, 48, 56, 2);
   SPR.boss = fr(drawBoss, 80, 96, 2);
+  SPR.zombie = fr(drawZombie, 48, 72, 2); SPR.cultist = fr(drawCultist, 48, 72, 2); SPR.spiderE = fr(drawSpider, 56, 36, 2);
+  SPR.hound = fr(drawHound, 64, 44, 2); SPR.eye = fr(drawEye, 48, 52, 2);
+  SPR.lich = fr(drawLich, 80, 96, 2); SPR.queen = fr(drawQueen, 88, 72, 2); SPR.voidlord = fr(drawVoidLord, 80, 90, 2);
   SPR.skulltorch = fr(drawSkullTorch, 20, 64, 4);
   SPR.brazier = fr(drawBrazier, 32, 40, 4);
   SPR.candles = fr(drawCandles, 24, 21, 4);
@@ -622,6 +765,9 @@ function initSprites() {
   SPR.keys = KEYS.map(k => drawKeySpr(k.col));
   SPR.coins = drawCoins();
   SPR.torchItem = drawTorchItem();
+  SPR.merchant = [0, 1, 2, 3].map(drawMerchant); SPR.smith = [0, 1, 2, 3].map(drawSmith); SPR.anvil = [drawAnvil()];
+  for (const k of ['melee', 'dagger', 'staff', 'bow']) SPR['ghost_' + k] = [drawGhost(k, 0), drawGhost(k, 1)];
+  SPR.potionIcon = SPR.potion;
   SPR.altar = [0, 1, 2, 3].map(f => drawAltar(f, true)); SPR.altarOff = [drawAltar(0, false)];
   SPR.spikesUp = drawSpikes(true); SPR.spikesDown = drawSpikes(false);
 
