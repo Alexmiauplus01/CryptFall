@@ -1,7 +1,7 @@
 // Controles táctiles para móvil (en horizontal):
 //  · mitad izquierda: joystick que aparece donde pones el dedo (moverse y caminar de lado)
 //  · mitad derecha: desliza para girar la cámara
-//  · botones: ATACAR (mantener), ESQUIVAR, habilidades R/C/V con su recarga, ESCUDO (si lo llevas)
+//  · botones: ATACAR (toque o mantener; arrastrando el dedo también gira la cámara), ESQUIVAR, habilidades R/C/V con su recarga, ESCUDO (si lo llevas)
 //  · arriba: pausa, diario, inventario y cambiar de arma
 //  · en los menús, tocar es hacer clic
 const TOUCH = { roles: new Map(), full: false };
@@ -29,7 +29,12 @@ function hitButton(b, c) {
 function pressButton(b) {
   const p = G.p;
   switch (b.id) {
-    case 'attack': mouse.fire = true; break;
+    case 'attack': { // un toque ataca una vez al momento; si se mantiene, sigue atacando
+      mouse.fire = true;
+      const blocking = p.wantBlock && p.off === 'shield' && WEAPONS[p.weapon].hands === 1;
+      if (p.shootCd <= 0 && !blocking) playerAttack();
+      break;
+    }
     case 'dash': tryDash(); break;
     case 'block': p.wantBlock = true; break;
     case 'pause': pauseGame(); break;
@@ -72,7 +77,7 @@ canvas.addEventListener('touchstart', (e) => {
     const c = touchPoint(t);
     if (G.state !== 'play') { handleClick(Math.floor(c.x), Math.floor(c.y), 0); continue; }
     const b = touchButtons().find(b => hitButton(b, c));
-    if (b) { TOUCH.roles.set(t.identifier, { kind: 'btn', b }); pressButton(b); continue; }
+    if (b) { TOUCH.roles.set(t.identifier, { kind: 'btn', b, lx: c.x }); pressButton(b); continue; }
     if (c.x < VW * 0.45 && !G.stick) {
       TOUCH.roles.set(t.identifier, { kind: 'stick' });
       G.stick = { f: 0, s: 0, bx: c.x, by: c.y, x: c.x, y: c.y };
@@ -97,7 +102,8 @@ canvas.addEventListener('touchmove', (e) => {
       const dead = 0.18; // zona muerta
       st.s = Math.abs(dx / STICK_R) < dead ? 0 : dx / STICK_R;
       st.f = Math.abs(dy / STICK_R) < dead ? 0 : -dy / STICK_R;
-    } else if (r.kind === 'look' && G.state === 'play') {
+    } else if ((r.kind === 'look' || (r.kind === 'btn' && r.b.id === 'attack')) && G.state === 'play') {
+      // el botón de atacar también gira la cámara al arrastrar el dedo (atacar y apuntar a la vez)
       G.p.a += (c.x - r.lx) * LOOK_K * (G.cfg ? G.cfg.sens : 1);
       r.lx = c.x;
     }
@@ -172,6 +178,7 @@ function drawTouchUI(u) {
     if (b.i !== undefined) { const cd = Math.max(0, p.skillCd[b.i]); ready = cd <= 0; prog = ready ? 1 : 1 - cd / p.skillMax[b.i]; }
     if (b.id === 'dash' && p.dashCd > 0) { ready = false; prog = 1 - p.dashCd / p.dashMax; }
     tCircle(u, b.x, b.y, b.r, on ? [90, 60, 20] : dark, on ? 0.6 : 0.4, ready ? gold : [150, 120, 80], ready ? 0.85 : 0.6, prog);
+    if (b.id === 'attack') { u.text(Math.round(b.x) - b.r + 4, Math.round(b.y) - 3, '<', C.dim, { shadow: false }); u.text(Math.round(b.x) + b.r - 8, Math.round(b.y) - 3, '>', C.dim, { shadow: false }); }
     u.text(Math.round(b.x) + 1, Math.round(b.y) - 3, b.label, ready ? C.goldL : C.dim, { align: 'center', shadow: false });
   }
 }
