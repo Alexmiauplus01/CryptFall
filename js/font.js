@@ -54,6 +54,7 @@ function drawGlyphs(buf, BW, BH, x, y, s, col, sc, grad) {
 
 // opt: {scale, align:'left'|'center'|'right', shadow:bool|'outline', shadowCol, grad:[7 colores]}
 function drawText(buf, BW, BH, x, y, text, col, opt = {}) {
+  if (typeof tr === 'function') text = tr(text);
   const sc = opt.scale || 1, s = String(text).toUpperCase();
   const w = textWidth(s, sc);
   if (opt.align === 'center') x -= (w / 2) | 0; else if (opt.align === 'right') x -= w;
@@ -67,6 +68,7 @@ function drawText(buf, BW, BH, x, y, text, col, opt = {}) {
 }
 
 function wrapText(text, maxChars) {
+  if (typeof tr === 'function') text = tr(text);
   const words = String(text).split(' '), lines = [];
   let cur = '';
   for (const w of words) {

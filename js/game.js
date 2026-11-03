@@ -64,7 +64,7 @@ const G = {
   flow: new Int16Array(MW * MH), flowT: 0, seen: new Uint8Array(MW * MH),
   pending: 0, bladeAng: 0, novaT: 4, boltT: 2, novaFx: 0, shake: 0, hurtFx: 0, flashFx: 0, hitMark: 0, hadLock: false,
   log: [], toasts: [], opts: [], best: null, final: null, choice: null, evolveReady: false,
-  forge: {}, forgeOpts: null, met: {}, inv: { torch: 0 },
+  forge: {}, forgeOpts: null, met: {}, inv: { torch: 0 }, equip: {}, bag: [],
   dg: null, z: 0, loot: 0, bank: 0, keys: [], journal: [], jpage: -1, arena: null, touchCd: 0, fade: 0,
 };
 const TORCH_FUEL = 240; // segundos que arde una antorcha
@@ -90,13 +90,13 @@ function recalc() {
   };
   p.multi = 1 + L('multi');
   p.pierce = 1 + L('pierce');
-  p.maxHp = Math.round((100 + 30 * L('vit')) * cm.hp);
+  p.maxHp = Math.round((100 + 30 * L('vit')) * cm.hp * (1 + eqStat('hp')));
   if (p.maxHp > oldMax && oldMax > 0) p.hp += p.maxHp - oldMax;
-  p.regen = 0.6 * L('regen');
+  p.regen = 0.6 * L('regen') + eqStat('regen');
   p.magnet = 2.2 * (1 + 0.5 * L('magnet'));
-  p.xpMul = 1 + 0.15 * L('wis');
-  p.light = 1 + 0.25 * L('light');
-  p.dashMax = 2.4 * Math.pow(0.8, L('dash'));
+  p.xpMul = (1 + 0.15 * L('wis')) * (1 + eqStat('xp'));
+  p.light = (1 + 0.25 * L('light')) * (1 + eqStat('light'));
+  p.dashMax = 2.4 * Math.pow(0.8, L('dash')) * (1 - eqStat('dash'));
   p.hp = Math.min(p.hp, p.maxHp);
   applyStats();
 }
@@ -115,6 +115,7 @@ function setClass(id, evolving) {
 }
 
 function newRun(cls) {
+  G.equip = { anillo: null, amuleto: null, armadura: null }; G.bag = [];
   G.upg = {}; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
   G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
@@ -134,7 +135,7 @@ function newDungeon(n) {
   G.dg = new Dungeon(n);
   G.lv = null; G.loot = 0; G.keys = []; G.journal = []; G.jpage = -1; G.arena = null; G.boss = null; G.t = 0;
   for (const z of G.dg.zs) populateLevel(G.dg.lv(z));
-  placeGhost(G.dg); G.elite = null;
+  placeGhost(G.dg); G.elite = null; G.phoenixUsed = false;
   enterLevel(G.dg.start.z, G.dg.start, true);
   jot('start', `Llego a ${G.dg.name}. Dicen que sus niveles guardan riquezas olvidadas... y un Guardián. Debo salir con vida y con el botín.`);
   if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); }
@@ -160,7 +161,7 @@ function populateLevel(lv) {
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
-    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35 }; P.push(c); return c; };
+    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12) }; P.push(c); return c; };
     const foes = (n, type) => { for (let k = 0; k < n; k++) { const [x, y] = roomSpot(lv, r, used); const e = spawnEnemy(type || pickType(), x, y); e.sleep = true; } };
     let box = null;
     switch (r.type) {
@@ -388,10 +389,16 @@ function hurtPlayer(d, sx, sy) {
   if (d < 0.5) { p.inv = 0.3; return; }
   p.hp -= Math.max(1, Math.round(d)); p.inv = 0.45; G.hurtFx = 1; G.shake = Math.max(G.shake, 0.3);
   Sfx.play('hurt'); if (typeof padRumble === 'function') padRumble(0.7, 160);
+  if (eqSpecial('espinas') && sx !== undefined) { let best = null, bd = 2.2; for (const e of G.enemies) { const q = Math.hypot(e.x - sx, e.y - sy); if (!e.dead && q < bd) { bd = q; best = e; } } if (best) damageEnemy(best, d * 0.3, { silent: true }); }
   if (p.hp <= 0) die();
 }
 
 function die() {
+  if (eqSpecial('fenix') && !G.phoenixUsed) { // el amuleto del fénix te devuelve a la vida una vez por mazmorra
+    const p = G.p; G.phoenixUsed = true; p.hp = p.maxHp * 0.4; p.inv = 2.5; G.flashFx = 1; G.shake = 0.5;
+    Sfx.play('portal'); toast('¡EL FÉNIX TE DEVUELVE A LA VIDA!', true); vfxPowerUp('fire');
+    return;
+  }
   G.state = 'dead';
   Sfx.play('die'); Sfx.stopMusic();
   if (document.exitPointerLock) document.exitPointerLock();
@@ -522,6 +529,9 @@ function closeInventory() { if (G.state !== 'inventory') return; G.state = 'play
 function invAction(id) {
   if (id === 'torch') equipTorch();
   else if (id === 'shield') { const p = G.p; if (WEAPONS[p.weapon].hands !== 1) { toast('NECESITAS UNA MANO LIBRE', false); return; } toggleOffhand(); }
+  else if (typeof id === 'string' && id.startsWith('bag:')) equipFromBag(+id.slice(4));
+  else if (typeof id === 'string' && id.startsWith('drop:')) dropFromBag(+id.slice(5));
+  else if (typeof id === 'string' && id.startsWith('eq:')) unequip(id.slice(3));
   else if (id === 'potion') drinkPotion();
   else if (id === 'map') { readMap(); }
   else if (id === 'rune') { closeInventory(); useRune(); }
@@ -672,7 +682,7 @@ function dropGem(x, y, v) {
 function killEnemy(e) {
   e.dead = true; G.kills++;
   forgeOnKill(e);
-  if (e.ghost) onGhostKilled(e);
+  if (e.ghost) { onGhostKilled(e); if (Math.random() < 0.6) dropItem('ghost', e.x, e.y + 0.3); }
   const d = e.def, col = d.spr === 'slime' ? rgb(120, 220, 90) : d.spr === 'imp' || d.boss ? rgb(255, 90, 40) : rgb(220, 210, 180);
   burst(e.x, e.y, 0.3, d.boss ? 40 : 10, col, 2.5, 0.8, false, 0.06);
   if (d.boss) {
@@ -689,6 +699,7 @@ function killEnemy(e) {
 
 function onBossDead(e) {
   G.boss = null;
+  dropItem('boss', e.x + 0.4, e.y);
   G.flashFx = 1; G.shake = 0.7;
   Sfx.play('portal');
   toast(`¡${e.def.name} HA CAÍDO!`, true); logMsg('Su tesoro es tuyo. Ahora, a la salida', C.cyan);
@@ -920,6 +931,8 @@ function updatePickups(dt) {
     } else if (k.type === 'gold') {
       if (d < p.magnet * 0.6 || k.mag) { k.mag = true; k.x += dx / d * 6 * dt; k.y += dy / d * 6 * dt; }
       if (d < 0.5) { k.dead = true; G.loot += k.v; Sfx.play('coin'); logMsg(`+${k.v} de oro`, C.gold); }
+    } else if (k.type === 'item') {
+      if (d < 0.7 && !k.full) { if (takeItem(k.item)) k.dead = true; else k.full = true; } else if (d > 1.2) k.full = false;
     } else if (k.type === 'torch') {
       if (d < 0.7) { k.dead = true; G.inv.torch++; Sfx.play('gem'); toast('+1 ANTORCHA', false); logMsg(`Recoges una antorcha (${G.inv.torch})`, C.orange); }
     } else if (k.type === 'key') {
@@ -955,6 +968,7 @@ function openChest(c) {
   }
   if (c.item === 'potion') G.pickups.push({ type: 'potion', x: c.x, y: c.y + 0.3, t: 0 });
   if (c.torch) G.pickups.push({ type: 'torch', x: c.x - 0.3, y: c.y + 0.2, t: 0 });
+  if (c.eq) dropItem('chest', c.x + 0.3, c.y + 0.2);
   else if (c.item && c.item.key !== undefined) takeKey(c.item.key);
   burst(c.x, c.y, 0.3, 14, rgb(255, 220, 110), 2, 0.7, true, 0.05);
   logMsg(`Abres un cofre: ${c.gold} de oro`, C.gold);
@@ -1157,6 +1171,7 @@ function buildItems() {
     if (k.type === 'gem') { const s = k.v >= 5 ? SPR.gemGold : k.v >= 3 ? SPR.gemGreen : SPR.gemBlue; items.push({ x: k.x, y: k.y, spr: s, h: 0.22, w: 0.22 * s.w / s.h, z: 0.05 + Math.sin(k.t * 4) * 0.03 }); }
     else if (k.type === 'potion') items.push({ x: k.x, y: k.y, spr: SPR.potion, h: 0.3, w: 0.2, z: 0.02 + Math.sin(k.t * 3) * 0.02 });
     else if (k.type === 'chest') { const s = k.open ? SPR.chestOpen : SPR.chest; items.push({ x: k.x, y: k.y, spr: s, h: 0.42, w: 0.42 * s.w / s.h, z: 0 }); }
+    else if (k.type === 'item') { const s = SPR[`icon_${k.item.slot}_${k.item.rar}`]; items.push({ x: k.x, y: k.y, spr: s, h: 0.24, w: 0.24, z: 0.18 + Math.sin(k.t * 3) * 0.04, bright: true }); }
     else if (k.type === 'torch') items.push({ x: k.x, y: k.y, spr: SPR.torchItem, h: 0.36, w: 0.36 * SPR.torchItem.w / SPR.torchItem.h, z: 0 });
     else if (k.type === 'gold') items.push({ x: k.x, y: k.y, spr: SPR.coins, h: 0.13, w: 0.13 * SPR.coins.w / SPR.coins.h, z: 0.01 });
     else if (k.type === 'key') { const s = SPR.keys[k.key]; items.push({ x: k.x, y: k.y, spr: s, h: 0.3, w: 0.3 * s.w / s.h, z: 0.25 + Math.sin(k.t * 3) * 0.05, bright: true }); }
@@ -1190,6 +1205,7 @@ function dynLights() {
   const out = [], p = G.p;
   for (const pr of G.projs) out.push({ x: pr.x, y: pr.y, c: PROJ_LIGHT[pr.spr] || PROJ_LIGHT.orbBlue, rad: pr.friendly ? 2.6 : 2.4 });
   for (const f of G.fx) if (f.type === 'bolt') out.push({ x: f.x, y: f.y, c: [1.4, 1.7, 2.2], rad: 6 });
+  for (const k of G.pickups) if (k.type === 'item') { const c = RARITY[k.item.rar].col; out.push({ x: k.x, y: k.y, c: c.map(v => v / 255 * 0.6), rad: 2.2 }); }
   for (const k of G.pickups) if (k.type === 'key') out.push({ x: k.x, y: k.y, c: KEYS[k.key].col.map(v => v / 255 * 0.7), rad: 2.5 });
   vfxLights(out);
   for (const z of G.zones) out.push({ x: z.x, y: z.y, c: [0.25, 0.45, 0.12], rad: z.r + 1 });
@@ -1211,7 +1227,7 @@ function dynLights() {
 function render() {
   const p = G.p;
   if (!G.lv) return;
-  const sh = G.shake * 3;
+  const sh = G.cfg && G.cfg.noShake ? 0 : G.shake * 3;
   const hasTorch = offhandOf(p) === 'torch', vis = classPassive(p.cls, 'vision', 0.4);
   // sin antorcha solo ves la penumbra cercana (más o menos según la visión nocturna de la clase)
   const cam = { x: p.x, y: p.y, a: p.a + (sh > 0.05 ? rand(-sh, sh) * 0.01 : 0), light: (p.light || 1) * (hasTorch ? 1 : 0.75 + 0.35 * vis), torch: hasTorch ? 1.05 : 0.08 + vis * 0.3, lit: hasTorch };
@@ -1219,18 +1235,19 @@ function render() {
   // luz que recibe el jugador (estática + dinámica, ya preparada por el render) para oscurecer sus manos
   const sl = R.sampleLight(p.x, p.y, [0, 0, 0]);
   p.handLight = clamp((sl[0] + sl[1] + sl[2]) / 3 * 1.3 + (hasTorch ? 0.9 : cam.torch * 0.8) + 0.06, 0.16, 1);
-  const scene = G.state !== 'title' && G.state !== 'options';
+  const scene = G.state !== 'title' && G.state !== 'options' && !(G.state === 'controls' && G.ctlBack !== 'paused');
   if (scene) R.drawHands(Object.assign({}, p, { off: offhandOf(p), handLight: p.handLight, enchanted: p.buffs.some(b => b.id === 'enchant') }), G.time, p.weapon === 'staff' ? SPELLS[p.spell].col : G.theme.glow);
   if (scene) drawScreenVfx(R);
   const lowHp = G.state === 'play' && p.hp < p.maxHp * 0.3 ? 0.35 + 0.2 * Math.sin(G.time * 6) : 0;
-  R.tint(Math.max(G.hurtFx * 0.8, lowHp), [190, 10, 10]);
-  R.flash(G.flashFx * 0.45, [120, 200, 255]);
+  R.tint(G.cfg && G.cfg.noFlash ? Math.min(0.3, Math.max(G.hurtFx * 0.5, lowHp * 0.6)) : Math.max(G.hurtFx * 0.8, lowHp), [190, 10, 10]);
+  if (!(G.cfg && G.cfg.noFlash)) R.flash(G.flashFx * 0.45, [120, 200, 255]);
   R.fadeBlack(G.fade);
   if (p.stealth > 0) R.tint(Math.min(0.32, p.stealth * 0.5), [50, 30, 110]);
 
   ui.begin(R.buf);
   if (G.state === 'title') { if (G.hasSave === undefined) G.hasSave = hasSave(); ui.title(G); }
   else if (G.state === 'options') ui.options(G);
+  else if (G.state === 'controls' && G.ctlBack !== 'paused') ui.controls(G);
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
   else {
@@ -1242,6 +1259,7 @@ function render() {
     else if (G.state === 'inventory') ui.inventory(G);
     else if (G.state === 'shop') ui.shop(G);
     else if (G.state === 'map') ui.mapScreen(G);
+    else if (G.state === 'controls') ui.controls(G);
     else if (G.state === 'forge') ui.forge(G);
     else if (G.state === 'exitask') ui.exitAsk(G);
     else if (G.state === 'escaped') ui.escaped(G);
@@ -1252,8 +1270,14 @@ function render() {
 }
 
 // ---------------------------------------------------------------- Entrada y bucle
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+document.addEventListener('keydown', (ev) => {
+  if (ev.code === 'Tab' || ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
+  // reasignando un control: la siguiente tecla queda asignada (Escape cancela)
+  if (G.rebind && G.rebind.dev === 'key') { if (ev.code !== 'Escape') rebind('key', G.rebind.id, ev.code); G.rebind = null; Sfx.play('gem'); return; }
+  if (G.state === 'controls' && ev.code === 'Escape') { G.state = G.ctlBack || 'title'; return; }
+  const code = ev.isTrusted === false ? ev.code : translateKey(ev.code);
+  if (!code) return;
+  const e = { code, preventDefault: () => ev.preventDefault() };
   keys[e.code] = true;
   const dig = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
   if (G.state === 'levelup') { if (dig !== undefined) chooseUpgrade(dig); return; }
@@ -1290,7 +1314,7 @@ document.addEventListener('keydown', (e) => {
   else if (G.state === 'title' && e.code === 'KeyO') G.state = 'options';
   else if (G.state === 'options' && (e.code === 'KeyO' || e.code === 'Escape')) G.state = 'title';
 });
-document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+document.addEventListener('keyup', (ev) => { const c = ev.isTrusted === false ? ev.code : translateKey(ev.code); if (c) keys[c] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.fire = false; if (G.p) G.p.wantBlock = false; if (G.state === 'play') pauseGame(); });
 
 function toCanvas(e) {
@@ -1308,6 +1332,14 @@ function handleClick(x, y, button = 0) {
   const e = { button };
   switch (G.state) {
     case 'title': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h && h.id === 'options') G.state = 'options'; else if (h && h.id === 'continue') loadRun(); else if (h && h.id === 'new') startRun(); else if (e.button === 0 && !hasSave()) startRun(); break; }
+    case 'controls': {
+      const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h));
+      if (!h) { G.state = G.ctlBack || 'title'; G.rebind = null; break; }
+      if (h.id === 'reset') resetBindings();
+      else if (h.id === 'back') { G.state = G.ctlBack || 'title'; G.rebind = null; }
+      else { const [dev, id] = h.id.split(':'); G.rebind = { dev, id }; }
+      break;
+    }
     case 'options': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) optAction(h.id); else G.state = 'title'; break; }
     case 'dead': if (e.button === 0) startRun(); break;
     case 'classselect': case 'evolve': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) pickChoice(h.id); break; }
@@ -1376,6 +1408,8 @@ function saveMeta() { saveJSON('cryptfall_meta', G.meta); }
 function saveCfg() { saveJSON('cryptfall_opts', G.cfg); }
 function applyCfg() {
   Sfx.setVolume(G.cfg.muted ? 0 : G.cfg.vol); Sfx.setMusic(G.cfg.music !== false);
+  R.fast = !!G.cfg.fast;
+  if (typeof applyBindings === 'function') applyBindings();
   document.body.classList.toggle('crt', !!G.cfg.crt);
 }
 function optAction(id) {
@@ -1388,6 +1422,13 @@ function optAction(id) {
   if (id === 'fps') o.fps = o.fps === 60 ? 30 : 60;
   if (id === 'crt') o.crt = !o.crt;
   if (id === 'music') o.music = !o.music;
+  if (id === 'quality') o.fast = !o.fast;
+  if (id === 'shake') o.noShake = !o.noShake;
+  if (id === 'flash') o.noFlash = !o.noFlash;
+  if (id === 'rumble') o.noRumble = !o.noRumble;
+  if (id === 'bigtouch') o.bigTouch = !o.bigTouch;
+  if (id === 'lang') { o.lang = o.lang === 'en' ? 'es' : 'en'; setLang(o.lang); }
+  if (id === 'controls') { G.ctlBack = G.state; G.state = 'controls'; G.rebind = null; }
   applyCfg(); saveCfg(); Sfx.play('gem');
 }
 
@@ -1422,6 +1463,8 @@ function boot() {
   G.meta = loadJSON('cryptfall_meta', { gold: 0, escapes: 0, deaths: 0, bestLoot: 0, bestDepth: 0 });
   G.cfg = loadJSON('cryptfall_opts', { sens: 1, vol: 0.8, muted: false, fps: 60, crt: false, music: true });
   if (G.cfg.fps !== 30) G.cfg.fps = 60;
+  if (!G.cfg.lang) G.cfg.lang = /^es\b/i.test(navigator.language || 'es') ? 'es' : 'en';
+  setLang(G.cfg.lang);
   applyCfg();
   initSprites();
   G.p = makePlayer('mago'); setClass('mago', false);

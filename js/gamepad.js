@@ -44,30 +44,32 @@ function pollPad(dt) {
   PAD.prev = b;
   const lx = axis(g.axes[0] || 0), ly = axis(g.axes[1] || 0), rx = axis(g.axes[2] || 0);
   const any = b.some(Boolean) || lx || ly || rx;
-  if (any && !PAD.active) { PAD.active = true; G.padMode = true; Sfx.init(); }
+  if (any && !PAD.active) { PAD.active = true; G.padMode = true; Sfx.init(); applyBindings(); }
   if (!PAD.active) return;
   const p = G.p;
-
+  // reasignando un botón: el siguiente que se pulse queda asignado
+  if (G.rebind && G.rebind.dev === 'pad') { const i = b.findIndex((v, k) => v && !was[k]); if (i >= 0) { rebind('pad', G.rebind.id, i); G.rebind = null; Sfx.play('gem'); } return; }
+  const P = bindPad();
   if (G.state === 'play') {
     PAD.focus = -1;
     G.padMove = (lx || ly) ? { f: -ly, s: lx } : null;
     // giro con curva de respuesta (preciso al apuntar, rápido al empujar a fondo)
     if (rx) p.a += Math.sign(rx) * Math.pow(Math.abs(rx), 1.6) * 3.4 * (G.cfg ? G.cfg.sens : 1) * dt;
-    if (down(BTN.RT)) mouse.fire = true; else if (!held(BTN.RT) && was[BTN.RT]) mouse.fire = false;
+    if (down(P.attack)) mouse.fire = true; else if (!held(P.attack) && was[P.attack]) mouse.fire = false;
     const shieldOk = p.off === 'shield' && WEAPONS[p.weapon].hands === 1;
-    if (held(BTN.LT) && shieldOk) p.wantBlock = true; else if (!held(BTN.LT) && was[BTN.LT] && shieldOk) p.wantBlock = false;
-    if (down(BTN.LT) && !shieldOk) tryDash();
-    if (down(BTN.A)) tryDash();
-    if (down(BTN.X)) useSkill(0);
-    if (down(BTN.Y)) useSkill(1);
-    if (down(BTN.B)) useSkill(2);
-    if (down(BTN.LB)) toggleOffhand();
-    if (down(BTN.RB)) { const n = CLASSES[p.cls].slots.length; if (n > 1) equipSlot((p.slot + 1) % n); }
-    if (down(BTN.UP)) drinkPotion();
-    if (down(BTN.DOWN) || down(BTN.BACK)) openMap();
-    if (down(BTN.LEFT)) openJournal();
-    if (down(BTN.RIGHT)) openInventory();
-    if (down(BTN.START)) pauseGame();
+    if (held(P.block) && shieldOk) p.wantBlock = true; else if (!held(P.block) && was[P.block] && shieldOk) p.wantBlock = false;
+    if (down(P.block) && !shieldOk) tryDash();
+    if (down(P.dash)) tryDash();
+    if (down(P.skill1)) useSkill(0);
+    if (down(P.skill2)) useSkill(1);
+    if (down(P.skill3)) useSkill(2);
+    if (down(P.shield)) toggleOffhand();
+    if (down(P.weapon)) { const n = CLASSES[p.cls].slots.length; if (n > 1) equipSlot((p.slot + 1) % n); }
+    if (down(P.potion)) drinkPotion();
+    if (down(P.map) || down(BTN.BACK)) openMap();
+    if (down(P.journal)) openJournal();
+    if (down(P.inventory)) openInventory();
+    if (down(P.pause)) pauseGame();
     return;
   }
   // ---------- menús
@@ -97,6 +99,7 @@ function pollPad(dt) {
   if (down(BTN.B) || (down(BTN.START) && G.state === 'paused')) {
     if (G.state === 'paused') resumeGame();
     else if (G.state === 'options') G.state = 'title';
+    else if (G.state === 'controls') { G.state = G.ctlBack || 'title'; G.rebind = null; }
     else if (['journal', 'map', 'inventory', 'shop', 'forge', 'exitask'].includes(G.state)) padKey('Escape');
     PAD.focus = -1;
   }
@@ -104,7 +107,7 @@ function pollPad(dt) {
 
 // vibración al recibir daño (donde el mando lo admita)
 function padRumble(strength, ms) {
-  const g = padState(); if (!g || !PAD.active) return;
+  const g = padState(); if (!g || !PAD.active || (G.cfg && G.cfg.noRumble)) return;
   const v = g.vibrationActuator;
   try { if (v && v.playEffect) v.playEffect('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: strength * 0.6 }); } catch (e) { /* sin vibración */ }
 }

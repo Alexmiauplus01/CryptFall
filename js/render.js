@@ -154,7 +154,8 @@ class Renderer {
     const lt = [0, 0, 0];
     const wallFrame = ((time * 9) | 0) & 3;
 
-    for (let x = 0; x < VW; x++) {
+    const xstep = this.fast ? 2 : 1; // calidad rápida: una columna de cada dos (se duplica)
+    for (let x = 0; x < VW; x += xstep) {
       const camX = 2 * x / VW - 1;
       const rdx = dirX + plX * camX, rdy = dirY + plY * camX;
       const rl = Math.hypot(rdx, rdy);
@@ -234,6 +235,7 @@ class Renderer {
         B = ((c >> 16) & 255) * ((lb + b2) | 0) * k2 + ffb; if (B > 255) B = 255;
         buf[yc * VW + x] = (0xFF000000 | (B << 16) | (G << 8) | R) >>> 0;
       }
+      if (xstep === 2 && x + 1 < VW) { zbuf[x + 1] = zbuf[x]; for (let y = 0; y < VH; y++) buf[y * VW + x + 1] = buf[y * VW + x]; }
     }
 
     // ---------- sprites

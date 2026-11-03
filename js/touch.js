@@ -9,12 +9,12 @@ const STICK_R = 26, LOOK_K = 0.015;
 
 // botones visibles en partida (coordenadas del lienzo 480x270)
 function touchButtons() {
-  const p = G.p, cl = CLASSES[p.cls], out = [];
-  out.push({ id: 'attack', x: VW - 46, y: VH - 52, r: 25, label: 'ATACAR', hold: true });
-  out.push({ id: 'dash', x: VW - 104, y: VH - 24, r: 15, label: '>>' });
+  const p = G.p, cl = CLASSES[p.cls], out = [], big = G.cfg && G.cfg.bigTouch ? 1.3 : 1;
+  out.push({ id: 'attack', x: VW - 46 * big, y: VH - 52 * big, r: Math.round(25 * big), label: 'ATACAR', hold: true });
+  out.push({ id: 'dash', x: VW - 104 * big, y: VH - 24 * big, r: Math.round(15 * big), label: '>>' });
   cl.skills.forEach((sk, i) => {
     const pos = [[VW - 100, VH - 68], [VW - 84, VH - 107], [VW - 44, VH - 120]][i];
-    out.push({ id: 'skill' + i, i, x: pos[0], y: pos[1], r: 14, label: SKILL_LABEL[i] });
+    out.push({ id: 'skill' + i, i, x: Math.round(VW - (VW - pos[0]) * big), y: Math.round(VH - (VH - pos[1]) * big), r: Math.round(14 * big), label: ['R', 'C', 'V'][i] });
   });
   if (offhandOf(p) === 'shield') out.push({ id: 'block', x: VW - 144, y: VH - 22, r: 14, label: 'ESC', hold: true });
   const top = [['pause', 'II'], ['journal', 'J'], ['inventory', 'I']];

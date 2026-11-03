@@ -140,6 +140,8 @@ function applyStats() {
     if (m.leech) leech += m.leech; if (m.crit) crit += m.crit; if (m.regenPct) regenPct += m.regenPct;
   }
   const fs = { dmg, rate, crit, leech }; forgeStats(fs); dmg = fs.dmg; rate = fs.rate; crit = fs.crit; leech = fs.leech;
+  // objetos equipados
+  dmg *= 1 + eqStat('dmg'); crit += eqStat('crit'); rate *= 1 + eqStat('rate'); armor *= 1 - eqStat('armor'); spd *= 1 + eqStat('spd'); if (eqSpecial('sangre')) leech += 0.03;
   p.slashRamp = forgeRamp() || undefined;
   if (p.form === 'wolf') { spd *= 1.35; rate *= 1.25; dmg *= 1.1; }
   else if (p.form === 'bear') { spd *= 0.85; dmg *= 1.4; armor *= 0.55; }

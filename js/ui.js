@@ -197,82 +197,153 @@ class UI {
     this.text(cx, 22, 'PAUSA', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
     const ups = UPG.filter(u => L(u.id) > 0);
     const h = 20 + Math.max(1, ups.length) * 10;
-    this.panel(cx - 200, 56, 190, h);
+    this.panel(cx - 200, 50, 196, h);
     this.text(cx - 105, 60, 'MEJORAS', C.dim, { align: 'center' });
     if (!ups.length) this.text(cx - 105, 74, 'SIN MEJORAS AÚN', C.dim, { align: 'center' });
     ups.forEach((u, i) => { this.text(cx - 192, 74 + i * 10, u.name, u.passive ? C.orange : C.ink); this.text(cx - 18, 74 + i * 10, `NV ${L(u.id)}`, C.gold, { align: 'right' }); });
-    this.optionsPanel(G, cx + 10, 56);
-    this.text(cx, 56 + Math.max(h, 118) + 10, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
+    const oh = this.optionsPanel(G, cx + 6, 50);
+    this.text(cx, 50 + Math.max(h, oh) + 8, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
   // Opciones (se guardan en el navegador): sensibilidad, volumen, sonido, límite de FPS y filtro CRT
   optionsPanel(G, x, y) {
-    const o = G.cfg, w = 190;
-    this.panel(x, y, w, 118);
+    const o = G.cfg, w = 196, rh = 12;
+    const rows = [
+      ['arrows', 'SENSIBILIDAD', o.sens.toFixed(1), 'sens'],
+      ['arrows', 'VOLUMEN', `${Math.round(o.vol * 100)}%`, 'vol'],
+      ['toggle', 'SONIDO', o.muted ? 'NO' : 'SÍ', 'mute'],
+      ['toggle', 'MÚSICA', o.music === false ? 'NO' : 'SÍ', 'music'],
+      ['toggle', 'FOTOGRAMAS', `${o.fps} FPS`, 'fps'],
+      ['toggle', 'CALIDAD', o.fast ? 'RÁPIDA' : 'ALTA', 'quality'],
+      ['toggle', 'FILTRO CRT', o.crt ? 'SÍ' : 'NO', 'crt'],
+      ['toggle', 'SACUDIDAS', o.noShake ? 'NO' : 'SÍ', 'shake'],
+      ['toggle', 'DESTELLOS', o.noFlash ? 'NO' : 'SÍ', 'flash'],
+      ['toggle', 'VIBRACIÓN DEL MANDO', o.noRumble ? 'NO' : 'SÍ', 'rumble'],
+      ['toggle', 'BOTONES TÁCTILES', o.bigTouch ? 'GRANDES' : 'NORMALES', 'bigtouch'],
+      ['toggle', 'CONTROLES', '>', 'controls'],
+    ];
+    if (typeof LANGS !== 'undefined') rows.splice(4, 0, ['toggle', 'IDIOMA', o.lang === 'en' ? 'ENGLISH' : 'ESPAÑOL', 'lang']);
+    this.panel(x, y, w, rows.length * rh + 20);
     this.text(x + w / 2, y + 4, 'OPCIONES', C.dim, { align: 'center' });
-    const arrows = (yy, label, val, idm, idp) => {
+    rows.forEach(([kind, label, val, id], i) => {
+      const yy = y + 18 + i * rh;
       this.text(x + 8, yy, label, C.ink);
-      for (const [id, bx, t] of [[idm, x + w - 70, '<'], [idp, x + w - 18, '>']]) {
-        const hot = this.hit(bx - 3, yy - 3, 13, 13); this.hot.push({ x: bx - 3, y: yy - 3, w: 13, h: 13, id });
-        this.text(bx, yy, t, hot ? C.goldL : C.gold);
+      if (kind === 'arrows') {
+        for (const [hid, bx, t] of [[id + '-', x + w - 70, '<'], [id + '+', x + w - 18, '>']]) {
+          const hot = this.hit(bx - 3, yy - 3, 13, rh); this.hot.push({ x: bx - 3, y: yy - 3, w: 13, h: rh, id: hid });
+          this.text(bx, yy, t, hot ? C.goldL : C.gold);
+        }
+        this.text(x + w - 39, yy, val, C.goldL, { align: 'center' });
+      } else {
+        const hot = this.hit(x + 4, yy - 2, w - 8, rh); this.hot.push({ x: x + 4, y: yy - 2, w: w - 8, h: rh, id });
+        this.text(x + w - 39, yy, val, hot ? C.goldL : C.gold, { align: 'center' });
       }
-      this.text(x + w - 39, yy, val, C.goldL, { align: 'center' });
-    };
-    const toggle = (yy, label, val, id) => {
-      const hot = this.hit(x + 6, yy - 3, w - 12, 13); this.hot.push({ x: x + 6, y: yy - 3, w: w - 12, h: 13, id });
-      this.text(x + 8, yy, label, C.ink); this.text(x + w - 39, yy, val, hot ? C.goldL : C.gold, { align: 'center' });
-    };
-    arrows(y + 20, 'SENSIBILIDAD', o.sens.toFixed(1), 'sens-', 'sens+');
-    arrows(y + 36, 'VOLUMEN', `${Math.round(o.vol * 100)}%`, 'vol-', 'vol+');
-    toggle(y + 52, 'SONIDO', o.muted ? 'NO' : 'SÍ', 'mute');
-    toggle(y + 68, 'FOTOGRAMAS', `${o.fps} FPS`, 'fps');
-    toggle(y + 84, 'FILTRO CRT', o.crt ? 'SÍ' : 'NO', 'crt');
-    toggle(y + 100, 'MÚSICA', o.music === false ? 'NO' : 'SÍ', 'music');
+    });
+    return rows.length * rh + 20;
+  }
+  // Reasignar controles: columna de teclado y columna de mando; al elegir una casilla se espera la tecla o el botón
+  controls(G) {
+    this.darken(VX, VY, VW, VH, 0.55);
+    const cx = VX + VW / 2, x = cx - 170, w = 340, y = 26, rh = 11, kb = bindKeys(), pb = bindPad();
+    this.text(cx, 6, 'CONTROLES', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.panel(x, y, w, ACTIONS.length * rh + 18);
+    this.text(x + 8, y + 4, 'ACCIÓN', C.dim); this.text(x + 200, y + 4, 'TECLADO', C.dim, { align: 'center' }); this.text(x + 290, y + 4, 'MANDO', C.dim, { align: 'center' });
+    ACTIONS.forEach((a, i) => {
+      const yy = y + 16 + i * rh;
+      this.text(x + 8, yy, ACTION_NAME[a.id].toUpperCase(), C.ink, { shadow: false });
+      for (const [dev, cxx, val, ok] of [['key', x + 200, keyLabel(kb[a.id]), a.key !== null], ['pad', x + 290, padLabel(pb[a.id]), a.pad !== null]]) {
+        const waiting = G.rebind && G.rebind.dev === dev && G.rebind.id === a.id;
+        if (!ok) { this.text(cxx, yy, '-', C.dim, { align: 'center', shadow: false }); continue; }
+        const bx = cxx - 42, hot = this.hit(bx, yy - 2, 84, rh);
+        this.hot.push({ x: bx, y: yy - 2, w: 84, h: rh, id: dev + ':' + a.id });
+        if (hot || waiting) this.darken(bx, yy - 2, 84, rh, 0.5);
+        this.text(cxx, yy, waiting ? (((G.time * 3) | 0) & 1 ? (dev === 'key' ? 'PULSA UNA TECLA' : 'PULSA UN BOTÓN') : '') : val, waiting ? C.cyan : hot ? C.goldL : C.gold, { align: 'center', shadow: false });
+      }
+    });
+    const by = y + ACTIONS.length * rh + 24;
+    [['reset', 'RESTABLECER'], ['back', 'VOLVER']].forEach(([id, t], i) => {
+      const bw = 100, bx = cx - bw - 4 + i * (bw + 8), hot = this.hit(bx, by, bw, 14);
+      this.hot.push({ x: bx, y: by, w: bw, h: 14, id });
+      this.panel(bx, by, bw, 14, hot); this.text(bx + bw / 2, by + 4, t, hot ? C.goldL : C.gold, { align: 'center' });
+    });
+    this.text(cx, by + 20, 'MOVERSE CON LAS FLECHAS Y LOS STICKS SIEMPRE FUNCIONA · ESC CANCELA', C.dim, { align: 'center', shadow: false });
   }
   options(G) {
     this.darken(VX, VY, VW, VH, 0.5);
     const cx = VX + VW / 2;
-    this.text(cx, 30, 'OPCIONES', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
-    this.optionsPanel(G, cx - 95, 70);
-    this.text(cx, 200, 'HAZ CLIC FUERA O PULSA O PARA VOLVER', C.goldL, { align: 'center', shadow: 'outline' });
+    this.text(cx, 14, 'OPCIONES', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
+    this.optionsPanel(G, cx - 98, 52);
+    this.text(cx, 254, 'HAZ CLIC FUERA O PULSA O PARA VOLVER', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
-  // Inventario: antorchas (se encienden y se ponen en la mano izquierda), pociones, pergaminos, runas, escudo, llaves y botín
+  // Inventario: consumibles a la izquierda; equipo (anillo, amuleto, armadura) y mochila a la derecha
   inventory(G) {
     this.darken(VX, VY, VW, VH, 0.5);
-    const p = G.p, cx = VX + VW / 2, x = cx - 160, w = 320, y = 30, inv = G.inv;
-    this.text(cx, 10, 'INVENTARIO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
-    this.panel(x, y, w, 212);
+    const p = G.p, cx = VX + VW / 2, inv = G.inv;
+    this.text(cx, 6, 'INVENTARIO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    // ---- consumibles
+    const lx = 8, lw = 222, y0 = 26;
+    this.panel(lx, y0, lw, 216);
     const one = WEAPONS[p.weapon].hands === 1, off = offhandOf(p);
-    this.text(x + 8, y + 6, `MANO IZQ.: ${off === 'torch' ? `ANTORCHA (${fmtTime(p.torchFuel)})` : off === 'shield' ? 'ESCUDO' : one ? 'VACÍA' : 'ARMA A DOS MANOS'}`, off === 'torch' ? C.orange : C.ink);
-    this.text(x + w - 8, y + 6, `ORO ${G.loot}`, C.gold, { align: 'right' });
+    this.text(lx + 6, y0 + 5, `MANO IZQ.: ${off === 'torch' ? `ANTORCHA ${fmtTime(p.torchFuel)}` : off === 'shield' ? 'ESCUDO' : one ? 'VACÍA' : 'DOS MANOS'}`, off === 'torch' ? C.orange : C.ink);
     const rows = [];
     const tLabel = off === 'torch' ? 'GUARDAR' : p.torchFuel > 0 ? 'EMPUÑAR' : 'ENCENDER';
-    rows.push({ id: 'torch', spr: SPR.torchItem, label: `ANTORCHAS x${inv.torch}${p.torchFuel > 0 && off !== 'torch' ? ' (+1 A MEDIAS)' : ''}`, sub: one ? `${tLabel} · ARDE ${TORCH_FUEL / 60} MIN` : 'NECESITAS UN ARMA DE UNA MANO', on: one && (inv.torch > 0 || p.torchFuel > 0) });
-    if (inv.potion) rows.push({ id: 'potion', spr: SPR.potion, label: `POCIONES DE VIDA x${inv.potion}`, sub: 'BEBER: CURA LA MITAD DE LA VIDA (H)', on: true });
-    if (inv.map) rows.push({ id: 'map', spr: null, label: `PERGAMINOS DE MAPA x${inv.map}`, sub: 'LEER: REVELA ESTE NIVEL', on: true });
-    if (inv.rune) rows.push({ id: 'rune', spr: null, label: `RUNAS DE REGRESO x${inv.rune}`, sub: 'USAR: VUELVES A LA SALIDA', on: true });
-    rows.push({ id: 'shield', spr: null, label: 'ESCUDO', sub: one ? (off === 'shield' ? 'BAJAR (F)' : 'ALZAR (F)') : 'NECESITAS UN ARMA DE UNA MANO', on: one });
-    rows.push({ id: null, spr: G.keys.length ? SPR.keys[G.keys[0]] : null, label: `LLAVES: ${G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ') : 'NINGUNA'}`.toUpperCase(), sub: `${G.keys.length}/${G.dg.lockRooms.length} DE ESTA MAZMORRA · A SALVO: ${G.bank} ORO`, on: true });
-    const fx = Object.keys(G.forge || {}).filter(k => G.forge[k]);
-    if (fx.length) rows.push({ id: null, spr: null, label: 'ARMA FORJADA', sub: fx.map(k => `${FORGE.find(f => f.id === k).name} ${G.forge[k]}`).join(' · ').toUpperCase(), on: true });
-    const rh = Math.min(28, Math.floor(184 / rows.length));
+    rows.push({ id: 'torch', spr: SPR.torchItem, label: `ANTORCHAS x${inv.torch}${p.torchFuel > 0 && off !== 'torch' ? ' (+1)' : ''}`, sub: one ? `${tLabel} · ${TORCH_FUEL / 60} MIN` : 'ARMA DE UNA MANO', on: one && (inv.torch > 0 || p.torchFuel > 0) });
+    if (inv.potion) rows.push({ id: 'potion', spr: SPR.potion, label: `POCIONES x${inv.potion}`, sub: 'BEBER: MITAD DE LA VIDA', on: true });
+    if (inv.map) rows.push({ id: 'map', label: `PERGAMINOS x${inv.map}`, sub: 'LEER: REVELA EL NIVEL', on: true });
+    if (inv.rune) rows.push({ id: 'rune', label: `RUNAS x${inv.rune}`, sub: 'USAR: VOLVER A LA SALIDA', on: true });
+    rows.push({ id: 'shield', label: 'ESCUDO', sub: one ? (off === 'shield' ? 'BAJAR' : 'ALZAR') : 'ARMA DE UNA MANO', on: one });
+    rows.push({ id: null, spr: G.keys.length ? SPR.keys[G.keys[0]] : null, label: `LLAVES ${G.keys.length}/${G.dg.lockRooms.length}`, sub: G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ').toUpperCase() : 'NINGUNA', on: true });
+    rows.push({ id: null, spr: SPR.coins, label: `BOTÍN ${G.loot}`, sub: `A SALVO: ${G.bank}`, on: true });
+    const rh = Math.min(26, Math.floor(194 / rows.length));
     rows.forEach((r, i) => {
-      const sx = x + 8, sy = y + 18 + i * rh, sw = w - 16, sh = rh - 3, hot = r.id && r.on && this.hit(sx, sy, sw, sh);
+      const sx = lx + 5, sy = y0 + 18 + i * rh, sw = lw - 10, sh = rh - 3, hot = r.id && r.on && this.hit(sx, sy, sw, sh);
       if (r.id) this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: r.id });
       this.panel(sx, sy, sw, sh, hot);
-      if (r.spr) this.blit(r.spr, sx + 12, sy + (sh >> 1), sh - 6);
-      this.text(sx + 26, sy + 3, r.label, r.on ? C.goldL : C.dim);
-      this.text(sx + 26, sy + 13, r.sub.slice(0, 46), C.dim, { shadow: false });
+      if (r.spr) this.blit(r.spr, sx + 11, sy + (sh >> 1), sh - 6);
+      this.text(sx + 24, sy + 3, r.label, r.on ? C.goldL : C.dim);
+      if (sh > 16) this.text(sx + 24, sy + 12, r.sub.slice(0, 31), C.dim, { shadow: false });
     });
-    this.text(cx, y + 202, G.touchMode ? 'TOCA FUERA PARA CERRAR' : 'I PARA CERRAR · H BEBER POCIÓN', C.goldL, { align: 'center', shadow: 'outline' });
+    // ---- equipo y mochila
+    const rx = 238, rw = 234;
+    this.panel(rx, y0, rw, 216);
+    this.text(rx + 6, y0 + 5, 'EQUIPO', C.dim);
+    let tip = null;
+    SLOTS.forEach((s, i) => {
+      const it = G.equip[s], sx = rx + 5, sy = y0 + 16 + i * 30, sw = rw - 10, sh = 27, hot = this.hit(sx, sy, sw, sh);
+      this.hot.push({ x: sx, y: sy, w: sw, h: sh, id: 'eq:' + s });
+      this.panel(sx, sy, sw, sh, hot && it);
+      this.rect(sx + 3, sy + 3, 21, 21, rgb(24, 16, 10));
+      if (it) { this.blit(SPR[`icon_${it.slot}_${it.rar}`], sx + 13, sy + 13, 18); if (hot) tip = it; }
+      this.text(sx + 30, sy + 4, it ? it.name.toUpperCase().slice(0, 32) : s.toUpperCase() + ': VACÍO', it ? itemCol(it) : C.dim);
+      this.text(sx + 30, sy + 15, it ? itemLines(it)[0].toUpperCase().slice(0, 32) : '-', C.dim, { shadow: false });
+    });
+    this.text(rx + 6, y0 + 110, `MOCHILA ${G.bag.length}/8`, C.dim);
+    for (let i = 0; i < 8; i++) {
+      const bx = rx + 6 + (i % 4) * 56, by = y0 + 122 + Math.floor(i / 4) * 34, it = G.bag[i], hot = it && this.hit(bx, by, 40, 30);
+      this.rect(bx, by, 40, 30, rgb(24, 16, 10));
+      if (!it) continue;
+      this.hot.push({ x: bx, y: by, w: 40, h: 30, id: 'bag:' + i });
+      if (hot) { this.panel(bx, by, 40, 30, true); tip = it; }
+      this.blit(SPR[`icon_${it.slot}_${it.rar}`], bx + 20, by + 15, 22);
+      this.rect(bx, by + 28, 40, 2, itemCol(it));
+      const dh = this.hit(bx + 41, by, 10, 10);
+      this.hot.push({ x: bx + 41, y: by, w: 10, h: 10, id: 'drop:' + i });
+      this.text(bx + 43, by + 1, 'X', dh ? C.red : C.dim, { shadow: false });
+    }
+    // detalle del objeto señalado
+    if (tip) {
+      this.text(rx + 6, y0 + 194, `${tip.name.toUpperCase().slice(0, 26)} · ${RARITY[tip.rar].name.toUpperCase()}`, itemCol(tip), { shadow: false });
+      this.text(rx + 6, y0 + 204, itemLines(tip).join(' · ').toUpperCase().slice(0, 37), C.ink, { shadow: false });
+    } else this.text(rx + 6, y0 + 200, G.touchMode || G.padMode ? 'ELIGE UN OBJETO PARA EQUIPARLO' : 'CLIC: EQUIPAR / QUITAR · X: TIRAR', C.dim, { shadow: false });
+    this.text(cx, VH - 10, G.touchMode ? 'TOCA FUERA PARA CERRAR' : G.padMode ? 'B PARA CERRAR' : 'I PARA CERRAR · H BEBER POCIÓN', C.goldL, { align: 'center', shadow: 'outline' });
   }
   // Mercader: lista de útiles con precio (se paga con el botín que llevas encima)
   shop(G) {
     this.darken(VX, VY, VW, VH, 0.5);
     const cx = VX + VW / 2, x = cx - 150, w = 300, y = 46;
     this.text(cx, 12, 'EL MERCADER', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
-    this.text(cx, 32, '"LA OSCURIDAD ES BUEN NEGOCIO, VIAJERO."', C.dim, { align: 'center' });
+    this.text(cx, 32, 'LA OSCURIDAD ES BUEN NEGOCIO, VIAJERO.', C.dim, { align: 'center' });
     this.panel(x, y, w, 170);
     this.text(x + w - 8, y + 6, `TU ORO: ${G.loot}`, C.gold, { align: 'right' });
     SHOP_ITEMS.forEach((it, i) => {
@@ -282,7 +353,7 @@ class UI {
       const spr = it.id === 'torch' ? SPR.torchItem : it.id === 'potion' ? SPR.potion : null;
       if (spr) this.blit(spr, sx + 14, sy + 15, 22);
       this.text(sx + 30, sy + 5, `[${i + 1}] ${it.name.toUpperCase()}`, ok ? C.goldL : C.dim);
-      this.text(sx + 30, sy + 17, `${it.desc.toUpperCase()} · TIENES ${G.inv[it.id] || 0}`, C.dim, { shadow: false });
+      this.text(sx + 30, sy + 17, String(tr(`${it.desc.toUpperCase()} · TIENES ${G.inv[it.id] || 0}`)).slice(0, 34), C.dim, { shadow: false });
       this.text(sx + sw - 8, sy + 11, `${cost} ORO`, ok ? C.gold : C.red, { align: 'right' });
     });
     this.text(cx, y + 158, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
@@ -292,7 +363,7 @@ class UI {
     this.darken(VX, VY, VW, VH, 0.5);
     const cx = VX + VW / 2, cost = forgePrice(), ok = G.loot >= cost;
     this.text(cx, 12, 'EL HERRERO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
-    this.text(cx, 32, cost === 0 ? '"LA PRIMERA TE LA REGALO. LAS DEMÁS SE PAGAN."' : `"ESTA TE COSTARÁ ${cost} DE ORO." · TIENES ${G.loot}`, cost === 0 ? C.green : ok ? C.dim : C.red, { align: 'center' });
+    this.text(cx, 32, cost === 0 ? 'LA PRIMERA TE LA REGALO. LAS DEMÁS SE PAGAN.' : `ESTA TE COSTARÁ ${cost} DE ORO · TIENES ${G.loot}`, cost === 0 ? C.green : ok ? C.dim : C.red, { align: 'center' });
     const opts = G.forgeOpts || [], cw = 136, gap = 10, n = opts.length, x0 = Math.round(cx - (n * cw + (n - 1) * gap) / 2), y = 48, ch = 130;
     if (!n) this.text(cx, 110, 'TU ARMA YA NO ADMITE MÁS MEJORAS', C.dim, { align: 'center' });
     opts.forEach((f, i) => {

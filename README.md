@@ -24,3 +24,7 @@ Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra
 Encontrarás un **mercader** y un **herrero** en cada mazmorra, **fantasmas rencorosos** de tus personajes caídos, jefes distintos según la zona, y la partida se guarda sola (CONTINUAR en el título).
 
 Caminar contra una pared abre puertas, usa llaves y escaleras, y descubre pasadizos secretos.
+
+---
+
+**English:** a first-person dungeon-crawling roguelike in pixel art, inspired by *Daggerfall* and *Hexen*. Play in your browser (keyboard and mouse, controller or touch), works offline once loaded. Language can be switched in the options.

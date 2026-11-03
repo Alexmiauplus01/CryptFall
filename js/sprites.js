@@ -764,6 +764,27 @@ function ghostly(spr, frame) {
   return { w, h, px, flash: px.map(c => c ? rgb(255, 255, 255, 250) : 0) };
 }
 
+// iconos de objetos equipables (la gema toma el color de la rareza)
+function drawItemIcon(slot, gem) {
+  const G0 = [150, 120, 60], G1 = [220, 180, 90], S0 = [110, 110, 120], S1 = [180, 180, 190], gl = gem.map(v => Math.min(255, v + 70));
+  return pix(14, 14, (set) => {
+    if (slot === 'anillo') {
+      for (let y = 0; y < 14; y++) for (let x = 0; x < 14; x++) { const d = Math.hypot(x - 6.5, y - 8); if (d < 5.2 && d > 3.2) set(x, y, x < 6 ? G1 : G0); }
+      for (let y = 1; y < 5; y++) for (let x = 5; x < 9; x++) set(x, y, (x + y) & 1 ? gem : gl, true);
+    } else if (slot === 'amuleto') {
+      for (let k = 0; k < 7; k++) { set(2 + k, k, G0); set(11 - k, k, G0); }
+      for (let y = 7; y < 13; y++) for (let x = 4; x < 10; x++) { const d = Math.abs(x - 6.5) + Math.abs(y - 9.5); if (d < 3.6) set(x, y, d < 1.6 ? gl : gem, true); else if (d < 4.4) set(x, y, G1); }
+    } else {
+      for (let y = 1; y < 13; y++) for (let x = 1; x < 13; x++) {
+        if (y < 3 && x > 4 && x < 9) continue; // cuello
+        if (y > 8 && (x < 3 || x > 10)) continue;
+        set(x, y, x < 5 ? S1 : S0);
+      }
+      for (let y = 5; y < 8; y++) for (let x = 6; x < 8; x++) set(x, y, gem, true);
+    }
+  });
+}
+
 function initSprites() {
   const fr = (fn, w, h, n, o) => Array.from({ length: n }, (_, f) => paint(w, h, (g, ge) => fn(g, ge, w, h, f), Object.assign({ seed: 11 + f }, o)));
   SPR.skeleton = fr(drawSkeleton, 50, 72, 2);
@@ -788,6 +809,7 @@ function initSprites() {
   SPR.keys = KEYS.map(k => drawKeySpr(k.col));
   SPR.coins = drawCoins();
   SPR.torchItem = drawTorchItem();
+  for (const s of ['anillo', 'amuleto', 'armadura']) for (const r of ['comun', 'raro', 'epico']) SPR[`icon_${s}_${r}`] = drawItemIcon(s, { comun: [170, 170, 160], raro: [70, 130, 255], epico: [190, 80, 255] }[r]);
   SPR.merchant = [0, 1, 2, 3].map(drawMerchant); SPR.smith = [0, 1, 2, 3].map(drawSmith); SPR.anvil = [drawAnvil()];
   for (const k of ['melee', 'dagger', 'staff', 'bow']) SPR['ghost_' + k] = [drawGhost(k, 0), drawGhost(k, 1)];
   SPR.potionIcon = SPR.potion;
