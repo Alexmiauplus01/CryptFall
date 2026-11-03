@@ -531,10 +531,11 @@ class Renderer {
     //            En el centro, inclinado hacia la izquierda; la punta de la flecha marca el centro de la pantalla
     if (W === 'bow') {
       // a: 1 al soltar → 0 listo para disparar
-      const n = a < 0.15 ? 0 : a > 0.85 ? 1 : a > 0.7 ? 2 : a > 0.45 ? 3 : a > 0.3 ? 4 : 5;
+      // 0 tensado con flecha · 1 suelta · 2 vibra · 3 reposo
+      const n = a < 0.3 ? 0 : a > 0.85 ? 1 : a > 0.6 ? 2 : 3;
       const base = SPR['bowfp_' + n] || SPR.bowfp_0, spr = weaponSprite('bow', base, 'fp' + n);
       const ox = 2 * Math.round(bx * 0.35 / 2), oy = 2 * Math.round(by * 0.35 / 2);
-      const X = VW / 2 - 80 + ox, Y = VH / 2 - 96 + oy;
+      const X = VW / 2 - 130 + ox, Y = VH / 2 - 80 + oy; // TIP del sprite (65, 40) → centro de la pantalla
       this.blitRot(spr, 0, 0, X, Y, 0, lm, false, S2);
       const cx = VW / 2 + ox, cy = VH / 2 + oy;
       if (n === 0 && p.element) this.glow(cx, cy, 18, glowCol, 0.35 + 0.15 * Math.sin(time * 8));
