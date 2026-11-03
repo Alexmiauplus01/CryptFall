@@ -322,7 +322,7 @@ function updateRooms(dt) {
 
 // ---------------------------------------------------------------- Utilidades de juego
 function lockMouse() {
-  if (G.touchMode) return;
+  if (G.touchMode || (window.matchMedia && matchMedia('(pointer: coarse)').matches)) return; // en móvil no hay ratón que capturar
   if (document.pointerLockElement === canvas) return;
   try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* sin bloqueo de ratón */ }
 }

@@ -170,6 +170,8 @@ class UI {
     this.text(BOX_LOG.x + 4, BOX_LOG.y + 2, '* BIENVENIDO, VIAJERO.', C.ink, { shadow: false });
     this.text(BOX_LOG.x + 4, BOX_LOG.y + 10, '* LA CRIPTA TE ESPERA BAJO TUS PIES.', C.dim, { shadow: false });
     const m = G.meta;
+    const ver = document.querySelector('meta[name=version]');
+    if (ver) this.text(4, VH - 9, 'V ' + ver.content.toUpperCase(), rgb(90, 76, 60), { shadow: false });
     if (m && (m.escapes || m.deaths)) this.text(cx, 224, `ORO A SALVO ${m.gold} · FUGAS ${m.escapes} · MAYOR BOTÍN ${m.bestLoot}`, C.dim, { align: 'center' });
   }
 

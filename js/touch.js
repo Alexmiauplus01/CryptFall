@@ -122,6 +122,8 @@ window.addEventListener('resize', () => {
   if (G.touchMode && innerHeight > innerWidth && G.state === 'play') { releaseAllTouches(); pauseGame(); }
 });
 G.touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+// algunos navegadores envían eventos de puntero antes que los táctiles: también activan el modo táctil
+canvas.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') G.touchMode = true; });
 
 // ---------------------------------------------------------------- dibujo (encima del HUD)
 function tBlend(u, x, y, col, a) {
