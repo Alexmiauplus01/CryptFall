@@ -19,7 +19,7 @@ Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra
 | Shift | Esquivar |
 | P · N | Pausa y opciones · Sonido |
 
-**En el móvil** (en horizontal): joystick a la izquierda, desliza a la derecha para girar, y botones para atacar, esquivar, habilidades, pausa, diario, inventario y armas.
+**Con mando** (Xbox, PlayStation y genéricos) o **en el móvil** (en horizontal): joystick a la izquierda, desliza a la derecha para girar, y botones para atacar, esquivar, habilidades, pausa, diario, inventario y armas.
 
 Encontrarás un **mercader** y un **herrero** en cada mazmorra, **fantasmas rencorosos** de tus personajes caídos, jefes distintos según la zona, y la partida se guarda sola (CONTINUAR en el título).
 

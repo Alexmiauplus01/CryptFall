@@ -561,6 +561,8 @@ function loadAssets() {
     SPR.daggerL = flipSprite(SPR.dagger);
     SPR.claws_wolfL = flipSprite(SPR.claws_wolf);
     SPR.claws_bearL = flipSprite(SPR.claws_bear);
+    // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
+    for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
     // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
     for (const id of Object.keys(CLASSES)) {
       // mano de perfil (Sprite Fusion) si existe: la empuñadura atraviesa el puño y el pomo asoma bajo él

@@ -387,7 +387,7 @@ function hurtPlayer(d, sx, sy) {
   }
   if (d < 0.5) { p.inv = 0.3; return; }
   p.hp -= Math.max(1, Math.round(d)); p.inv = 0.45; G.hurtFx = 1; G.shake = Math.max(G.shake, 0.3);
-  Sfx.play('hurt');
+  Sfx.play('hurt'); if (typeof padRumble === 'function') padRumble(0.7, 160);
   if (p.hp <= 0) die();
 }
 
@@ -1084,6 +1084,7 @@ function moveInput() {
   let f = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0);
   let s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   if (G.stick) { f += G.stick.f; s += G.stick.s; }
+  if (G.padMove) { f += G.padMove.f; s += G.padMove.s; }
   return [clamp(f, -1, 1), clamp(s, -1, 1)];
 }
 
@@ -1409,6 +1410,7 @@ function frame(now) {
   G.time += dt;
   for (const t of G.toasts) t.t -= dt;
   G.toasts = G.toasts.filter(t => t.t > 0);
+  if (typeof pollPad === 'function') pollPad(dt);
   if (G.state === 'play') update(dt);
   else if (G.state === 'title' || G.state === 'options') G.p.a += dt * 0.2;
   render();

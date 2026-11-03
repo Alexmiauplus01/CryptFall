@@ -171,7 +171,7 @@ class UI {
     this.text(cx, 76, 'ENTRA. SAQUEA. SAL CON VIDA.', C.dim, { align: 'center' });
     const px = cx - 120, py = 80;
     this.panel(px, py, 240, 127);
-    const rows = G.touchMode ? [['DEDO IZQUIERDO', 'JOYSTICK: MOVERSE'], ['DESLIZAR A LA DER.', 'GIRAR'], ['ATACAR', 'MANTENER PULSADO'], ['R  C  V', 'HABILIDADES'], ['>>', 'ESQUIVAR'], ['II  J  I', 'PAUSA · DIARIO · INVENTARIO'], ['<>', 'CAMBIAR DE ARMA'], ['ESC', 'BLOQUEAR CON ESCUDO'], ['PAREDES', 'CAMINA CONTRA ELLAS'], ['EN LOS MENÚS', 'TOCA PARA ELEGIR']] : [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I · J · M', 'INVENTARIO · DIARIO · MAPA'], ['P  ·  N', 'PAUSA · SONIDO']];
+    const rows = G.padMode ? [['STICK IZQ. · DER.', 'MOVERSE · GIRAR'], ['RT · LT', 'ATACAR · BLOQUEAR'], ['A', 'ESQUIVAR'], ['X  Y  B', 'HABILIDADES R C V'], ['LB · RB', 'ESCUDO · CAMBIAR ARMA'], ['CRUCETA ARRIBA', 'BEBER POCIÓN'], ['CRUCETA ABAJO', 'MAPA'], ['CRUCETA IZQ. · DER.', 'DIARIO · INVENTARIO'], ['START', 'PAUSA'], ['MENÚS', 'CRUCETA + A / B']] : G.touchMode ? [['DEDO IZQUIERDO', 'JOYSTICK: MOVERSE'], ['DESLIZAR A LA DER.', 'GIRAR'], ['ATACAR', 'MANTENER PULSADO'], ['R  C  V', 'HABILIDADES'], ['>>', 'ESQUIVAR'], ['II  J  I', 'PAUSA · DIARIO · INVENTARIO'], ['<>', 'CAMBIAR DE ARMA'], ['ESC', 'BLOQUEAR CON ESCUDO'], ['PAREDES', 'CAMINA CONTRA ELLAS'], ['EN LOS MENÚS', 'TOCA PARA ELEGIR']] : [['WASD', 'MOVERSE'], ['RATÓN / Q E', 'GIRAR'], ['CLIC / ESPACIO', 'ATACAR'], ['R  C  V', 'HABILIDADES DE CLASE'], ['1 2 3 / RUEDA', 'CAMBIAR DE ARMA'], ['F', 'ALZAR / BAJAR ESCUDO'], ['CLIC DER.', 'BLOQUEAR (ESCUDO)'], ['SHIFT', 'ESQUIVAR'], ['I · J · M', 'INVENTARIO · DIARIO · MAPA'], ['P  ·  N', 'PAUSA · SONIDO']];
     rows.forEach(([k, v], i) => { this.text(px + 10, py + 9 + i * 11, k, C.gold); this.text(px + 230, py + 9 + i * 11, v, C.ink, { align: 'right' }); });
     if (G.hasSave) { // continuar la partida guardada o empezar otra
       [['continue', 'CONTINUAR'], ['new', 'NUEVA PARTIDA']].forEach(([id, t], i) => {
@@ -179,7 +179,7 @@ class UI {
         this.hot.push({ x: bx, y: by, w: bw, h: 16, id });
         this.panel(bx, by, bw, 16, hot || (i === 0 && ((G.time * 2) | 0) & 1)); this.text(bx + bw / 2, by + 5, t, hot ? C.goldL : C.gold, { align: 'center' });
       });
-    } else if (((G.time * 2) | 0) & 1) this.text(cx, 214, G.touchMode ? 'TOCA PARA ENTRAR' : 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
+    } else if (((G.time * 2) | 0) & 1) this.text(cx, 214, G.padMode ? 'PULSA A PARA ENTRAR' : G.touchMode ? 'TOCA PARA ENTRAR' : 'HAZ CLIC PARA ENTRAR', C.goldL, { align: 'center', shadow: 'outline' });
     const ox = VW - 86, oy = VH - 22, oh = this.hit(ox, oy, 80, 16);
     this.hot.push({ x: ox, y: oy, w: 80, h: 16, id: 'options' });
     this.panel(ox, oy, 80, 16, oh); this.text(ox + 40, oy + 5, 'OPCIONES (O)', oh ? C.goldL : C.gold, { align: 'center' });
