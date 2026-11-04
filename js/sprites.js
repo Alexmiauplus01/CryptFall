@@ -568,7 +568,8 @@ function loadAssets() {
     // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
     for (const id of Object.keys(CLASSES)) {
       // mano de perfil (Sprite Fusion) si existe: la empuñadura atraviesa el puño y el pomo asoma bajo él
-      const side = SPR['hand_' + id + '_side'];
+      // si la clase aún no tiene la suya, usa la de perfil de la clase de la que evoluciona (mejor que la antigua de frente)
+      const side = SPR['hand_' + id + '_side'] || lineageOf(id).reverse().map(c => SPR['hand_' + c + '_side']).find(Boolean);
       if (side) {
         side.side = true; side.grip = side.grip || gripSide(side);
         const R = HAND_SIDE_MIRROR ? flipSprite(side) : side;
