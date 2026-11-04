@@ -573,7 +573,7 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      let sx = lerp(VW * 0.17, VW * 0.38, k) - bx * 0.5, sy = lerp(VH - 30, VH - 96, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      let sx = lerp(VW * 0.17, VW * 0.38, k) - bx * 0.5, sy = lerp(VH - 30, VH - 72, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
       // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
       const u = p.bashU;
       if (u !== undefined) {
