@@ -28,6 +28,11 @@ const WEAPONS = {
   claws:      { name: 'Garras',  kind: 'melee', hands: 'claws', dmg: 22, range: 1.55, arc: 2.0, cd: 0.30, dur: 0.18, kb: 4 },
 };
 
+// Ritmo de ataque base: un 25% más lento que el original (deja margen a Prisa, equipo y buffs de velocidad).
+// El daño por golpe sube en la misma proporción, así que el daño por segundo no cambia.
+const ATK_SLOW = 4 / 3;
+for (const t of [WEAPONS, SPELLS]) for (const k in t) if (t[k].cd) { t[k].cd = Math.round(t[k].cd * ATK_SLOW * 1000) / 1000; t[k].dmg = Math.round(t[k].dmg * ATK_SLOW * 10) / 10; }
+
 // ---------------------------------------------------------------- Aliados invocables
 const ALLIES = {
   wolf:   { name: 'Lobo',     hp: 70,  dmg: 13, spd: 4.4, r: 0.3,  h: 0.6,  cd: 0.6, spr: 'wolf' },
