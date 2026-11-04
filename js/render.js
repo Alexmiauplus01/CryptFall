@@ -493,6 +493,7 @@ class Renderer {
     const F = HANDS_FPS, q = Object.assign({}, p);
     q.bob = Math.round((p.bob || 0) * 4 / Math.PI) * Math.PI / 4;       // 8 posturas por paso
     q.anim = Math.ceil((p.anim || 0) * 4) / 4;                           // retroceso de bastón y arco en 4 pasos
+    q.block = Math.round((p.block || 0) * 4) / 4;                        // alzar el escudo en 4 fotogramas
     if (p.swing) {
       const sw = p.swing, base = sw.spin || sw.strong ? sw.dur : (WEAPONS[p.weapon].cd || sw.dur);
       const n = Math.max(4, Math.round(base * F)), k = clamp(sw.t / sw.dur, 0, 1);
