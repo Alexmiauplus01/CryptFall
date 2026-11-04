@@ -30,11 +30,16 @@ function rotSpriteUp(spr) {
   return u;
 }
 // ---- escudo + mano izquierda combinados en un sprite (cacheado por escudo y mano)
-const SHIELD_COMBO = new WeakMap();
+const SHIELD_COMBO = new WeakMap(), SHIELD_SCALE = 1.65;
 function shieldCombo(sh, hand) {
   let m = SHIELD_COMBO.get(sh); if (!m) SHIELD_COMBO.set(sh, m = new WeakMap());
   let c = m.get(hand); if (c) return c;
-  const cx = sh.w >> 1, cy = sh.h >> 1, g = hand.grip || { x: hand.w >> 1, y: hand.h >> 1 };
+  // el escudo se amplía (RotSprite, mismos píxeles de rejilla) para que no parezca más pequeño que la mano
+  const U = rotSpriteUp(sh), K = U.k, SW = Math.round(sh.w * SHIELD_SCALE), SH = Math.round(sh.h * SHIELD_SCALE);
+  const big = { w: SW, h: SH, px: new Uint32Array(SW * SH) };
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) big.px[y * SW + x] = U.px[(((y + 0.5) / SHIELD_SCALE * K) | 0) * U.w + (((x + 0.5) / SHIELD_SCALE * K) | 0)];
+  sh = big;
+  const cx = sh.w >> 1, cy = Math.round(sh.h * 0.47), g = hand.grip || { x: hand.w >> 1, y: hand.h >> 1 };
   const hx = cx + 2 - g.x, hy = cy + 4 - g.y; // el puño en el centro del escudo
   const x0 = Math.min(0, hx), y0 = Math.min(0, hy), x1 = Math.max(sh.w, hx + hand.w), y1 = Math.max(sh.h, hy + hand.h);
   const W = x1 - x0, H = y1 - y0, px = new Uint32Array(W * H);
@@ -568,7 +573,7 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      let sx = lerp(VW * 0.17, VW * 0.40, k) - bx * 0.5, sy = lerp(VH - 40, VH - 118, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      let sx = lerp(VW * 0.17, VW * 0.38, k) - bx * 0.5, sy = lerp(VH - 30, VH - 96, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
       // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
       const u = p.bashU;
       if (u !== undefined) {
@@ -581,8 +586,8 @@ class Renderer {
       this.blitRot(cb, cb.ax, cb.ay, sx, sy, ang, lm, false, S2 * ssc);
       if (u !== undefined && u > 0.28 && u < 0.6) {
         // impacto: destello y rayos cortos alrededor del escudo, en lugar del tajo
-        const f = 1 - Math.abs(u - 0.4) / 0.2, R0 = 70 * ssc, col = rgb(255, 238, 190);
-        this.glow(sx, sy, 60 * ssc + 20 * f, [255, 230, 170], 0.45 * f);
+        const f = 1 - Math.abs(u - 0.4) / 0.2, R0 = 112 * ssc, col = rgb(255, 238, 190);
+        this.glow(sx, sy, 95 * ssc + 20 * f, [255, 230, 170], 0.45 * f);
         for (let r = 0; r < 10; r++) {
           const a = r / 10 * TAU + 0.3, l0 = R0 * (0.95 + 0.25 * f), l1 = l0 + 10 + 16 * f;
           this.pline(sx + Math.cos(a) * l0, sy + Math.sin(a) * l0, sx + Math.cos(a) * l1, sy + Math.sin(a) * l1, col, 2);
