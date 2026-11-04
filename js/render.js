@@ -29,6 +29,20 @@ function rotSpriteUp(spr) {
   u.k = 1 << passes; ROT_UP.set(spr, u);
   return u;
 }
+// ---- escudo + mano izquierda combinados en un sprite (cacheado por escudo y mano)
+const SHIELD_COMBO = new WeakMap();
+function shieldCombo(sh, hand) {
+  let m = SHIELD_COMBO.get(sh); if (!m) SHIELD_COMBO.set(sh, m = new WeakMap());
+  let c = m.get(hand); if (c) return c;
+  const cx = sh.w >> 1, cy = sh.h >> 1, g = hand.grip || { x: hand.w >> 1, y: hand.h >> 1 };
+  const hx = cx + 2 - g.x, hy = cy + 4 - g.y; // el puño en el centro del escudo
+  const x0 = Math.min(0, hx), y0 = Math.min(0, hy), x1 = Math.max(sh.w, hx + hand.w), y1 = Math.max(sh.h, hy + hand.h);
+  const W = x1 - x0, H = y1 - y0, px = new Uint32Array(W * H);
+  const put = (s, ox, oy) => { for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { const col = s.px[y * s.w + x]; if (col >>> 24) px[(y + oy - y0) * W + x + ox - x0] = col; } };
+  put(sh, 0, 0); put(hand, hx, hy); // la mano por encima del escudo
+  c = { w: W, h: H, px, ax: cx - x0, ay: cy - y0 };
+  m.set(hand, c); return c;
+}
 // ---- las manos y armas se animan por fotogramas: 12 por segundo a velocidad de ataque base.
 // Cada ataque tiene un número fijo de fotogramas, así que más velocidad de ataque = la misma animación más rápida.
 const HANDS_FPS = 12;
@@ -561,9 +575,10 @@ class Renderer {
         const out = u < 0.35 ? 1 - Math.pow(1 - u / 0.35, 2) : u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
         sx = lerp(sx, VW * 0.47, out); sy = lerp(sy, VH * 0.5, out); ang = lerp(ang, 0, out); ssc = lerp(1, 0.62, out);
       }
-      // la mano agarra el escudo por detrás, en su centro: el escudo la tapa y asoma el antebrazo
-      this.hand(p, -1, sx + 4, sy + 6 * ssc, 0.1, lm);
-      this.blitRot(shieldSprite(), 64, 64, sx, sy, ang, lm, false, S2 * ssc);
+      // escudo y mano forman un solo sprite: la mano agarra el escudo por el centro, por delante,
+      // y al empujar se alejan y encogen juntos
+      const cb = shieldCombo(shieldSprite(), SPR['handL_' + p.cls] || SPR.handL_ladron);
+      this.blitRot(cb, cb.ax, cb.ay, sx, sy, ang, lm, false, S2 * ssc);
       if (u !== undefined && u > 0.28 && u < 0.6) {
         // impacto: destello y rayos cortos alrededor del escudo, en lugar del tajo
         const f = 1 - Math.abs(u - 0.4) / 0.2, R0 = 70 * ssc, col = rgb(255, 238, 190);
