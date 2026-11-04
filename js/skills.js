@@ -304,7 +304,7 @@ const SKILLS = {
   shieldbash: { name: 'Golpe de escudo', cd: 8, use(p) {
     const n = aoe(p.x, p.y, 2.5, 26 * p.dmgMul, { kb: 11, stun: 1.3, cone: { a: p.a, arc: 1.8 } });
     vfxImpact(p.x + Math.cos(p.a) * 1.2, p.y + Math.sin(p.a) * 1.2, 0.45, 'impact', 1.4);
-    p.swing = { t: 0, dur: 0.45, dir: 1, move: 'slash', strong: true }; G.shake = Math.max(G.shake, n ? 0.3 : 0.1); Sfx.play('hit');
+    p.bash = { t: 0, dur: 0.42, hit: n > 0 }; G.shake = Math.max(G.shake, n ? 0.3 : 0.1); Sfx.play('hit'); // el escudo sale hacia delante y vuelve
     burst(p.x + Math.cos(p.a) * 1.2, p.y + Math.sin(p.a) * 1.2, 0.4, 10, rgb(255, 235, 170), 3, 0.4);
   } },
   whirlwind: { name: 'Torbellino', cd: 9, use(p) {

@@ -494,6 +494,7 @@ class Renderer {
     q.bob = Math.round((p.bob || 0) * 4 / Math.PI) * Math.PI / 4;       // 8 posturas por paso
     q.anim = Math.ceil((p.anim || 0) * 4) / 4;                           // retroceso de bastón y arco en 4 pasos
     q.block = Math.round((p.block || 0) * 4) / 4;                        // alzar el escudo en 4 fotogramas
+    if (p.bash) { const n = Math.max(5, Math.round(p.bash.dur * F)); q.bashU = Math.min(1, (Math.floor(p.bash.t / p.bash.dur * n) + 0.5) / n); }
     if (p.swing) {
       const sw = p.swing, base = sw.spin || sw.strong ? sw.dur : (WEAPONS[p.weapon].cd || sw.dur);
       const n = Math.max(4, Math.round(base * F)), k = clamp(sw.t / sw.dur, 0, 1);
@@ -553,9 +554,25 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      const sx = lerp(VW * 0.17, VW * 0.40, k), sy = lerp(VH - 40, VH - 118, k);
-      this.hand(p, -1, sx + 10, sy + 70, 0.1, lm);
-      this.blitRot(shieldSprite(), 64, 64, sx - bx * 0.5, sy + by * 0.5, lerp(0.15, -0.02, k), lm, false, S2);
+      let sx = lerp(VW * 0.17, VW * 0.40, k) - bx * 0.5, sy = lerp(VH - 40, VH - 118, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
+      const u = p.bashU;
+      if (u !== undefined) {
+        const out = u < 0.35 ? 1 - Math.pow(1 - u / 0.35, 2) : u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
+        sx = lerp(sx, VW * 0.47, out); sy = lerp(sy, VH * 0.5, out); ang = lerp(ang, 0, out); ssc = lerp(1, 0.62, out);
+      }
+      // la mano agarra el escudo por detrás, en su centro: el escudo la tapa y asoma el antebrazo
+      this.hand(p, -1, sx + 4, sy + 6 * ssc, 0.1, lm);
+      this.blitRot(shieldSprite(), 64, 64, sx, sy, ang, lm, false, S2 * ssc);
+      if (u !== undefined && u > 0.28 && u < 0.6) {
+        // impacto: destello y rayos cortos alrededor del escudo, en lugar del tajo
+        const f = 1 - Math.abs(u - 0.4) / 0.2, R0 = 70 * ssc, col = rgb(255, 238, 190);
+        this.glow(sx, sy, 60 * ssc + 20 * f, [255, 230, 170], 0.45 * f);
+        for (let r = 0; r < 10; r++) {
+          const a = r / 10 * TAU + 0.3, l0 = R0 * (0.95 + 0.25 * f), l1 = l0 + 10 + 16 * f;
+          this.pline(sx + Math.cos(a) * l0, sy + Math.sin(a) * l0, sx + Math.cos(a) * l1, sy + Math.sin(a) * l1, col, 2);
+        }
+      }
     }
 
     // ---------- bastones (sprite y brillo según el hechizo)

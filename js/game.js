@@ -1090,6 +1090,7 @@ function updatePlayer(dt) {
     if (lv.at(tx, ty) !== 0) touchCell(tx, ty);
     if (G.state !== 'play' || G.lv !== lv) return;
   }
+  if (p.bash) { p.bash.t += dt; if (p.bash.t >= p.bash.dur) p.bash = null; }
   if (p.swing) {
     const s = p.swing;
     if (s.freeze > 0) s.freeze -= dt; else s.t += dt;
