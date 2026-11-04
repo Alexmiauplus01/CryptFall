@@ -6,6 +6,32 @@ const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v +
 const TORCH_COL = [1.0, 0.84, 0.64];
 const AMBIENT_K = 0.3;   // ambiente muy bajo: la luz viene de antorchas, braseros y hechizos
 const SCENE_LIGHT_K = 1.15; // las luces del escenario destacan más sobre la oscuridad
+// ---- RotSprite: ampliación Scale2x (x8 en sprites pequeños, x4 en los grandes) cacheada por sprite
+const ROT_UP = new WeakMap();
+function scale2x(w, h, px) {
+  const o = new Uint32Array(w * h * 4), W2 = w * 2;
+  const at = (x, y) => px[(y < 0 ? 0 : y >= h ? h - 1 : y) * w + (x < 0 ? 0 : x >= w ? w - 1 : x)];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+    const i0 = 2 * y * W2 + 2 * x, i1 = i0 + W2;
+    o[i0] = C === A && C !== D && A !== B ? A : P;
+    o[i0 + 1] = A === B && A !== C && B !== D ? B : P;
+    o[i1] = D === C && D !== B && C !== A ? C : P;
+    o[i1 + 1] = B === D && B !== A && D !== C ? D : P;
+  }
+  return { w: W2, h: h * 2, px: o };
+}
+function rotSpriteUp(spr) {
+  let u = ROT_UP.get(spr); if (u) return u;
+  const passes = spr.w * spr.h <= 12000 ? 3 : 2;
+  u = { w: spr.w, h: spr.h, px: spr.px };
+  for (let i = 0; i < passes; i++) u = scale2x(u.w, u.h, u.px);
+  u.k = 1 << passes; ROT_UP.set(spr, u);
+  return u;
+}
+// ---- las manos y armas se animan por fotogramas: 12 por segundo a velocidad de ataque base.
+// Cada ataque tiene un número fijo de fotogramas, así que más velocidad de ataque = la misma animación más rápida.
+const HANDS_FPS = 12;
 const HS = 2; // escala de manos y armas en primera persona
 const HAND_TILT = 0.55; // inclinación de la muñeca respecto al arma
 
@@ -352,22 +378,26 @@ class Renderer {
   }
 
   // Sprite rotado alrededor de un punto de agarre (ax,ay) colocado en pantalla en (x,y)
+  // Armas y manos en primera persona: siempre en la rejilla de píxeles del juego (HS = 2 px de pantalla por píxel
+  // de sprite). Para girar sin romper el pixel art se usa RotSprite: el sprite se amplía con Scale2x (bordes limpios)
+  // y se muestrea en el centro de cada celda de la rejilla.
   blitRot(spr, ax, ay, x, y, ang, mul = 1, add = false, sc = 1, sv = 1) { // sv: escorzo a lo largo del eje vertical del sprite
-    const buf = this.buf, tp = spr.px, c = Math.cos(ang), s = Math.sin(ang);
+    const buf = this.buf, U = rotSpriteUp(spr), K = U.k, c = Math.cos(ang), s = Math.sin(ang), Gc = HS;
     const pts = [[0, 0], [spr.w, 0], [0, spr.h], [spr.w, spr.h]].map(([u, v]) => [x + ((u - ax) * c - (v - ay) * sv * s) * sc, y + ((u - ax) * s + (v - ay) * sv * c) * sc]);
-    const x0 = Math.max(0, Math.floor(Math.min(...pts.map(q => q[0])))), x1 = Math.min(VW - 1, Math.ceil(Math.max(...pts.map(q => q[0]))));
-    const y0 = Math.max(0, Math.floor(Math.min(...pts.map(q => q[1])))), y1 = Math.min(VH - 1, Math.ceil(Math.max(...pts.map(q => q[1]))));
-    const isc = 1 / sc;
-    for (let Y = y0; Y <= y1; Y++) for (let X = x0; X <= x1; X++) {
-      const dx = (X + 0.5 - x) * isc, dy = (Y + 0.5 - y) * isc;
-      const u = Math.floor(ax + dx * c + dy * s), v = Math.floor(ay + (-dx * s + dy * c) / sv);
+    const gx0 = Math.max(0, Math.floor(Math.min(...pts.map(q => q[0])) / Gc)), gx1 = Math.min(VW / Gc - 1, Math.ceil(Math.max(...pts.map(q => q[0])) / Gc));
+    const gy0 = Math.max(0, Math.floor(Math.min(...pts.map(q => q[1])) / Gc)), gy1 = Math.min(VH / Gc - 1, Math.ceil(Math.max(...pts.map(q => q[1])) / Gc));
+    const isc = 1 / sc, half = Gc / 2, tp = U.px, UW = U.w;
+    for (let GY = gy0; GY <= gy1; GY++) for (let GX = gx0; GX <= gx1; GX++) {
+      const dx = (GX * Gc + half - x) * isc, dy = (GY * Gc + half - y) * isc;
+      const u = ax + dx * c + dy * s, v = ay + (-dx * s + dy * c) / sv;
       if (u < 0 || v < 0 || u >= spr.w || v >= spr.h) continue;
-      const col = tp[v * spr.w + u];
+      const col = tp[((v * K) | 0) * UW + ((u * K) | 0)];
       if (!(col >>> 24)) continue;
-      const o = Y * VW + X;
-      if (add) buf[o] = addPix(buf[o], col, 255 * mul);
-      else if ((col >>> 24) === 250) buf[o] = col | 0xFF000000;
-      else buf[o] = rgb((col & 255) * mul, ((col >> 8) & 255) * mul, ((col >> 16) & 255) * mul);
+      const out = add ? 0 : (col >>> 24) === 250 ? col | 0xFF000000 : rgb((col & 255) * mul, ((col >> 8) & 255) * mul, ((col >> 16) & 255) * mul);
+      for (let j = 0; j < Gc; j++) {
+        const row = (GY * Gc + j) * VW + GX * Gc;
+        for (let i = 0; i < Gc; i++) buf[row + i] = add ? addPix(buf[row + i], col, 255 * mul) : out;
+      }
     }
   }
   pline(x0, y0, x1, y1, c, w = 1) {
@@ -460,6 +490,17 @@ class Renderer {
 
   // Manos y arma en primera persona (escala x2, arma casi vertical a la derecha como en Oblivion/Daggerfall)
   drawHands(p, time, glowCol) {
+    const F = HANDS_FPS, q = Object.assign({}, p);
+    q.bob = Math.round((p.bob || 0) * 4 / Math.PI) * Math.PI / 4;       // 8 posturas por paso
+    q.anim = Math.ceil((p.anim || 0) * 4) / 4;                           // retroceso de bastón y arco en 4 pasos
+    if (p.swing) {
+      const sw = p.swing, base = sw.spin || sw.strong ? sw.dur : (WEAPONS[p.weapon].cd || sw.dur);
+      const n = Math.max(4, Math.round(base * F)), k = clamp(sw.t / sw.dur, 0, 1);
+      q.swing = Object.assign({}, sw, { t: Math.min(1, (Math.floor(k * n) + 0.5) / n) * sw.dur });
+    }
+    return this.drawHandsFrame(q, Math.floor(time * F) / F, glowCol);
+  }
+  drawHandsFrame(p, time, glowCol) {
     const mv = Math.min(1, p.moveAmt || 0);
     const bx = Math.sin(p.bob) * 7 * mv, by = Math.abs(Math.cos(p.bob)) * 6 * mv + Math.sin(time * 1.7) * 1.2;
     const a = p.anim, rc = a * a;
