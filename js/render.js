@@ -31,6 +31,8 @@ function rotSpriteUp(spr) {
 }
 // ---- escudo + mano izquierda combinados en un sprite (cacheado por escudo y mano)
 const SHIELD_COMBO = new WeakMap(), SHIELD_SCALE = 1.65;
+// distancia del centro del escudo a su borde de arriba (px de pantalla): al bloquear, el borde queda en la línea media
+const SHIELD_TOP = Math.round((Math.round(128 * SHIELD_SCALE * 0.47) - 27 * SHIELD_SCALE) * 2); // x2 = HS
 function shieldCombo(sh, hand) {
   let m = SHIELD_COMBO.get(sh); if (!m) SHIELD_COMBO.set(sh, m = new WeakMap());
   let c = m.get(hand); if (c) return c;
@@ -573,7 +575,7 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      let sx = lerp(VW * 0.17, VW * 0.38, k) - bx * 0.5, sy = lerp(VH - 30, VH - 72, k) + by * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      let sx = lerp(VW * 0.17, VW * 0.38, k) - bx * 0.5, sy = lerp(VH + 12, VH / 2 + SHIELD_TOP, k) + Math.max(0, by * 0.5), ang = lerp(0.15, -0.02, k), ssc = 1;
       // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
       const u = p.bashU;
       if (u !== undefined) {
