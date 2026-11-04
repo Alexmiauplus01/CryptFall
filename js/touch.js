@@ -133,7 +133,7 @@ canvas.addEventListener('touchmove', (e) => {
       st.f = Math.abs(dy / STICK_R) < dead ? 0 : -dy / STICK_R;
     } else if ((r.kind === 'look' || (r.kind === 'btn' && r.b.id === 'attack')) && G.state === 'play') {
       // el botón de atacar también gira la cámara al arrastrar el dedo (atacar y apuntar a la vez)
-      G.p.a += (c.x - r.lx) * LOOK_K * (G.cfg ? G.cfg.sens : 1);
+      G.p.a += (c.x - r.lx) * LOOK_K * (G.cfg ? G.cfg.sens : 1); if (c.x !== r.lx) G.manualLook = G.time;
       r.lx = c.x;
     }
   }

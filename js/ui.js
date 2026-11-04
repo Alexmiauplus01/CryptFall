@@ -50,6 +50,8 @@ class UI {
 
   hud(G) {
     const p = G.p, cx = VX + VW / 2;
+    // ataque automático apuntando: aviso discreto bajo el centro
+    if (G.autoT) this.text(cx, VY + VH / 2 + 10, 'AUTO', C.gold, { align: 'center', shadow: 'outline' });
     // cabecera
     this.text(cx - 6, VY + 5, levelName(G.z).toUpperCase(), C.ink, { align: 'right' });
     this.text(cx + 6, VY + 5, `BOTÍN ${G.loot}`, C.gold, { grad: GOLD_GRAD });
@@ -210,6 +212,7 @@ class UI {
     const o = G.cfg, w = 196, rh = 12;
     const rows = [
       ['arrows', 'SENSIBILIDAD', o.sens.toFixed(1), 'sens'],
+      ['toggle', 'ATAQUE AUTOMÁTICO', o.autoAtk ? 'SÍ' : 'NO', 'autoatk'],
       ['arrows', 'VOLUMEN', `${Math.round(o.vol * 100)}%`, 'vol'],
       ['toggle', 'SONIDO', o.muted ? 'NO' : 'SÍ', 'mute'],
       ['toggle', 'MÚSICA', o.music === false ? 'NO' : 'SÍ', 'music'],

@@ -1097,9 +1097,27 @@ function updatePlayer(dt) {
     if (s.strike && s.t >= s.hit) { const f = s.strike; s.strike = null; f(); }
     if (p.swing === s && s.t >= s.dur) p.swing = null;
   }
-  if ((mouse.fire || keys.Space) && p.shootCd <= 0 && !blocking) {
+  const autoFire = autoAttack(dt, turn, blocking);
+  if ((mouse.fire || keys.Space || autoFire) && p.shootCd <= 0 && !blocking) {
     playerAttack();
   }
+}
+
+// Ataque automático (opción): con un enemigo a menos de 5 m la cámara gira hacia el más cercano que se vea
+// y ataca cuando está a su alcance (cuerpo a cuerpo: al alcance del arma; a distancia: dentro de los 5 m).
+// El jugador manda siempre: mientras ataca o mueve la cámara, el modo automático espera; al soltar, vuelve.
+const AUTO_R = 5, AUTO_TURN = 5.5, AUTO_IDLE = 0.6;
+function autoAttack(dt, turn, blocking) {
+  const p = G.p; G.autoT = null;
+  if (!G.cfg.autoAtk || blocking || p.wantBlock) return false;
+  if (mouse.fire || keys.Space || turn || G.time - (G.manualLook ?? -9) < AUTO_IDLE) return false;
+  const t = nearestEnemy(AUTO_R, true); if (!t) return false;
+  G.autoT = t;
+  const want = Math.atan2(t.y - p.y, t.x - p.x), d = ((want - p.a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+  p.a += clamp(d, -AUTO_TURN * dt, AUTO_TURN * dt);
+  const w = WEAPONS[p.weapon], dist = Math.hypot(t.x - p.x, t.y - p.y);
+  const reach = w.kind === 'melee' ? w.range + (t.def.r || 0.3) : AUTO_R;
+  return Math.abs(d) < 0.3 && dist <= reach;
 }
 
 // avance (f) y lateral (s) entre -1 y 1: teclado o joystick táctil
@@ -1334,7 +1352,7 @@ function toCanvas(e) {
   return { x: Math.floor((e.clientX - r.left) / r.width * SW), y: Math.floor((e.clientY - r.top) / r.height * SH) };
 }
 canvas.addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement === canvas) { if (G.state === 'play') G.p.a += e.movementX * 0.0024 * G.cfg.sens; return; }
+  if (document.pointerLockElement === canvas) { if (G.state === 'play') { G.p.a += e.movementX * 0.0024 * G.cfg.sens; if (Math.abs(e.movementX) > 1) G.manualLook = G.time; } return; }
   const m = toCanvas(e); ui.mouse.x = m.x; ui.mouse.y = m.y;
 });
 canvas.addEventListener('mousedown', (e) => { const m = toCanvas(e); handleClick(m.x, m.y, e.button); });
@@ -1434,6 +1452,7 @@ function optAction(id) {
   if (id === 'mute') o.muted = !o.muted;
   if (id === 'fps') o.fps = o.fps === 60 ? 30 : 60;
   if (id === 'crt') o.crt = !o.crt;
+  if (id === 'autoatk') o.autoAtk = !o.autoAtk;
   if (id === 'music') o.music = !o.music;
   if (id === 'quality') o.fast = !o.fast;
   if (id === 'shake') o.noShake = !o.noShake;

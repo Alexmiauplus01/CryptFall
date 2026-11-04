@@ -54,7 +54,7 @@ function pollPad(dt) {
     PAD.focus = -1;
     G.padMove = (lx || ly) ? { f: -ly, s: lx } : null;
     // giro con curva de respuesta (preciso al apuntar, rápido al empujar a fondo)
-    if (rx) p.a += Math.sign(rx) * Math.pow(Math.abs(rx), 1.6) * 3.4 * (G.cfg ? G.cfg.sens : 1) * dt;
+    if (rx) { p.a += Math.sign(rx) * Math.pow(Math.abs(rx), 1.6) * 3.4 * (G.cfg ? G.cfg.sens : 1) * dt; G.manualLook = G.time; }
     if (down(P.attack)) mouse.fire = true; else if (!held(P.attack) && was[P.attack]) mouse.fire = false;
     const shieldOk = p.off === 'shield' && WEAPONS[p.weapon].hands === 1;
     if (held(P.block) && shieldOk) p.wantBlock = true; else if (!held(P.block) && was[P.block] && shieldOk) p.wantBlock = false;
