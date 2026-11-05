@@ -53,6 +53,7 @@ function shieldCombo(sh, hand) {
 // ---- las manos y armas se animan por fotogramas: 12 por segundo a velocidad de ataque base.
 // Cada ataque tiene un número fijo de fotogramas, así que más velocidad de ataque = la misma animación más rápida.
 const HANDS_FPS = 12;
+const DAGGER_TILT = 0.7; // dagas gemelas: inclinación hacia fuera en reposo (rad)
 const HS = 2; // escala de manos y armas en primera persona
 const HAND_TILT = 0.55; // inclinación de la muñeca respecto al arma
 
@@ -636,7 +637,9 @@ class Renderer {
           this.slashLine(mv, sw, side, p.slashRamp || 'steel');
           ang = q.ang; x = q.gx; y = q.gy; s = q.s; sv = q.sv;
         }
-        this.blitRot(weaponSprite('daggers', side > 0 ? SPR.dagger : SPR.daggerL), side > 0 ? 23 : 24, 80, x, y, ang, lm, false, S2 * s, sv);
+        // en reposo cada daga va inclinada hacia fuera en el puño (diagonal); durante el golpe sigue el movimiento
+        const tilt = side * DAGGER_TILT * (active ? 1 - Math.sin(sw * Math.PI) : 1);
+        this.blitRot(weaponSprite('daggers', side > 0 ? SPR.dagger : SPR.daggerL), side > 0 ? 23 : 24, 80, x, y, ang + tilt, lm, false, S2 * s, sv);
         this.armHand(p, side, x, y, ang, rest, x0, y0, lm);
       }
       return;
