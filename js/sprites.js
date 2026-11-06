@@ -814,6 +814,72 @@ const HUMANOIDS = {
   harpy:       { skin: [214, 170, 140], cloth: [130, 96, 64], cloth2: [96, 70, 46], eye: [255, 210, 40], female: true, hair: [70, 44, 30], wings: [150, 112, 74], talons: true, claws: true },
   orc:         { w: 64, h: 82, skin: [96, 130, 70], cloth: [110, 96, 86], cloth2: [70, 56, 44], eye: [255, 70, 30], tusks: true, bulk: 4, weapon: 'axe', hair: [30, 26, 22], headR: 9 },
 };
+// amplía un sprite sin romper la rejilla (Scale2x x8 y remuestreo): mismo tamaño de píxel, más detalle
+function upscaleSprite(spr, k) {
+  const U = rotSpriteUp(spr), W = Math.round(spr.w * k), H = Math.round(spr.h * k), px = new Uint32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) px[y * W + x] = U.px[(((y + 0.5) / k * U.k) | 0) * U.w + (((x + 0.5) / k * U.k) | 0)];
+  return { w: W, h: H, px, flash: px.map(c => c ? rgb(255, 255, 255, c >>> 24) : 0) };
+}
+// ---- jefes nuevos
+const LILITH = { w: 64, h: 76, skin: [206, 96, 104], cloth: [44, 16, 34], cloth2: [130, 20, 44], eye: [255, 210, 60], female: true, horns: true, hair: [22, 12, 20], wings: [96, 22, 44], cape: [70, 10, 30], claws: true, glow: [255, 60, 80] };
+function drawLilith(frame) {
+  const base = drawHumanoid(LILITH, frame), big = upscaleSprite(base, 1.4);
+  // corona de fuego sobre los cuernos
+  const W = big.w;
+  for (const [x, y, c] of [[W / 2 - 4, 4, [255, 200, 80]], [W / 2, 2, [255, 240, 160]], [W / 2 + 4, 4, [255, 200, 80]], [W / 2 - 2, 5, [255, 120, 40]], [W / 2 + 2, 5, [255, 120, 40]]])
+    for (let dy = 0; dy < 3; dy++) big.px[(y + dy) * W + Math.round(x)] = rgb(c[0], c[1], c[2], 250);
+  return big;
+}
+function drawCthulhu(frame) {
+  const G0 = [[86, 140, 104], [60, 104, 78], [40, 72, 56], [130, 186, 140]], B = [[52, 70, 60], [36, 50, 44], [76, 96, 84]];
+  return pix(100, 116, (set) => {
+    const s = frame ? 1 : -1;
+    // alas membranosas a la espalda
+    for (const side of [-1, 1]) for (let i = 0; i < 30; i++) for (let j = 0; j < 22 - Math.abs(i - 10) * 0.7; j++) set(50 + side * (16 + i), 26 + j + (frame ? 0 : 2) + Math.round(Math.abs(i - 8) * 0.4), j === 0 || i % 7 === 0 ? G0[2] : [46, 62, 70]);
+    // piernas y cuerpo escamado
+    pEll(set, 38, 98 + (frame ? 0 : 2), 9, 16, (x) => x < 0 ? B[2] : B[1]); pEll(set, 62, 98 + (frame ? 2 : 0), 9, 16, (x) => x < 0 ? B[2] : B[1]);
+    pEll(set, 50, 72, 24, 26, (x, y) => ((x * 3 + y * 7) & 7) === 0 ? B[1] : x < -10 ? B[2] : x > 12 ? B[1] : B[0]);
+    // brazos con garras
+    pEll(set, 22, 70 + s, 7, 18, (x) => x < 0 ? G0[3] : G0[1]); pEll(set, 78, 70 - s, 7, 18, (x) => x < 0 ? G0[0] : G0[2]);
+    for (const [hx, hy] of [[22, 88 + s], [78, 88 - s]]) for (let k = -2; k <= 2; k++) for (let d = 0; d < 4; d++) set(hx + k * 2, hy + d, [230, 226, 200]);
+    // cabeza de pulpo enorme
+    pEll(set, 50, 26, 20, 22, (x, y) => x < -8 ? G0[3] : x > 9 ? G0[2] : ((x + y) & 5) === 0 ? G0[1] : G0[0]);
+    for (const ex of [41, 59]) { pEll(set, ex, 28, 3, 2, [255, 230, 60], true); set(ex, 28, [40, 10, 10]); }
+    // barba de tentáculos que cuelgan y se mueven
+    for (let k = 0; k < 9; k++) {
+      const x0 = 33 + k * 4.2, len = 22 + (k % 3) * 6;
+      for (let y = 40; y < 40 + len; y++) { const x = Math.round(x0 + Math.sin(y / 5 + k + frame * 1.5) * 2.5); set(x, y, (y & 3) ? G0[1] : G0[0]); set(x + 1, y, G0[2]); }
+    }
+  });
+}
+function drawDragon(frame) {
+  const R = [[196, 50, 36], [150, 32, 26], [110, 22, 20], [236, 96, 60]], Y = [230, 190, 90], H = [240, 230, 210];
+  return pix(132, 100, (set) => {
+    const up = frame ? 0 : 6;
+    // alas desplegadas (arriba/abajo según el fotograma)
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 46; i++) {
+        const top = 14 - up + Math.round(Math.abs(i - 26) * 0.35), bot = 58 - Math.round(i * 0.5);
+        for (let y = top; y < bot; y++) set(66 + side * (16 + i), y, y === top || (i % 9 === 0) ? R[2] : (y - top) % 6 === 0 ? [120, 36, 30] : [168, 52, 40]);
+      }
+    }
+    // cuerpo, patas y cola
+    pEll(set, 66, 66, 22, 20, (x, y) => y > 6 ? Y : x < -8 ? R[3] : x > 10 ? R[1] : R[0]);
+    for (let k = 0; k < 5; k++) for (let x = 56; x < 76; x++) if (((x + k) & 1) === 0) set(x, 72 + k * 3, [200, 160, 70]);
+    pEll(set, 48, 88, 8, 10, R[1]); pEll(set, 84, 88, 8, 10, R[1]);
+    for (const fx of [42, 46, 50, 78, 82, 86]) for (let d = 0; d < 3; d++) set(fx, 97 + d - 1, H);
+    // cuello y cabeza con cuernos
+    pEll(set, 66, 40, 9, 14, (x) => x < -3 ? R[3] : R[0]);
+    pEll(set, 66, 24, 14, 11, (x, y) => x < -5 ? R[3] : x > 6 ? R[1] : R[0]);
+    pEll(set, 66, 32, 9, 5, R[1]); // hocico
+    for (const side of [-1, 1]) for (let i = 0; i < 9; i++) set(66 + side * (9 + i), 15 - i + (i > 5 ? 1 : 0), i > 4 ? H : [190, 170, 140]);
+    for (const ex of [60, 72]) { set(ex, 22, [255, 230, 80], true); set(ex + 1, 22, [255, 230, 80], true); }
+    for (const nx of [63, 69]) set(nx, 31, [40, 10, 10]);
+    // fuego en la boca
+    for (let x = 60; x < 73; x++) set(x, 35, frame ? [255, 200, 60] : [255, 120, 30], true);
+    for (const x of [61, 64, 67, 70]) set(x, 34, H);
+  });
+}
 function drawWorm(open) {
   const B = [[176, 120, 120], [140, 90, 96], [110, 64, 74], [210, 160, 150]];
   return pix(72, 72, (set) => {
@@ -1093,6 +1159,7 @@ function initSprites() {
   SPR.deepwarrior = [0, 1].map(f => drawDeepOne(f, false)); SPR.deepmage = [0, 1].map(f => drawDeepOne(f, true));
   for (const k in HUMANOIDS) SPR[k] = [0, 1].map(f => drawHumanoid(HUMANOIDS[k], f));
   SPR.worm = [drawWorm(false), drawWorm(true)];
+  SPR.lilith = [0, 1].map(drawLilith); SPR.cthulhu = [0, 1].map(drawCthulhu); SPR.dragon = [0, 1].map(drawDragon);
   // variantes teñidas de sprites existentes
   SPR.vampbat = SPR.bat.map(s => tintSprite(s, [1.5, 0.45, 0.5], false));
   SPR.malevolent = SPR.wraith.map(s => tintSprite(s, [1.6, 0.35, 0.45], true));

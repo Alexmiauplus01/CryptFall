@@ -38,6 +38,9 @@ const ENEMY = {
   lich:     { name: 'EL LICHE', hp: 470, spd: 1.3, dmg: 18, r: 0.5, h: 1.75, z: 0, spr: 'lich', xp: 60, boss: true, ai: 'lich' },
   queen:    { name: 'LA REINA ARAÑA', hp: 560, spd: 1.9, dmg: 20, r: 0.6, h: 1.3, z: 0, spr: 'queen', xp: 60, boss: true, ai: 'queen' },
   voidlord: { name: 'EL OJO PRIMIGENIO', hp: 500, spd: 1.0, dmg: 16, r: 0.6, h: 1.6, z: 0.2, spr: 'voidlord', xp: 60, boss: true, ai: 'eye' },
+  lilith:   { name: 'LILITH', hp: 520, spd: 2.0, dmg: 18, r: 0.45, h: 1.5, z: 0.05, spr: 'lilith', xp: 60, boss: true, ai: 'lilith', drain: 1 },
+  cthulhu:  { name: 'CTHULHU', hp: 650, spd: 0.9, dmg: 24, r: 0.7, h: 1.8, z: 0, spr: 'cthulhu', xp: 60, boss: true, ai: 'cthulhu' },
+  dragon:   { name: 'EL DRAGÓN ROJO', hp: 600, spd: 1.5, dmg: 22, r: 0.7, h: 1.6, z: 0, spr: 'dragon', xp: 60, boss: true, ai: 'dragon', charge: { cd: 8, mul: 2.4, dur: 0.9, min: 3, max: 9 } },
   boss:     { name: 'EL GUARDIÁN', hp: 520, spd: 1.5, dmg: 22, r: 0.55, h: 1.75, z: 0, spr: 'boss', xp: 60, boss: true },
 };
 const DECOR = {
@@ -123,7 +126,7 @@ function recalc() {
   };
   p.multi = 1 + L('multi');
   p.pierce = 1 + L('pierce');
-  p.maxHp = Math.round((100 + 30 * L('vit')) * cm.hp * (1 + eqStat('hp')));
+  p.maxHp = Math.round((100 + 30 * L('vit')) * cm.hp * (1 + eqStat('hp') + (setCount('rlyeh') >= 2 ? 0.15 : 0)));
   if (p.maxHp > oldMax && oldMax > 0) p.hp += p.maxHp - oldMax;
   p.regen = 0.6 * L('regen') + eqStat('regen');
   p.magnet = 2.2 * (1 + 0.5 * L('magnet'));
@@ -203,7 +206,7 @@ function populateLevel(lv) {
       case 'camara': box = chest(gold * rand(10, 15), 'potion'); if (area > 30) chest(gold * rand(5, 8)); foes(randi(1, 3)); break;
       case 'guarida': {
         const [x, y] = [r.cx + 0.5, r.cy + 0.5]; used.add(r.cy * MW + r.cx);
-        const b = spawnEnemy(THEMES[lv.theme % THEMES.length].boss, x, y); b.sleep = true; b.shoot = 2; b.ring = 6; b.summon = 5;
+        const bo = THEMES[lv.theme % THEMES.length].boss, b = spawnEnemy(Array.isArray(bo) ? pick(bo) : bo, x, y); b.sleep = true; b.shoot = 2; b.ring = 6; b.summon = 5;
         box = chest(gold * rand(30, 40), 'potion'); foes(2);
         break;
       }
@@ -872,6 +875,7 @@ function updateEnemies(dt) {
     if (e.burn > 0) { e.burn -= dt; dot(e, (e.burnDps || 6) * dt); if (Math.random() < dt * 16) vfxBurn(e); }
     if (e.poison > 0) { e.poison -= dt; dot(e, (e.poisDps || 4) * dt); if (Math.random() < dt * 6) vfxPoisoned(e); }
     if (e.corrode > 0) e.corrode -= dt;
+    if (e.weak > 0) e.weak -= dt;
     if (e.dead) continue;
     const stunned = e.stun > 0; if (stunned) e.stun -= dt;
     const dx = p.x - e.x, dy = p.y - e.y, dist = Math.hypot(dx, dy) || 0.001;
@@ -929,7 +933,7 @@ function updateEnemies(dt) {
         if (ally.hp <= 0) allyKill(ally);
       } else if (dist < d.r + 0.5 && !hidden) {
         const hp0 = p.hp;
-        hurtPlayer(Math.round(d.dmg * e.dmgM), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
+        hurtPlayer(Math.round(d.dmg * e.dmgM * (e.weak > 0 ? 0.7 : 1)), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
         if (d.bite && p.hp < hp0) { p.poisT = Math.max(p.poisT || 0, d.bite.poison); p.poisDps = d.bite.dps * e.dmgM; }
         if (d.hitrun) e.fleeT = d.hitrun; // arpía: tras el zarpazo se aleja
         if (d.drain && p.hp < hp0) { e.hp = Math.min(e.maxHp, e.hp + (hp0 - p.hp) * d.drain); burst(e.x, e.y, 0.6, 5, rgb(220, 30, 40), 1.5, 0.4); }
@@ -993,7 +997,7 @@ function bossSummon(e, type, n) {
   Sfx.play('summon');
 }
 function bossAI2(e, dt, dx, dy, rage, ai) {
-  e.shoot -= dt; e.ring -= dt; e.summon -= dt;
+  e.shoot -= dt; e.ring = (e.ring ?? 6) - dt; e.summon = (e.summon ?? 5) - dt;
   const base = Math.atan2(dy, dx);
   if (ai === 'lich') { // abanicos arcanos e invoca esqueletos
     if (e.shoot <= 0 && e.los) { e.shoot = rage ? 1.3 : 2; const n = rage ? 5 : 3; for (let i = 0; i < n; i++) enemyShot(e.x, e.y, base + (i - (n - 1) / 2) * 0.22, 6, 13 * e.dmgM, 'orbBlue', 0.45); Sfx.play('enemyShoot'); }
@@ -1001,6 +1005,32 @@ function bossAI2(e, dt, dx, dy, rage, ai) {
   } else if (ai === 'queen') { // crías y escupitajos
     if (e.shoot <= 0 && e.los) { e.shoot = rage ? 1.6 : 2.4; for (let i = 0; i < 4; i++) enemyShot(e.x, e.y, base + rand(-0.3, 0.3), rand(4.5, 6.5), 10 * e.dmgM, 'orbGreen', 0.4); Sfx.play('enemyShoot'); }
     if (e.summon <= 0) { e.summon = rage ? 5.5 : 8; bossSummon(e, 'spider', rage ? 5 : 3); }
+  } else if (ai === 'lilith') { // aparece a tu lado, abanicos de sangre e invoca furias y murciélagos
+    const p = G.p;
+    e.blinkCd = (e.blinkCd ?? 4) - dt;
+    if (e.blinkCd <= 0 && e.los) {
+      e.blinkCd = rage ? 4 : 6.5;
+      for (let k = 0; k < 10; k++) { const a = rand(0, TAU), nx = p.x + Math.cos(a) * 2.6, ny = p.y + Math.sin(a) * 2.6; if (G.lv.blocked(nx, ny, 0.4) || !G.lv.los(p.x, p.y, nx, ny)) continue; vfxBlink(e.x, e.y, 'void'); e.x = nx; e.y = ny; vfxBlink(nx, ny, 'void'); Sfx.play('dash'); break; }
+    }
+    if (e.shoot <= 0 && e.los) { e.shoot = rage ? 1.4 : 2.2; const n = rage ? 7 : 5; for (let i = 0; i < n; i++) enemyShot(e.x, e.y, base + (i - (n - 1) / 2) * 0.2, 6, 12 * e.dmgM, 'orbRed', 0.45); Sfx.play('enemyShoot'); }
+    if (e.summon <= 0) { e.summon = rage ? 8 : 11; if (Math.random() < 0.5) bossSummon(e, 'fury', rage ? 3 : 2); else bossSummon(e, 'vampbat', rage ? 5 : 3); }
+  } else if (ai === 'cthulhu') { // golpes de tentáculo donde estás, tinta que ralentiza y siervos abisales
+    const p = G.p;
+    if (e.ring <= 0) {
+      e.ring = rage ? 2.3 : 3.4;
+      const spots = [[p.x, p.y]]; if (rage) for (let k = 0; k < 2; k++) spots.push([p.x + rand(-2, 2), p.y + rand(-2, 2)]);
+      for (const [tx, ty] of spots) {
+        vRing(tx, ty, 0.02, 1.1, 0.85, VR.void ? VR.void.slice(0, 4) : VR.steel.slice(0, 4), 24); // aviso
+        later(0.85, () => { vfxShock(tx, ty, 1.2); G.shake = Math.max(G.shake, 0.35); Sfx.play('hit'); if (Math.hypot(G.p.x - tx, G.p.y - ty) < 1.15) hurtPlayer(Math.round(20 * e.dmgM), tx, ty); });
+      }
+    }
+    if (e.shoot <= 0 && e.los) { e.shoot = rage ? 2.6 : 3.8; for (let i = -1; i <= 1; i++) enemyShot(e.x, e.y, base + i * 0.25, 5, 10 * e.dmgM, 'orbPurple', 0.6, 2.2); Sfx.play('enemyShoot'); }
+    if (e.summon <= 0) { e.summon = rage ? 9 : 13; bossSummon(e, 'deepwarrior', rage ? 3 : 2); }
+  } else if (ai === 'dragon') { // aliento de fuego en cono y bolas de fuego
+    e.breath = (e.breath ?? 3) - dt;
+    if (e.breath <= 0 && e.los && !(e.breathT > 0)) { e.breathT = 1.4; e.breath = rage ? 4.5 : 6.5; Sfx.play('boss'); }
+    if (e.breathT > 0) { e.breathT -= dt; if (Math.random() < dt * 22) enemyShot(e.x, e.y, base + rand(-0.38, 0.38), rand(6.5, 8.5), 7 * e.dmgM, 'orbRed', 0.55); }
+    if (e.shoot <= 0 && e.los && !(e.breathT > 0)) { e.shoot = rage ? 1.8 : 2.8; for (let i = -1; i <= 1; i += 2) enemyShot(e.x, e.y, base + i * 0.12, 7, 16 * e.dmgM, 'orbRed', 0.75); Sfx.play('enemyShoot'); }
   } else if (ai === 'eye') { // espirales de orbes
     if (e.ring <= 0) { e.ring = 0.18; e.spin = (e.spin || 0) + (rage ? 0.5 : 0.38); const arms = rage ? 4 : 3; for (let k = 0; k < arms; k++) enemyShot(e.x, e.y, e.spin + k / arms * TAU, 3.4, 9 * e.dmgM, 'orbPurple', 0.38); }
     if (e.shoot <= 0 && e.los) { e.shoot = 3; for (let i = 0; i < 3; i++) enemyShot(e.x, e.y, base + (i - 1) * 0.1, 8, 14 * e.dmgM, 'orbPurple', 0.5); Sfx.play('enemyShoot'); }

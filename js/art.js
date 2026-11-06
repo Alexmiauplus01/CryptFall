@@ -9,7 +9,7 @@ const THEMES = [
     mortar: [38, 34, 36], moss: [72, 104, 60], mossAmt: 0.22, banner: [150, 28, 30], accent: [120, 20, 16],
     floor: [[98, 94, 96], [86, 82, 84], [110, 104, 98]], tiles: [[96, 70, 64], [70, 62, 74]],
     wood: [[92, 60, 36], [64, 40, 24]], ceil: 'wood', wallStyle: 'stone', altStyle: 'brick',
-    boss: 'lich', fauna: [['zombie', 6], ['cultist', 2, 1, 20], ['vampspawn', 3], ['vampire', 1, 0.5, 30], ['necromancer', 1.5, 0.5, 25], ['malevolent', 1.5]],
+    boss: ['lich', 'lilith'], fauna: [['zombie', 6], ['cultist', 2, 1, 20], ['vampspawn', 3], ['vampire', 1, 0.5, 30], ['necromancer', 1.5, 0.5, 25], ['malevolent', 1.5]],
   },
   {
     name: 'Las Catacumbas', fog: [3, 8, 5], ambient: [0.04, 0.06, 0.045], glow: [140, 255, 120],
@@ -25,7 +25,7 @@ const THEMES = [
     mortar: [28, 10, 8], moss: [255, 120, 30], mossAmt: 0.0, banner: [30, 22, 24], accent: [150, 20, 12], lava: true,
     floor: [[96, 58, 50], [80, 46, 40], [108, 66, 52]], tiles: [[110, 40, 32], [52, 30, 30]],
     wood: [[70, 36, 24], [44, 22, 16]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick',
-    boss: 'boss', fauna: [['hound', 6], ['imp', 3, 1], ['fury', 4], ['orc', 3, 0.5]],
+    boss: ['dragon', 'boss'], fauna: [['hound', 6], ['imp', 3, 1], ['fury', 4], ['orc', 3, 0.5]],
   },
   {
     name: 'El Vacío', fog: [8, 4, 14], ambient: [0.05, 0.04, 0.08], glow: [225, 120, 255],
@@ -41,7 +41,7 @@ const THEMES = [
     mortar: [40, 48, 60], moss: [225, 240, 255], mossAmt: 0.38, banner: [40, 70, 120], accent: [60, 120, 170],
     floor: [[120, 134, 150], [104, 118, 134], [136, 150, 164]], tiles: [[150, 180, 200], [96, 110, 130]],
     wood: [[90, 80, 76], [60, 52, 50]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'icecrystal',
-    boss: 'lich', fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['harpy', 4], ['wraith', 3], ['skeleton', 3], ['orc', 1.5]],
+    boss: ['lich', 'dragon'], fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['harpy', 4], ['wraith', 3], ['skeleton', 3], ['orc', 1.5]],
   },
   {
     name: 'Las Cloacas', fog: [6, 8, 3], ambient: [0.045, 0.055, 0.035], glow: [190, 230, 90],
@@ -57,7 +57,7 @@ const THEMES = [
     mortar: [60, 46, 30], moss: [80, 120, 90], mossAmt: 0.15, banner: [30, 60, 130], accent: [190, 140, 40],
     floor: [[150, 128, 94], [134, 114, 82], [164, 142, 104]], tiles: [[170, 130, 60], [90, 70, 50]],
     wood: [[110, 74, 40], [78, 50, 26]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'urn',
-    boss: 'boss', fauna: [['deepwarrior', 7, 0.5], ['deepmage', 4, 0.6, 15], ['harpy', 3], ['cultist', 2], ['skeleton', 3], ['necromancer', 1, 0.4, 30]],
+    boss: 'cthulhu', fauna: [['deepwarrior', 7, 0.5], ['deepmage', 4, 0.6, 15], ['harpy', 3], ['cultist', 2], ['skeleton', 3], ['necromancer', 1, 0.4, 30]],
   },
 ];
 

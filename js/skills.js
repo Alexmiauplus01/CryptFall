@@ -43,7 +43,7 @@ function applyFx(e, o) {
   const dm = G.p.dmgMul || 1;
   if (o.slow) e.slow = Math.max(e.slow, o.slow);
   if (o.stun) e.stun = Math.max(e.stun || 0, o.stun * (e.def.boss ? 0.3 : 1));
-  if (o.burn) { e.burn = Math.max(e.burn || 0, o.burn); e.burnDps = Math.max(e.burnDps || 0, 6 * dm); }
+  if (o.burn) { e.burn = Math.max(e.burn || 0, o.burn); e.burnDps = Math.max(e.burnDps || 0, 6 * dm * (typeof setCount === 'function' && setCount('dragon') >= 2 ? 1.5 : 1)); }
   if (o.poison) { e.poison = Math.max(e.poison || 0, o.poison); e.poisDps = Math.max(e.poisDps || 0, 4 * dm * (typeof setCount === 'function' && setCount('reina') >= 2 ? 1.5 : 1)); }
   if (o.corrode) e.corrode = Math.max(e.corrode || 0, o.corrode);
 }
@@ -148,7 +148,7 @@ function applyStats() {
   }
   const fs = { dmg, rate, crit, leech }; forgeStats(fs); dmg = fs.dmg; rate = fs.rate; crit = fs.crit; leech = fs.leech;
   // objetos equipados
-  dmg *= 1 + eqStat('dmg'); crit += eqStat('crit'); rate *= 1 + eqStat('rate'); armor *= Math.max(0.3, 1 - eqStat('armor') - setArmor()); crit += setCrit(); spd *= 1 + eqStat('spd'); leech += eqStat('leech'); if (eqSpecial('sangre')) leech += 0.03;
+  dmg *= 1 + eqStat('dmg'); crit += eqStat('crit'); rate *= 1 + eqStat('rate'); armor *= Math.max(0.3, 1 - eqStat('armor') - setArmor()); crit += setCrit(); spd *= 1 + eqStat('spd'); leech += eqStat('leech'); if (eqSpecial('sangre')) leech += 0.03; if (setCount('lilith') >= 2) leech += 0.05;
   p.slashRamp = forgeRamp() || undefined;
   if (p.form === 'wolf') { spd *= 1.35; rate *= 1.25; dmg *= 1.1; }
   else if (p.form === 'bear') { spd *= 0.85; dmg *= 1.4; armor *= 0.55; }
