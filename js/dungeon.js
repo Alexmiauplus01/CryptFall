@@ -3,7 +3,8 @@
 // en zonas alcanzables con las llaves anteriores, así que la mazmorra tiene solución por construcción.
 const DG_PRE = ['Las Catacumbas', 'La Cripta', 'La Fortaleza Hundida', 'El Osario', 'Las Bóvedas', 'El Santuario Profanado', 'La Torre Enterrada', 'Las Galerías'];
 const DG_SUF = ['de Ulmar', 'de Vel Kharn', 'del Rey Ciego', 'de Morhaven', 'de Ashgrave', 'de la Orden Gris', 'de Duskmere', 'de los Mil Huesos', 'de Karak Dum'];
-const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada' };
+const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada',
+  biblioteca: 'biblioteca olvidada', osario: 'osario', fuente: 'fuente antigua', almacen: 'almacén', jardin: 'jardín de hongos', ritual: 'círculo ritual' };
 
 function levelName(z) { return z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }
 // orientación de una celda dentro del nivel, para el diario ("ala norte")
@@ -147,6 +148,14 @@ class Dungeon {
     if (Math.random() < 0.65) { const r = take(r => r.w >= 7 && r.h >= 7 && r.shape !== 'round'); if (r) r.type = 'arena'; }
     if (Math.random() < 0.55) { const r = take(r => r.w * r.h >= 24); if (r) r.type = 'trampa'; }
     if (Math.random() < 0.4) { const r = take(() => true); if (r) r.type = 'tesoro'; }
+    // salas temáticas: cada una con su decorado y su contenido
+    const big = (r) => r.w >= 5 && r.h >= 5 && r.shape !== 'round';
+    if (Math.random() < 0.4) { const r = take(r => big(r) && r.w * r.h >= 25); if (r) r.type = 'biblioteca'; }
+    if (Math.random() < 0.4) { const r = take(r => r.w * r.h >= 20); if (r) r.type = 'osario'; }
+    if (Math.random() < 0.35) { const r = take(r => r.w * r.h >= 16); if (r) r.type = 'fuente'; }
+    if (Math.random() < 0.45) { const r = take(r => r.w * r.h >= 16); if (r) r.type = 'almacen'; }
+    if (Math.random() < 0.35) { const r = take(r => r.w * r.h >= 20); if (r) r.type = 'jardin'; }
+    if (Math.random() < 0.3) { const r = take(r => r.w >= 6 && r.h >= 6); if (r) r.type = 'ritual'; }
   }
 
   // BFS por todos los niveles: celdas alcanzables con las llaves 0..k-1 (y muros secretos si secrets)
@@ -185,6 +194,27 @@ class Dungeon {
       lv.npcs.push({ type: 'smith', x: r.cx + 0.5, y: r.cy + 0.5 });
     }
     if (r.type === 'santuario') { r.shrine = lv.addDecor('altar', r.cx + 0.5, r.cy + 0.5, true); r.shrine.used = false; lv.shrines.push(r.shrine); }
+    // ---- salas temáticas
+    const ri = lv.rooms.indexOf(r);
+    const ok = (x, y) => lv.inRoom(r, x, y) && lv.at(x, y) === 0 && lv.roomOf[y * MW + x] === ri && !lv.nearSpecial(x, y) && !lv.decor.some(d => Math.floor(d.x) === x && Math.floor(d.y) === y);
+    const cells = []; for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (ok(x, y)) cells.push([x, y]);
+    const wallSide = cells.filter(([x, y]) => DIRS4.some(([dx, dy]) => lv.at(x + dx, y + dy) !== 0 && lv.at(x + dx, y + dy) < W_DOOR));
+    const scatter = (type, n, light, from = cells, jitter = 0.25) => { const pool = from.filter(c => ok(c[0], c[1])); for (let k = 0; k < n && pool.length; k++) { const [x, y] = pool.splice(randi(0, pool.length - 1), 1)[0]; lv.addDecor(type, x + 0.5 + rand(-jitter, jitter), y + 0.5 + rand(-jitter, jitter), light); } };
+    if (r.type === 'biblioteca') { // estanterías contra las paredes y velas en el centro
+      wallSide.filter(([x, y]) => (x + y) % 2 === 0).slice(0, 10).forEach(([x, y]) => { if (ok(x, y)) lv.addDecor('bookshelf', x + 0.5, y + 0.5, false); });
+      if (ok(r.cx, r.cy)) lv.addDecor('candles', r.cx + 0.5, r.cy + 0.5, true);
+    }
+    if (r.type === 'osario') { scatter('bonepile', randi(3, 5), false, cells, 0.3); scatter('bones', randi(2, 4), false); scatter('skulltorch', 2, true, wallSide, 0); }
+    if (r.type === 'fuente') {
+      if (ok(r.cx, r.cy)) { const f = lv.addDecor('fountain', r.cx + 0.5, r.cy + 0.5, true); f.used = false; }
+      scatter('candles', 2, true, wallSide, 0);
+    }
+    if (r.type === 'almacen') { scatter('barrel', randi(3, 5), false, wallSide, 0.15); scatter('crate', randi(3, 5), false, wallSide, 0.15); }
+    if (r.type === 'jardin') { scatter('mushroom', randi(3, 5), true, cells, 0.35); scatter('mushroomB', randi(2, 3), true, cells, 0.35); }
+    if (r.type === 'ritual') {
+      if (ok(r.cx, r.cy)) lv.addDecor('ritual', r.cx + 0.5, r.cy + 0.5, true);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * TAU, x = Math.floor(r.cx + 0.5 + Math.cos(a) * 2.2), y = Math.floor(r.cy + 0.5 + Math.sin(a) * 2.2); if (ok(x, y)) lv.addDecor('candles', x + 0.5, y + 0.5, true); }
+    }
     if (r.type === 'trampa') {
       for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
         if (!lv.inRoom(r, x, y) || lv.nearSpecial(x, y)) continue;

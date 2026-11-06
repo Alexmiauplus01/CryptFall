@@ -5,6 +5,11 @@ const MW = 64, MH = 64;
 const LS = 4, LG = MW * LS; // resolución del mapa de luz (subceldas por celda)
 
 const LIGHT_FIRE = [0.95, 0.55, 0.24];
+// luz de los decorados que brillan: [color, radio]
+const DECOR_LIGHT = {
+  fountain: [[0.35, 0.65, 1.1], 3.6], mushroom: [[0.3, 1.0, 0.6], 2.8], mushroomB: [[0.3, 0.7, 1.2], 2.8],
+  ritual: [[1.2, 0.25, 0.18], 4.2], icecrystal: [[0.5, 0.85, 1.25], 3.2],
+};
 
 // celdas especiales (son pared a efectos de colisión y de rayos)
 const W_DOOR = 9, W_LOCK = 10, W_UP = 13, W_DOWN = 14, W_EXIT = 15, W_BARS = 16;
@@ -335,12 +340,13 @@ class Level {
           this.lights.push({ x: x + 0.5 + dx * 0.62, y: y + 0.5 + dy * 0.62, c: LIGHT_FIRE, rad: 4.6 });
         } else if (Math.random() < 0.06) this.cells[i] = 6;
       }
-      if (['santuario', 'arena', 'trampa'].includes(r.type)) return;
+      if (['santuario', 'arena', 'trampa', 'biblioteca', 'osario', 'fuente', 'almacen', 'jardin', 'ritual'].includes(r.type)) return; // las salas especiales se amueblan aparte
       const free = (x, y) => this.at(x, y) === 0 && !this.nearSpecial(x, y);
       const corners = [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1], [r.x + r.w - 1, r.y + r.h - 1]];
       for (const [cx, cy] of corners) {
         const roll = Math.random();
         if (!free(cx, cy) || this.roomOf[cy * MW + cx] !== ri) continue;
+        if (this.themeCorner(theme, cx, cy)) continue;
         if (roll < 0.16) this.addDecor('skulltorch', cx + 0.5, cy + 0.5, true);
         else if (roll < 0.45) this.addDecor('barrel', cx + 0.5, cy + 0.5);
         else if (roll < 0.6) this.addDecor('candles', cx + 0.5, cy + 0.5, true);
@@ -369,10 +375,19 @@ class Level {
     return false;
   }
 
+  // decorado típico de la temática en las esquinas (cristales de hielo, urnas, cajas...)
+  themeCorner(theme, cx, cy) {
+    if (!theme.corner || Math.random() > 0.45) return false;
+    this.addDecor(theme.corner, cx + 0.5, cy + 0.5, !!DECOR_LIGHT[theme.corner]);
+    return true;
+  }
   addDecor(type, x, y, light) {
     const d = { type, x, y, ph: Math.random() * 4 };
     this.decor.push(d);
-    if (light) this.lights.push({ x, y, c: type === 'candles' ? [0.6, 0.4, 0.18] : type === 'altar' ? [0.55, 0.75, 1.1] : LIGHT_FIRE, rad: type === 'candles' ? 2.6 : type === 'brazier' ? 5 : type === 'altar' ? 4 : 3.8 });
+    if (light) {
+      const L = DECOR_LIGHT[type];
+      this.lights.push(L ? { x, y, c: L[0], rad: L[1] } : { x, y, c: type === 'candles' ? [0.6, 0.4, 0.18] : type === 'altar' ? [0.55, 0.75, 1.1] : LIGHT_FIRE, rad: type === 'candles' ? 2.6 : type === 'brazier' ? 5 : type === 'altar' ? 4 : 3.8 });
+    }
     return d;
   }
 

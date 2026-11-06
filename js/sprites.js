@@ -670,6 +670,111 @@ function drawAltar(frame, lit) {
     }
   });
 }
+// ---- decorado de las salas nuevas (pixel art a mano, contorno automático)
+function drawBookshelf() {
+  const W = [[96, 64, 38], [70, 46, 26], [124, 86, 50]], spines = [[150, 40, 34], [40, 70, 130], [60, 110, 60], [150, 120, 50], [90, 50, 110], [170, 150, 120], [60, 60, 70]];
+  return pix(24, 36, (set) => {
+    for (let y = 0; y < 36; y++) for (let x = 0; x < 24; x++) {
+      const frame = x < 2 || x > 21 || y < 2 || y > 33;
+      if (frame) set(x, y, x < 2 || y < 2 ? W[2] : W[1]);
+      else set(x, y, [40, 28, 18]);
+    }
+    for (const sy of [10, 18, 26]) for (let x = 2; x < 22; x++) { set(x, sy, W[0]); set(x, sy + 1, W[1]); }
+    let k = 0;
+    for (const [y0, y1] of [[3, 10], [12, 18], [20, 26], [28, 34]]) {
+      let x = 2;
+      while (x < 22) {
+        const bw = 1 + ((k * 7 + y0) % 3), tall = (k * 5 + y0) % 4 === 0 ? 2 : 0, c = spines[(k * 3 + y0) % spines.length];
+        if ((k * 11 + y0) % 9 === 4) { x += 2; k++; continue; } // hueco
+        for (let xx = x; xx < Math.min(22, x + bw); xx++) for (let y = y0 + tall; y < y1; y++) set(xx, y, xx === x ? c.map(v => v * 1.25) : c);
+        if (y1 - y0 > 5) set(x, y0 + tall + 2, [220, 200, 120]);
+        x += bw; k++;
+      }
+    }
+  });
+}
+function drawFountain(frame, full) {
+  const S = [[90, 92, 104], [130, 132, 142], [160, 162, 170], [60, 62, 74]], Wt = [[60, 140, 220], [110, 190, 255], [200, 240, 255]];
+  return pix(28, 28, (set) => {
+    for (let y = 18; y < 28; y++) for (let x = 2; x < 26; x++) set(x, y, y === 18 ? S[2] : x < 4 ? S[1] : x > 23 ? S[3] : (y === 23 ? S[3] : S[0]));
+    for (let y = 8; y < 18; y++) for (let x = 12; x < 16; x++) set(x, y, x === 12 ? S[2] : S[1]);
+    for (let x = 8; x < 20; x++) { set(x, 8, S[2]); set(x, 9, S[0]); }
+    if (!full) return;
+    for (let x = 4; x < 24; x++) set(x, 19, Wt[(x + frame) % 3 === 0 ? 2 : 1], true);
+    for (let x = 9; x < 19; x++) set(x, 7, Wt[(x + frame) % 2 ? 1 : 2], true);
+    // chorros que caen a la pila (4 fotogramas)
+    for (const sx of [8, 19]) for (let y = 10; y < 19; y++) if ((y + frame) % 3) set(sx + (sx < 12 ? -((y - 10) >> 2) : (y - 10) >> 2), y, Wt[(y + frame) % 2 ? 0 : 1], true);
+    for (let y = 2; y < 7; y++) if ((y + frame) % 2) set(14, y, Wt[2], true);
+  });
+}
+function drawMushroom(frame, hue) {
+  const cap = hue === 'blue' ? [[60, 170, 255], [140, 220, 255], [30, 90, 180]] : [[80, 230, 140], [180, 255, 200], [30, 130, 80]];
+  const glow = (frame & 2) ? 1 : 0;
+  return pix(18, 20, (set) => {
+    for (const [cx, base, r, h] of [[6, 19, 4, 10], [13, 19, 3, 7]]) {
+      for (let y = base - h + r; y <= base; y++) { set(cx, y, [214, 206, 186]); set(cx + 1, y, [180, 170, 150]); }
+      for (let y = -r; y <= 0; y++) for (let x = -r - 1; x <= r + 1; x++) {
+        if (x * x * 0.8 + y * y * 1.6 > r * r + 1) continue;
+        const c = y === -r || x === -r - 1 ? cap[1] : y === 0 ? cap[2] : cap[0];
+        set(cx + x, base - h + r + y, c, true);
+      }
+      if (glow) set(cx - 1, base - h + 1, [255, 255, 255], true);
+      set(cx + 2, base - h + r - 1, cap[1], true);
+    }
+  });
+}
+function drawCrate() {
+  const Wd = [[150, 108, 62], [118, 82, 46], [86, 58, 32]];
+  return pix(22, 20, (set) => {
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 22; x++) {
+      const edge = x < 2 || x > 19 || y < 2 || y > 17;
+      set(x, y, edge ? Wd[2] : (y % 6 === 1 ? Wd[2] : Wd[(x + y * 3) % 7 === 0 ? 1 : 0]));
+    }
+    for (let k = 2; k < 18; k++) { set(k + 1, k, Wd[2]); set(k + 2, k, Wd[1]); }
+    for (const [x, y] of [[1, 1], [20, 1], [1, 18], [20, 18]]) set(x, y, [140, 140, 150]);
+  });
+}
+function drawRitualStone(frame) {
+  const S = [[54, 46, 56], [78, 68, 80], [104, 92, 104]], R = (frame & 1) ? [255, 70, 50] : [210, 40, 40];
+  return pix(20, 30, (set) => {
+    for (let y = 4; y < 30; y++) { const w = y < 8 ? 3 + (y - 4) : 7; for (let x = 10 - w; x < 10 + w; x++) set(x, y, x < 10 - w + 2 ? S[2] : x > 10 + w - 3 ? S[0] : S[1]); }
+    for (let y = 26; y < 30; y++) for (let x = 0; x < 20; x++) set(x, y, y === 26 ? S[2] : S[0]);
+    for (const [x, y] of [[10, 10], [9, 11], [11, 11], [8, 13], [12, 13], [10, 14], [9, 16], [11, 16], [10, 18], [10, 19], [8, 21], [12, 21], [10, 22]]) set(x, y, R, true);
+    if (frame & 2) set(10, 3, [255, 140, 90], true);
+  });
+}
+function drawBonePile() {
+  const B = [[236, 228, 206], [196, 186, 162], [140, 130, 112]];
+  return pix(30, 18, (set) => {
+    for (let y = 6; y < 18; y++) { const w = Math.round(14 * Math.sqrt(1 - ((17 - y) / 12) ** 2)); for (let x = 15 - w; x < 15 + w; x++) set(x, y, B[(x * 7 + y * 3) % 5 === 0 ? 2 : (x + y) % 3 ? 1 : 0]); }
+    for (const [cx, cy] of [[9, 7], [18, 5], [23, 10]]) {
+      for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) if (x * x + y * y <= 5) set(cx + x, cy + y, B[0]);
+      set(cx - 1, cy, [30, 22, 20]); set(cx + 1, cy, [30, 22, 20]); set(cx, cy + 2, [60, 50, 44]);
+    }
+  });
+}
+function drawIceCrystal(frame) {
+  const C = [[170, 230, 255], [110, 190, 245], [60, 130, 210], [235, 250, 255]];
+  return pix(20, 30, (set) => {
+    for (const [cx, base, h, w] of [[10, 29, 26, 3], [5, 29, 14, 2], [15, 29, 17, 2]]) {
+      for (let y = base - h; y <= base; y++) {
+        const ww = Math.max(0, Math.round(w * Math.min(1, (y - (base - h)) / 4)));
+        for (let x = cx - ww; x <= cx + ww; x++) set(x, y, x < cx ? C[0] : x === cx ? C[1] : C[2], true);
+      }
+      set(cx - 1, base - h + 5 + (frame & 3), C[3], true);
+    }
+  });
+}
+function drawUrn() {
+  const G0 = [[200, 160, 80], [160, 120, 56], [120, 86, 40], [240, 210, 130]];
+  return pix(16, 22, (set) => {
+    for (let y = 2; y < 22; y++) {
+      const r = y < 4 ? 4 : y < 7 ? 3 : y < 17 ? Math.round(3 + 4 * Math.sin((y - 6) / 11 * Math.PI)) : 3;
+      for (let x = 8 - r; x < 8 + r; x++) set(x, y, x < 8 - r + 2 ? G0[3] : x > 8 + r - 3 ? G0[2] : (y === 10 || y === 15 ? G0[2] : G0[0]));
+    }
+    for (let x = 3; x < 13; x++) set(x, 12, [40, 70, 140]);
+  });
+}
 function drawSpikes(up) {
   return pix(16, up ? 9 : 3, (set) => {
     const h = up ? 9 : 3;
@@ -822,6 +927,10 @@ function initSprites() {
   SPR.potionIcon = SPR.potion;
   SPR.altar = [0, 1, 2, 3].map(f => drawAltar(f, true)); SPR.altarOff = [drawAltar(0, false)];
   SPR.spikesUp = drawSpikes(true); SPR.spikesDown = drawSpikes(false);
+  SPR.bookshelf = [drawBookshelf()]; SPR.crate = [drawCrate()]; SPR.bonepile = [drawBonePile()]; SPR.urn = [drawUrn()];
+  SPR.fountain = [0, 1, 2, 3].map(f => drawFountain(f, true)); SPR.fountainOff = [drawFountain(0, false)];
+  SPR.mushroom = [0, 1, 2, 3].map(f => drawMushroom(f, 'green')); SPR.mushroomB = [0, 1, 2, 3].map(f => drawMushroom(f, 'blue'));
+  SPR.ritual = [0, 1, 2, 3].map(drawRitualStone); SPR.icecrystal = [0, 1, 2, 3].map(drawIceCrystal);
 
   SPR.orbBlue = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [150, 220, 255, 255]], [0.65, [60, 110, 255, 170]], [1, [20, 40, 200, 0]]]);
   SPR.orbGold = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [255, 240, 130, 255]], [0.65, [255, 170, 40, 170]], [1, [200, 80, 10, 0]]]);

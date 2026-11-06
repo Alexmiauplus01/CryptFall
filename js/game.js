@@ -32,6 +32,21 @@ const DECOR = {
   smith:      { h: 1.0, anim: true },
   anvil:      { h: 0.34 },
   altar:      { h: 0.72, anim: true },
+  bookshelf:  { h: 1.15 },
+  crate:      { h: 0.5 },
+  bonepile:   { h: 0.36 },
+  urn:        { h: 0.55 },
+  fountain:   { h: 0.62, anim: true },
+  mushroom:   { h: 0.42, anim: true },
+  mushroomB:  { h: 0.42, anim: true },
+  ritual:     { h: 0.85, anim: true },
+  icecrystal: { h: 0.8, anim: true },
+};
+// salas temáticas: frase que se anuncia al entrar la primera vez (el nombre está en ROOM_NAME, dungeon.js)
+const ROOM_HINT = {
+  biblioteca: 'Polvo, velas y saber olvidado', osario: 'Montañas de huesos... algunos se mueven',
+  fuente: 'El agua aún brilla: beber de ella cura', almacen: 'Cajas y barriles de alguna expedición perdida',
+  jardin: 'Hongos que brillan en la oscuridad', ritual: 'Un círculo de velas y una piedra que sangra luz',
 };
 const PROJ_LIGHT = {
   orbBlue: [0.35, 0.6, 1.25], orbGold: [1.2, 0.95, 0.4], orbRed: [1.3, 0.55, 0.15], orbGreen: [0.3, 1.1, 0.55], orbPurple: [0.85, 0.3, 1.2], orbIce: [0.5, 0.9, 1.2], orbArrow: [0.9, 0.8, 0.5],
@@ -170,13 +185,25 @@ function populateLevel(lv) {
       case 'camara': box = chest(gold * rand(10, 15), 'potion'); if (area > 30) chest(gold * rand(5, 8)); foes(randi(1, 3)); break;
       case 'guarida': {
         const [x, y] = [r.cx + 0.5, r.cy + 0.5]; used.add(r.cy * MW + r.cx);
-        const b = spawnEnemy(['lich', 'queen', 'boss', 'voidlord'][lv.theme % 4], x, y); b.sleep = true; b.shoot = 2; b.ring = 6; b.summon = 5;
+        const b = spawnEnemy(THEMES[lv.theme % THEMES.length].boss, x, y); b.sleep = true; b.shoot = 2; b.ring = 6; b.summon = 5;
         box = chest(gold * rand(30, 40), 'potion'); foes(2);
         break;
       }
       case 'secreta': box = chest(gold * rand(6, 10), 'potion'); break;
       case 'trampa': box = chest(gold * rand(5, 8)); break;
-      case 'santuario': case 'arena': case 'mercader': case 'herrero': break;
+      case 'santuario': case 'arena': case 'mercader': case 'herrero': case 'fuente': break;
+      case 'biblioteca': // saber antiguo: experiencia en gemas y algún erudito corrupto
+        for (let k = 0; k < randi(2, 4); k++) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'gem', x, y, v: 5, vx: 0, vy: 0, t: rand(0, 6) }); }
+        foes(randi(1, 2), 'cultist'); if (Math.random() < 0.35) box = chest(gold * rand(3, 5));
+        break;
+      case 'osario': foes(randi(4, 6), 'skeleton'); { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'gold', x, y, v: Math.round(gold * rand(1.5, 2.5)), t: rand(0, 6) }); } break;
+      case 'almacen':
+        for (let k = 0; k < randi(2, 3); k++) chest(gold * rand(1.5, 3), Math.random() < 0.25 ? 'potion' : null);
+        if (Math.random() < 0.5) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'torch', x, y, t: 0 }); }
+        foes(randi(1, 2), 'bat');
+        break;
+      case 'jardin': foes(randi(2, 4), Math.random() < 0.5 ? 'spider' : 'slime'); if (Math.random() < 0.5) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'potion', x, y, t: 0 }); } break;
+      case 'ritual': foes(randi(3, 4), 'cultist'); box = chest(gold * rand(8, 12), 'potion'); box.eq = true; break;
       default:
         foes(Math.max(1, Math.min(5, Math.round(area / 16 + rand(-0.5, 1)) + (lv.z !== 0 ? 1 : 0))));
         if (Math.random() < 0.35) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'gold', x, y, v: Math.round(gold * rand(0.6, 1.4)), t: rand(0, 6) }); }
@@ -338,6 +365,19 @@ function updateRooms(dt) {
     Sfx.play('shrine'); G.flashFx = 0.6;
     toast('UN ALTAR TE BENDICE', true); logMsg('Vida al máximo y +20% de daño durante un minuto', C.cyan);
     jot('shrine' + G.z, `Recé ante un altar olvidado del ${levelName(G.z)}. Sus velas se apagaron, pero sentí su bendición.`);
+  }
+  // fuentes: se bebe una vez; cura y limpia el veneno
+  for (const d of G.decor) {
+    if (d.type !== 'fountain' || d.used || Math.hypot(d.x - p.x, d.y - p.y) > 1.15) continue;
+    d.used = true; healP(p.maxHp * 0.6);
+    Sfx.play('shrine'); G.flashFx = 0.4;
+    toast('BEBES DE LA FUENTE', true); logMsg('Recuperas el 60% de la vida', C.cyan);
+  }
+  // al entrar por primera vez en una sala temática se anuncia su nombre
+  const rIn = lv.roomOf[Math.floor(p.y) * MW + Math.floor(p.x)];
+  if (rIn >= 0 && rIn !== G.roomIn) {
+    G.roomIn = rIn; const r = lv.rooms[rIn];
+    if (ROOM_HINT[r.type] && !r.named) { r.named = true; toast(ROOM_NAME[r.type].toUpperCase(), false); logMsg(ROOM_HINT[r.type], C.dim); }
   }
 }
 
@@ -591,12 +631,9 @@ function pickType() {
   if (t > 14 || f > 1) pool.push(['slime', 2 + f * 0.6]);
   if (t > 28 || f > 1) pool.push(['wraith', 1 + f * 0.8]);
   if (t > 42 || f > 2) pool.push(['imp', 1 + f * 0.6]);
-  // fauna propia de cada tema: Cripta, Catacumbas, Foso Infernal, El Vacío
-  const th = G.lv ? G.lv.theme % 4 : 0;
-  if (th === 0) { pool.push(['zombie', 6]); if (t > 20 || f > 1) pool.push(['cultist', 2 + f]); }
-  if (th === 1) { pool.push(['spider', 8]); pool.push(['slime', 3]); }
-  if (th === 2) { pool.push(['hound', 6]); pool.push(['imp', 3 + f]); }
-  if (th === 3) { pool.push(['eye', 5 + f]); pool.push(['wraith', 3]); }
+  // fauna propia de cada temática: [tipo, peso, +peso por piso, aparece tras N s (o desde el piso 2)]
+  const th = THEMES[(G.lv ? G.lv.theme : 0) % THEMES.length];
+  for (const [type, w, perF = 0, minT = 0] of th.fauna) if (!minT || t > minT || f > 1) pool.push([type, w + perF * f]);
   let tot = 0; for (const [, w] of pool) tot += w;
   let r = Math.random() * tot;
   for (const [n, w] of pool) { if ((r -= w) <= 0) return n; }
@@ -1213,7 +1250,7 @@ function buildItems() {
   const tm = G.time;
   for (const d of G.decor) {
     const def = DECOR[d.type], fr = SPR[d.type];
-    const s = d.used ? SPR.altarOff[0] : def.anim ? fr[((tm * 9 + d.ph * 3) | 0) & 3] : fr[0];
+    const s = d.used ? (SPR[d.type + 'Off'] || SPR.altarOff)[0] : def.anim ? fr[((tm * 9 + d.ph * 3) | 0) & 3] : fr[0];
     items.push({ x: d.x, y: d.y, spr: s, h: def.h, w: def.h * s.w / s.h, z: 0 });
   }
   for (const e of G.enemies) {

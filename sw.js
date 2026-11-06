@@ -1,9 +1,9 @@
 // Service worker de CRYPTFALL (generado por tools/build-site.sh): el juego funciona sin conexión.
 // Los archivos llevan la versión en la URL, así que se sirven desde la caché; la página y version.json
 // se piden primero a la red (para recibir versiones nuevas) y, sin conexión, se usa la copia guardada.
-const VERSION = '7ace18f-202611061031';
+const VERSION = 'bd39935-202611061449';
 const CACHE = 'cryptfall-' + VERSION;
-const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "css/style.css?v=7ace18f-202611061031", "js/util.js?v=7ace18f-202611061031", "js/font.js?v=7ace18f-202611061031", "js/art.js?v=7ace18f-202611061031", "js/assets.js?v=7ace18f-202611061031", "js/sprites.js?v=7ace18f-202611061031", "js/audio.js?v=7ace18f-202611061031", "js/world.js?v=7ace18f-202611061031", "js/dungeon.js?v=7ace18f-202611061031", "js/render.js?v=7ace18f-202611061031", "js/classes.js?v=7ace18f-202611061031", "js/skills.js?v=7ace18f-202611061031", "js/vfx.js?v=7ace18f-202611061031", "js/ui.js?v=7ace18f-202611061031", "js/controls.js?v=7ace18f-202611061031", "js/game.js?v=7ace18f-202611061031", "js/shop.js?v=7ace18f-202611061031", "js/items.js?v=7ace18f-202611061031", "js/save.js?v=7ace18f-202611061031", "js/touch.js?v=7ace18f-202611061031", "js/gamepad.js?v=7ace18f-202611061031"];
+const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "css/style.css?v=bd39935-202611061449", "js/util.js?v=bd39935-202611061449", "js/font.js?v=bd39935-202611061449", "js/art.js?v=bd39935-202611061449", "js/assets.js?v=bd39935-202611061449", "js/sprites.js?v=bd39935-202611061449", "js/audio.js?v=bd39935-202611061449", "js/world.js?v=bd39935-202611061449", "js/dungeon.js?v=bd39935-202611061449", "js/render.js?v=bd39935-202611061449", "js/classes.js?v=bd39935-202611061449", "js/skills.js?v=bd39935-202611061449", "js/vfx.js?v=bd39935-202611061449", "js/ui.js?v=bd39935-202611061449", "js/controls.js?v=bd39935-202611061449", "js/game.js?v=bd39935-202611061449", "js/shop.js?v=bd39935-202611061449", "js/items.js?v=bd39935-202611061449", "js/save.js?v=bd39935-202611061449", "js/touch.js?v=bd39935-202611061449", "js/gamepad.js?v=bd39935-202611061449"];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
