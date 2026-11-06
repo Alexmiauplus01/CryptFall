@@ -32,6 +32,7 @@ const ENEMY = {
   malevolent:  { name: 'Espectro maligno', hp: 40, spd: 1.6, dmg: 0, r: 0.3, h: 1.0, z: 0.06, spr: 'malevolent', xp: 6, ranged: { cd: 2.2, dmg: 13, spd: 5, proj: 'orbRed', keep: 5 }, phase: { on: 1.6, off: 3 } },
   goblin:      { name: 'Goblin', hp: 18, spd: 3.0, dmg: 6, r: 0.26, h: 0.7, z: 0, spr: 'goblin', xp: 1, pack: [3, 4] },
   goblinarcher:{ name: 'Goblin arquero', hp: 16, spd: 2.4, dmg: 0, r: 0.26, h: 0.7, z: 0, spr: 'goblinarcher', xp: 2, ranged: { cd: 2.0, dmg: 8, spd: 9, proj: 'orbArrow', keep: 6 } },
+  harpy:       { name: 'Arpía', hp: 34, spd: 3.1, dmg: 10, r: 0.3, h: 1.0, z: 0.3, spr: 'harpy', xp: 5, fly: true, charge: { cd: 3.5, mul: 2.4, dur: 0.7, min: 2, max: 8 }, hitrun: 1.6 },
   orc:         { name: 'Orco', hp: 95, spd: 1.6, dmg: 17, r: 0.38, h: 1.15, z: 0, spr: 'orc', xp: 7 },
   worm:        { name: 'Gusano gigante', hp: 260, spd: 0, dmg: 14, r: 0.5, h: 1.0, z: 0, spr: 'worm', xp: 15, block: true, worm: { cd: 3.2, open: 1.9, dps: 4 } },
   lich:     { name: 'EL LICHE', hp: 470, spd: 1.3, dmg: 18, r: 0.5, h: 1.75, z: 0, spr: 'lich', xp: 60, boss: true, ai: 'lich' },
@@ -905,6 +906,7 @@ function updateEnemies(dt) {
       if (e.chargeCd <= 0 && e.los && dist > d.charge.min && dist < d.charge.max && !stunned) { e.chargeCd = d.charge.cd; e.chargeT = d.charge.dur; Sfx.play('roar'); }
       if (e.chargeT > 0) spd *= d.charge.mul;
     }
+    if (e.fleeT > 0) { e.fleeT -= dt; ax = -dx / dist; ay = -dy / dist; spd *= 1.1; }
     if (stunned) spd = 0;
     if (hidden && !ally) { ax = Math.cos(e.wob * 0.2 + e.walk); ay = Math.sin(e.wob * 0.2 + e.walk); spd *= 0.3; }
     if (d.ranged && e.los && !ally) {
@@ -929,6 +931,7 @@ function updateEnemies(dt) {
         const hp0 = p.hp;
         hurtPlayer(Math.round(d.dmg * e.dmgM), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
         if (d.bite && p.hp < hp0) { p.poisT = Math.max(p.poisT || 0, d.bite.poison); p.poisDps = d.bite.dps * e.dmgM; }
+        if (d.hitrun) e.fleeT = d.hitrun; // arpía: tras el zarpazo se aleja
         if (d.drain && p.hp < hp0) { e.hp = Math.min(e.maxHp, e.hp + (hp0 - p.hp) * d.drain); burst(e.x, e.y, 0.6, 5, rgb(220, 30, 40), 1.5, 0.4); }
       }
     }

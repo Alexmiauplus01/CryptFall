@@ -17,7 +17,7 @@ const THEMES = [
     mortar: [26, 32, 22], moss: [64, 132, 48], mossAmt: 0.55, banner: [40, 100, 46], accent: [110, 24, 18],
     floor: [[82, 86, 70], [70, 76, 62], [94, 94, 76]], tiles: [[72, 84, 64], [56, 64, 58]],
     wood: [[76, 58, 34], [52, 38, 22]], ceil: 'stone', wallStyle: 'brick', altStyle: 'stone',
-    boss: 'queen', fauna: [['spider', 8], ['slime', 3], ['zombie', 3], ['goblin', 4], ['goblinarcher', 2, 0.5]],
+    boss: 'queen', fauna: [['spider', 8], ['slime', 3], ['zombie', 3], ['goblin', 4], ['goblinarcher', 2, 0.5], ['harpy', 1.5]],
   },
   {
     name: 'Foso Infernal', fog: [16, 4, 2], ambient: [0.07, 0.035, 0.03], glow: [255, 150, 50],
@@ -41,7 +41,7 @@ const THEMES = [
     mortar: [40, 48, 60], moss: [225, 240, 255], mossAmt: 0.38, banner: [40, 70, 120], accent: [60, 120, 170],
     floor: [[120, 134, 150], [104, 118, 134], [136, 150, 164]], tiles: [[150, 180, 200], [96, 110, 130]],
     wood: [[90, 80, 76], [60, 52, 50]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'icecrystal',
-    boss: 'lich', fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['wraith', 3], ['skeleton', 3], ['orc', 1.5]],
+    boss: 'lich', fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['harpy', 4], ['wraith', 3], ['skeleton', 3], ['orc', 1.5]],
   },
   {
     name: 'Las Cloacas', fog: [6, 8, 3], ambient: [0.045, 0.055, 0.035], glow: [190, 230, 90],
@@ -57,7 +57,7 @@ const THEMES = [
     mortar: [60, 46, 30], moss: [80, 120, 90], mossAmt: 0.15, banner: [30, 60, 130], accent: [190, 140, 40],
     floor: [[150, 128, 94], [134, 114, 82], [164, 142, 104]], tiles: [[170, 130, 60], [90, 70, 50]],
     wood: [[110, 74, 40], [78, 50, 26]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'urn',
-    boss: 'boss', fauna: [['deepwarrior', 7, 0.5], ['deepmage', 4, 0.6, 15], ['cultist', 2], ['skeleton', 3], ['necromancer', 1, 0.4, 30]],
+    boss: 'boss', fauna: [['deepwarrior', 7, 0.5], ['deepmage', 4, 0.6, 15], ['harpy', 3], ['cultist', 2], ['skeleton', 3], ['necromancer', 1, 0.4, 30]],
   },
 ];
 

@@ -768,7 +768,10 @@ function drawHumanoid(o, frame) {
     // piernas
     const legY = Y(50), legH = Y(24);
     for (const [lx, ph] of [[cx - 7, s], [cx + 2, -s]]) for (let y = legY; y < legY + legH; y++) for (let x = lx; x < lx + 5; x++) set(x + (y > legY + legH / 2 ? ph : 0), y, x === lx ? clL : x === lx + 4 ? clD : cl2);
-    for (const [lx, ph] of [[cx - 8, s], [cx + 1, -s]]) for (let x = lx; x < lx + 7; x++) { set(x + ph, legY + legH - 1, [40, 30, 26]); set(x + ph, legY + legH - 2, [60, 46, 38]); }
+    if (o.talons) for (const [lx, ph] of [[cx - 6, s], [cx + 3, -s]]) {
+      for (let y = legY + Math.round(legH / 2); y < legY + legH; y++) for (let x = lx; x < lx + 3; x++) set(x + ph, y, [200, 160, 60]);
+      for (const dx of [-2, 0, 2, 4]) set(lx + dx + ph, legY + legH - 1, [230, 220, 200]);
+    } else for (const [lx, ph] of [[cx - 8, s], [cx + 1, -s]]) for (let x = lx; x < lx + 7; x++) { set(x + ph, legY + legH - 1, [40, 30, 26]); set(x + ph, legY + legH - 2, [60, 46, 38]); }
     // torso
     const tY = Y(o.hunch ? 28 : 24), tH = Y(28);
     for (let y = tY; y < tY + tH; y++) { const w = (o.female ? 8 : 11) + (o.bulk || 0) - (y > tY + tH * 0.6 ? 2 : 0); for (let x = cx - w; x < cx + w; x++) set(x + (o.hunch ? 1 : 0), y, x < cx - w + 2 ? clL : x > cx + w - 3 ? clD : (y === tY + Math.round(tH * 0.55) ? cl2 : cl)); }
@@ -808,6 +811,7 @@ const HUMANOIDS = {
   fury:        { skin: [200, 70, 70], cloth: [70, 30, 34], cloth2: [40, 16, 20], eye: [255, 220, 60], horns: true, wings: [120, 40, 50], female: true, hair: [30, 14, 16], claws: true },
   goblin:      { w: 46, h: 54, skin: [110, 160, 70], cloth: [110, 80, 50], cloth2: [80, 56, 34], eye: [255, 220, 40], ears: true, mouth: true, weapon: 'dagger', headR: 7 },
   goblinarcher:{ w: 46, h: 54, skin: [96, 146, 66], cloth: [70, 90, 50], cloth2: [56, 70, 40], eye: [255, 220, 40], ears: true, hood: [60, 80, 44], weapon: 'bow', headR: 7 },
+  harpy:       { skin: [214, 170, 140], cloth: [130, 96, 64], cloth2: [96, 70, 46], eye: [255, 210, 40], female: true, hair: [70, 44, 30], wings: [150, 112, 74], talons: true, claws: true },
   orc:         { w: 64, h: 82, skin: [96, 130, 70], cloth: [110, 96, 86], cloth2: [70, 56, 44], eye: [255, 70, 30], tusks: true, bulk: 4, weapon: 'axe', hair: [30, 26, 22], headR: 9 },
 };
 function drawWorm(open) {
