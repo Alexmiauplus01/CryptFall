@@ -180,6 +180,7 @@ function vfxHolyRing(x, y, r) {
 
 // Nova de hielo: esquirlas, anillos, cristales que brotan y se rompen, y niebla
 function vfxIceNova(x, y, r, rampName = 'ice') {
+  if (typeof Ambient !== 'undefined' && G.p && Math.hypot(arguments[0] - G.p.x, arguments[1] - G.p.y) < 5 && G.cfg.ambient !== false) Ambient.frostBurst(); // copos de nieve en pantalla
   const I = VR[rampName];
   vlight(x, y, [1.2, 1.9, 2.4], r * 1.8, 0.6);
   for (let i = 0; i < 44; i++) { const a = i / 44 * TAU, s = r / 0.35 * rand(0.8, 1.1); vp({ x, y, z: rand(0.15, 0.6), vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.35, ramp: I.slice(0, 4), s0: 0.06, maxPx: 3 }); }

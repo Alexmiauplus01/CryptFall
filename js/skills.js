@@ -485,6 +485,7 @@ const SKILLS = {
     const a = aimPos(6);
     G.zones.push({ kind: 'plague', x: a.x, y: a.y, r: 3, t: 7, tick: 0, dmg: 9 * p.dmgMul, fx: { poison: 3, slow: 1, corrode: 3 }, col: rgb(170, 220, 50) });
     vRing(a.x, a.y, 0.03, 3, 0.35, VR.poison.slice(1, 6), 36); Sfx.play('summon'); p.anim = 1;
+    if (typeof Ambient !== 'undefined' && G.cfg.ambient !== false) Ambient.bubbleBurst();
   } },
   swarm: { name: 'Enjambre de pesadilla', cd: 20, use(p) {
     for (let i = 0; i < 3; i++) spawnAlly('spider', p.x + Math.cos(p.a + (i - 1) * 0.8) * 1.4, p.y + Math.sin(p.a + (i - 1) * 0.8) * 1.4);
@@ -492,6 +493,7 @@ const SKILLS = {
   acid: { name: 'Ácido corrosivo', cd: 9, use(p) {
     const n = aoe(p.x, p.y, 5.5, 22 * p.dmgMul, { cone: { a: p.a, arc: 1.5 }, poison: 5, corrode: 6, kb: 2 });
     vfxAcid(p.x, p.y, p.a);
+    if (typeof Ambient !== 'undefined' && G.cfg.ambient !== false) Ambient.bubbleBurst();
     p.anim = 1; Sfx.play('swing');
   } },
 };

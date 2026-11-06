@@ -1384,7 +1384,7 @@ function update(dt) {
   G.t += dt; G.totalTime += dt;
   updateBuffs(dt); applyStats();
   updateTorch(dt); equipTick(dt);
-  if (G.cfg.ambient !== false) Ambient.update(dt, p);
+  if (G.cfg.ambient !== false) { Ambient.update(dt, p); fireEmbers(dt); }
   updatePlayer(dt);
   if (G.state !== 'play') return; // una escalera o la salida pueden cambiar de estado
   updateRooms(dt);

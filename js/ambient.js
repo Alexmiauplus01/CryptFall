@@ -1,16 +1,19 @@
 // Efectos de ambiente y de combate en pixel art, adaptados de la biblioteca de efectos de Sprite Fusion
 // (pixel-art-vfx, licencia MIT, https://www.spritefusion.com/pixel-art-vfx): paletas, tiempos y tramado de sus recetas.
-// Se dibujan en pantalla, entre el mundo y las manos, y se desplazan al girar la cámara para que parezcan del lugar.
-//   La Cripta: niebla baja · Catacumbas: luciérnagas · Foso Infernal: ascuas y ceniza · El Vacío: destellos fríos
-//   Cuevas Heladas: nieve · Cloacas: miasma verde · Templo Hundido: burbujas
-const AMB_BY_THEME = ['fog', 'fireflies', 'embers', 'sparkle', 'snow', 'miasma', 'bubbles'];
+// Ambiente (solo lo que tiene sentido en una mazmorra cerrada), en pantalla y desplazándose al girar la cámara:
+//   La Cripta: niebla baja · Catacumbas: esporas luminosas del musgo · Foso Infernal: nada (las ascuas salen del fuego)
+//   El Vacío: destellos mágicos · Cuevas Heladas: vaho helado · Cloacas: miasma verde · Templo Hundido: motas de polvo dorado
+// Las ascuas salen de verdad de antorchas y braseros cercanos (partículas en el mundo, cualquier temática).
+// La nieve y las burbujas se usan en habilidades: escarcha (novas de hielo y cuando te ralentiza el frío) y veneno.
+const AMB_BY_THEME = ['fog', 'spores', null, 'sparkle', 'frostmist', 'miasma', 'dust'];
 const FOG_T = [0.3, 0.52, 0.74];
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
 const hexRGB = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const AP = {
   fire: ['#fff3a6', '#ffe26b', '#ff8a2a', '#f2561d', '#c9281f'].map(hexRGB), ash: ['#5a5160', '#3a3442'].map(hexRGB),
   snow: ['#ffffff', '#e3edff', '#9fb1e6', '#6c7cb8'].map(hexRGB),
-  fog: ['#4b5075', '#6c739a', '#979dbb', '#b4b8cf'].map(hexRGB), miasma: ['#26401f', '#3d6a2c', '#6a9f45', '#9cc56a'].map(hexRGB),
+  fog: ['#4b5075', '#6c739a', '#979dbb', '#b4b8cf'].map(hexRGB), frost: ['#5a7290', '#86a6c4', '#bcd6ec', '#e6f3ff'].map(hexRGB),
+  tox: ['#e6ffcf', '#a8e86a', '#62b83e', '#2f7a2a', '#4f9a36'].map(hexRGB), spore: ['#e6fff4', '#8ef0c8', '#3aa889'].map(hexRGB), miasma: ['#26401f', '#3d6a2c', '#6a9f45', '#9cc56a'].map(hexRGB),
   fly: ['#faffbe', '#c8ff5a', '#6f8f2a'].map(hexRGB),
   cool: ['#ffffff', '#dcfbff', '#a6ecff', '#62c8f4', '#3a8bd8'].map(hexRGB), warm: ['#ffffff', '#fffbe2', '#fff0a6', '#ffd862', '#f6aa3c'].map(hexRGB),
   bub: ['#ffffff', '#c6f3ff', '#68bfe6', '#2f7fb6', '#4b9fce'].map(hexRGB),
@@ -35,30 +38,27 @@ const Ambient = {
     }
     const k = (G.cfg && G.cfg.fast) ? 0.5 : 1, R = Math.random;
     const add = (o) => this.parts.push(o);
-    if (this.kind === 'embers') {
-      if (R() < dt * 40 * k) add({ k: 'spark', x: R() * (VW + 80) - 40, y: VH + R() * 20, vy: -rand(40, 70), sw: rand(0, 6), life: rand(2.2, 4.2), t: 0, s: R() * 9 });
-      if (R() < dt * 10 * k) add({ k: 'cinder', x: R() * VW, y: VH + 6, vy: -rand(22, 40), sw: rand(0, 6), life: rand(3.5, 6), t: 0, big: R() < 0.3 });
-      if (R() < dt * 3 * k) add({ k: 'ash', x: R() * VW, y: VH * rand(0.4, 1), vy: -rand(5, 12), sw: rand(0, 6), life: rand(5, 7), t: 0 });
-    } else if (this.kind === 'snow') {
-      if (R() < dt * 20 * k) { const d = R() < 0.55 ? 0 : R() < 0.75 ? 1 : 2; add({ k: 'flake', d, x: R() * (VW + 60) - 30, y: -4, vy: [14, 24, 38][d] * rand(0.8, 1.2), sw: rand(0, 6), amp: [4, 7, 10][d], life: 30, t: 0, c: R() < 0.5 ? 2 : 3 }); }
-    } else if (this.kind === 'fireflies') {
-      while (this.parts.length < 14 * k) add({ k: 'fly', x: R() * VW, y: VH * rand(0.25, 0.8), vx: 0, vy: 0, seed: R() * 10, life: 1e9, t: rand(0, 6) });
+    if (this.kind === 'spores') {
+      while (this.parts.filter(q => q.k === 'spore').length < 12 * k) add({ k: 'spore', x: R() * VW, y: VH * rand(0.2, 0.85), vx: 0, vy: 0, seed: R() * 10, life: 1e9, t: rand(0, 6) });
     } else if (this.kind === 'sparkle') {
       if (R() < dt * 9 * k) add({ k: 'star', x: R() * VW, y: R() * VH * 0.85, life: rand(0.6, 1.3), t: 0, big: R() < 0.25 });
-    } else if (this.kind === 'bubbles') {
-      if (R() < dt * 9 * k) add({ k: 'bub', x: R() * VW, y: VH + 4, r: R() < 0.6 ? 1 : R() < 0.8 ? 2 : 3, vy: -rand(14, 30), sw: rand(0, 6), life: rand(5, 10), t: 0, pop: VH * rand(0.05, 0.6) });
+    } else if (this.kind === 'dust') {
+      while (this.parts.filter(q => q.k === 'dust').length < 22 * k) add({ k: 'dust', x: R() * VW, y: VH * rand(0.1, 0.9), vy: -rand(1, 4), sw: rand(0, 6), amp: 5, life: rand(6, 12), t: 0 });
     }
+    // estados del jugador: escarcha (copos por arriba) y veneno (burbujas verdes por abajo)
+    if (p && p.chill > 0 && R() < dt * 30) add({ k: 'flake', d: R() < 0.6 ? 0 : 1, x: R() * VW, y: -4, vy: rand(30, 55), sw: rand(0, 6), amp: 8, life: 6, t: 0, c: R() < 0.5 ? 2 : 3 });
+    if (p && p.poisT > 0 && R() < dt * 14) { const side = R() < 0.5 ? rand(0, VW * 0.28) : rand(VW * 0.72, VW); add({ k: 'bub', tox: true, x: side, y: VH + 4, r: R() < 0.6 ? 1 : 2, vy: -rand(25, 45), sw: rand(0, 6), life: 4, t: 0, pop: VH * rand(0.45, 0.8) }); }
     for (const q of this.parts) {
       q.t += dt; q.x += shift * (q.k === 'flake' ? [0.6, 0.85, 1.1][q.d] : 1);
-      if (q.k === 'fly') { // vagan en bucles con la luz que late
+      if (q.k === 'fly' || q.k === 'spore') { // vagan en bucles con la luz que late
         const a = 0.63 * q.seed + q.t * (0.7 + 0.9 * (q.seed % 1));
         q.vx += (16 * Math.cos(a) - q.vx) * Math.min(1, dt * 1.5); q.vy += (11 * Math.sin(1.3 * a) - 2 - q.vy) * Math.min(1, dt * 1.5);
         q.x += q.vx * dt; q.y += q.vy * dt;
         if (q.x < -10) q.x += VW + 20; if (q.x > VW + 10) q.x -= VW + 20; if (q.y < VH * 0.15) q.vy += 4; if (q.y > VH * 0.85) q.vy -= 4;
       } else if (q.vy !== undefined) {
-        q.y += q.vy * dt; q.x += Math.sin(this.t * 1.3 + q.sw) * (q.amp || 6) * dt;
+        q.y += q.vy * dt; q.x += Math.sin(this.t * 1.3 + q.sw) * (q.amp || 6) * dt + (q.vx0 || 0) * dt; if (q.vx0) q.vx0 *= 0.94;
         if (q.k === 'flake' && q.y > VH + 4) q.dead = true;
-        if (q.k === 'bub' && q.y < q.pop) { q.dead = true; if (R() < 0.6) this.fx.push({ k: 'pop', x: q.x, y: q.y, t: 0, life: 0.2 }); }
+        if (q.k === 'bub' && q.y < q.pop) { q.dead = true; if (R() < 0.6) this.fx.push({ k: 'pop', x: q.x, y: q.y, t: 0, life: 0.2, tox: q.tox }); }
       }
       if (q.t > q.life || q.x < -60 || q.x > VW + 60) q.dead = true;
     }
@@ -73,7 +73,7 @@ const Ambient = {
       x = ((x | 0) & ~1) + ox * 2; y = ((y | 0) & ~1) + oy * 2; if (x < 0 || y < 0 || x >= VW - 1 || y >= VH - 1) return;
       const v = rgb(c[0], c[1], c[2]), o = y * VW + x; buf[o] = buf[o + 1] = buf[o + VW] = buf[o + VW + 1] = v;
     };
-    if (this.kind === 'fog' || this.kind === 'miasma') this.drawFog(buf, this.kind === 'fog' ? AP.fog : AP.miasma);
+    if (this.kind === 'fog' || this.kind === 'miasma' || this.kind === 'frostmist') this.drawFog(buf, this.kind === 'fog' ? AP.fog : this.kind === 'miasma' ? AP.miasma : AP.frost, this.kind === 'frostmist' ? 0.7 : 1);
     for (const q of this.parts) {
       const f = q.t / q.life, fade = Math.min(1, q.t / (q.life / 8), (q.life - q.t) / (q.life / 3));
       const dith = (x, y) => fade > BAYER4[((y | 0) & 3) * 4 + ((x | 0) & 3)];
@@ -91,6 +91,13 @@ const Ambient = {
         if (q.d === 0) put(q.x, q.y, S[q.c]);
         else if (q.d === 1) { put(q.x, q.y, S[0]); put(q.x, q.y, S[1], 1, 0); put(q.x, q.y, S[1], 0, 1); put(q.x, q.y, S[2], 1, 1); }
         else { put(q.x, q.y, S[0]); for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) put(q.x, q.y, S[1], dx, dy); put(q.x, q.y, S[2], -2, 0); put(q.x, q.y, S[2], 2, 0); }
+      } else if (q.k === 'spore') { // esporas del musgo: puntitos verdeazulados que laten
+        const lit = Math.sin(q.t * 1.6 + q.seed * 3) > 0.2;
+        put(q.x, q.y, lit ? AP.spore[1] : AP.spore[2]);
+        if (lit) R.glow(q.x, q.y, 6, [90, 240, 190], 0.18);
+      } else if (q.k === 'dust') { // motas de polvo dorado que flotan y brillan al cruzar la luz
+        if (!dith(q.x, q.y)) continue;
+        put(q.x, q.y, Math.sin(q.t * 3 + q.sw * 5) > 0.6 ? AP.warm[2] : AP.warm[4]);
       } else if (q.k === 'fly') {
         const lit = Math.sin(q.t * 2.2 + q.seed * 3) > -0.1;
         put(q.x, q.y, lit ? AP.fly[0] : AP.fly[2]);
@@ -101,7 +108,7 @@ const Ambient = {
         for (let i = 1; i <= arm; i++) { const c = i === 1 ? C[2] : C[3]; put(q.x, q.y, c, i, 0); put(q.x, q.y, c, -i, 0); put(q.x, q.y, c, 0, i); put(q.x, q.y, c, 0, -i); }
         if (q.big) R.glow(q.x, q.y, 6, [120, 200, 255], 0.3 * g);
       } else if (q.k === 'bub') {
-        const B = AP.bub, r = q.r;
+        const B = q.tox ? AP.tox : AP.bub, r = q.r;
         if (r === 1) { put(q.x, q.y, B[1]); put(q.x, q.y, B[3], 1, 1); continue; }
         for (let a = 0; a < 16; a++) { const an = a / 16 * TAU; put(q.x, q.y, an > 2.4 && an < 4.4 ? B[1] : an < 1.4 ? B[3] : B[2], Math.round(Math.cos(an) * r), Math.round(Math.sin(an) * r)); }
         put(q.x, q.y, B[0], -r + 1, -r + 1);
@@ -109,7 +116,7 @@ const Ambient = {
     }
     for (const f of this.fx) {
       const k = f.t / f.life;
-      if (f.k === 'pop') { const r = Math.round(1 + k * 2); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(f.x, f.y, k < 0.5 ? AP.bub[0] : AP.bub[1], dx * r, dy * r); }
+      if (f.k === 'pop') { const r = Math.round(1 + k * 2), B = f.tox ? AP.tox : AP.bub; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(f.x, f.y, k < 0.5 ? B[0] : B[1], dx * r, dy * r); }
       else if (f.k === 'cross') { // curación: cruces que suben desde abajo
         const c = f.big ? 2 : 1, C = AP.heal, x = f.x, y = f.y;
         if (k > 0.85 && ((f.t * 30) | 0) & 1) continue;
@@ -119,7 +126,7 @@ const Ambient = {
     }
   },
   // niebla: bandas de ruido estiradas, tramadas en tres tonos con cresta iluminada (receta "fog")
-  drawFog(buf, P) {
+  drawFog(buf, P, dens = 1) {
     if (!this.noise) this.noise = bakeNoise(256, 128, 7);
     const N = this.noise, top = Math.floor(VH * 0.46) & ~1, H = VH - top, BW = VW >> 1, BH = H >> 1;
     // el campo de niebla se calcula a bloques de 2x2 y un fotograma de cada dos (se mueve despacio)
@@ -145,7 +152,7 @@ const Ambient = {
       }
     }
     // mezcla con la escena (aritmética entera)
-    const alpha = (G.cfg && G.cfg.fast) ? 0.38 : 0.52, T = this.fogTone;
+    const alpha = ((G.cfg && G.cfg.fast) ? 0.38 : 0.52) * dens, T = this.fogTone;
     const tonesA = [0, 1, 2].map(k => { const a = alpha * [0.6, 0.8, 1][k]; return [Math.round(a * 256), P[k][0] * a, P[k][1] * a, P[k][2] * a]; });
     for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
       const tone = T[by * BW + bx]; if (tone < 0) continue;
@@ -163,10 +170,30 @@ const Ambient = {
       this.fx.push({ k: 'cross', x, y: VH * rand(0.6, 1), vx: 0, vy: -rand(30, 55), t: -rand(0, 0.3), life: rand(0.8, 1.2), big: Math.random() < 0.4 });
     }
   },
+  frostBurst() { // novas de hielo: copos que salen del centro y caen (receta "snow")
+    for (let i = 0; i < 46; i++) { const a = rand(0, TAU), s = rand(40, 160); this.parts.push({ k: 'flake', d: Math.random() < 0.5 ? 0 : Math.random() < 0.7 ? 1 : 2, x: VW / 2 + Math.cos(a) * 20, y: VH * 0.55 + Math.sin(a) * 12, vx0: Math.cos(a) * s, vy: Math.sin(a) * s * 0.5 + 20, sw: rand(0, 6), amp: 6, life: rand(0.8, 1.4), t: 0, c: 2 }); }
+  },
+  bubbleBurst() { // nubes de plaga y ácido: burbujas verdes que suben (receta "bubbles")
+    for (let i = 0; i < 22; i++) this.parts.push({ k: 'bub', tox: true, x: VW / 2 + rand(-VW * 0.35, VW * 0.35), y: VH + rand(0, 30), r: Math.random() < 0.5 ? 1 : 2, vy: -rand(40, 80), sw: rand(0, 6), life: 3, t: 0, pop: VH * rand(0.3, 0.7) });
+  },
   sparkleBurst(cx = VW / 2, cy = VH / 2) { // destello dorado (receta "sparkle", rampa cálida)
     for (let i = 0; i < 28; i++) { const a = rand(0, TAU), s = rand(30, 110); this.fx.push({ k: 'mote', x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, g: 40, t: 0, life: rand(0.5, 1), c: [AP.warm[1], AP.warm[3]] }); }
   },
 };
+
+// ascuas reales: suben de las antorchas de pared y los braseros cercanos (receta "embers": chispas que se enfrían)
+function fireEmbers(dt) {
+  if (!G.lv || !G.p) return;
+  const p = G.p, k = (G.cfg && G.cfg.fast) ? 0.5 : 1;
+  for (const l of G.lv.lights) {
+    if (!l.c || l.c[0] !== 0.95 || l.c[1] !== 0.55) continue; // solo fuego (antorchas y braseros)
+    const d = Math.hypot(l.x - p.x, l.y - p.y); if (d > 9) continue;
+    const big = l.rad >= 5; // brasero
+    if (Math.random() > dt * (big ? 9 : 4) * k) continue;
+    vp({ x: l.x + rand(-0.12, 0.12), y: l.y + rand(-0.12, 0.12), z: big ? 0.62 : 0.72, vx: rand(-0.15, 0.15), vy: rand(-0.15, 0.15), vz: rand(0.35, 0.8),
+      drag: 0.4, life: rand(0.9, 1.8), ramp: VR.fire.slice(1, 7), s0: 0.03, s1: 0.015, maxPx: 2 });
+  }
+}
 
 // ruido de valor en 4 octavas, que se repite en ambos ejes
 function bakeNoise(w, h, seed) {
