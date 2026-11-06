@@ -223,6 +223,7 @@ function equipItem(slot, it) {
   toast(`EQUIPAS: ${name.toUpperCase()}`, false);
   Sfx.play(it.rar === 'legendario' || it.rar === 'epico' ? 'portal' : 'unlock');
   logMsg(`${name} · ${RARITY[it.rar].name}: ${itemLines(it).join(' · ')}`, it.rar === 'legendario' ? C.gold : it.rar === 'epico' ? C.orange : it.rar === 'raro' ? C.blue : C.ink);
+  if (it.rar === 'legendario' && typeof Ambient !== 'undefined') Ambient.sparkleBurst();
   if (it.rar === 'legendario' || it.rar === 'epico') { G.flashFx = 0.6; jot('item' + (it.legend || it.special) + G.dg.n, `Encontré ${name.toLowerCase()} en el ${levelName(G.z)}. Siento su poder.`); }
 }
 // decisión del cuadro de cambio: slot = hueco a sustituir o null = quedarte con lo que llevas

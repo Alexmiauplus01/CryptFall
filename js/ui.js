@@ -219,6 +219,7 @@ class UI {
       ['toggle', 'FOTOGRAMAS', `${o.fps} FPS`, 'fps'],
       ['toggle', 'CALIDAD', o.fast ? 'RÁPIDA' : 'ALTA', 'quality'],
       ['toggle', 'FILTRO CRT', o.crt ? 'SÍ' : 'NO', 'crt'],
+      ['toggle', 'EFECTOS DE AMBIENTE', o.ambient === false ? 'NO' : 'SÍ', 'ambient'],
       ['toggle', 'SACUDIDAS', o.noShake ? 'NO' : 'SÍ', 'shake'],
       ['toggle', 'DESTELLOS', o.noFlash ? 'NO' : 'SÍ', 'flash'],
       ['toggle', 'VIBRACIÓN DEL MANDO', o.noRumble ? 'NO' : 'SÍ', 'rumble'],

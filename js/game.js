@@ -837,6 +837,7 @@ function damageEnemy(e, dmg, o = {}) {
   const kb = e.def.worm ? 0 : e.def.boss ? 0.1 : 1;
   e.kx += (o.kx || 0) * kb; e.ky += (o.ky || 0) * kb;
   burst(e.x, e.y, 0.4, o.silent ? 2 : (o.crit ? 8 : 4), o.crit ? rgb(255, 220, 90) : rgb(255, 255, 255), 1.8, 0.4);
+  if (!o.silent) bloodHit(e, o.crit);
   G.hitMark = 0.12;
   if (!o.silent || e.hp <= 0) Sfx.play(e.hp <= 0 ? 'kill' : 'hit');
   if (e.hp <= 0) killEnemy(e);
@@ -1383,6 +1384,7 @@ function update(dt) {
   G.t += dt; G.totalTime += dt;
   updateBuffs(dt); applyStats();
   updateTorch(dt); equipTick(dt);
+  if (G.cfg.ambient !== false) Ambient.update(dt, p);
   updatePlayer(dt);
   if (G.state !== 'play') return; // una escalera o la salida pueden cambiar de estado
   updateRooms(dt);
@@ -1499,6 +1501,7 @@ function render() {
   const sl = R.sampleLight(p.x, p.y, [0, 0, 0]);
   p.handLight = clamp((sl[0] + sl[1] + sl[2]) / 3 * 1.3 + (hasTorch ? 0.9 : cam.torch * 0.8) + 0.06, 0.16, 1);
   const scene = G.state !== 'title' && G.state !== 'options' && !(G.state === 'controls' && G.ctlBack !== 'paused');
+  if (scene && G.cfg.ambient !== false) Ambient.draw(R); // ascuas, nieve, niebla... de la temática (Sprite Fusion VFX)
   if (scene) R.drawHands(Object.assign({}, p, { off: offhandOf(p), handLight: p.handLight, enchanted: p.buffs.some(b => b.id === 'enchant') }), G.time, p.weapon === 'staff' ? SPELLS[p.spell].col : G.theme.glow);
   if (scene) drawScreenVfx(R);
   const lowHp = G.state === 'play' && p.hp < p.maxHp * 0.3 ? 0.35 + 0.2 * Math.sin(G.time * 6) : 0;
@@ -1688,6 +1691,7 @@ function optAction(id) {
   if (id === 'fps') o.fps = o.fps === 60 ? 30 : 60;
   if (id === 'crt') o.crt = !o.crt;
   if (id === 'autoatk') o.autoAtk = !o.autoAtk;
+  if (id === 'ambient') o.ambient = o.ambient === false;
   if (id === 'music') o.music = !o.music;
   if (id === 'quality') o.fast = !o.fast;
   if (id === 'shake') o.noShake = !o.noShake;

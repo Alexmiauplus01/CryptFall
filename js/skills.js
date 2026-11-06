@@ -35,6 +35,7 @@ function healP(n) {
   const p = G.p; if (n <= 0) return;
   p.hp = Math.min(p.maxHp, p.hp + n);
   if (n >= 4 && G.time - (G.healFxT || 0) > 0.4) { G.healFxT = G.time; vfxHeal(Math.min(14, 4 + Math.round(n / 4))); }
+  if (n >= p.maxHp * 0.2 && typeof Ambient !== 'undefined') Ambient.healBurst(n >= p.maxHp * 0.5);
 }
 function later(t, fn) { G.timers.push({ t, fn }); }
 
