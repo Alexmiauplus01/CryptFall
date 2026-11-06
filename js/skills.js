@@ -184,7 +184,7 @@ function updateAllies(dt) {
   const p = G.p, lv = G.lv;
   for (const a of G.allies) {
     if (a.dead) continue;
-    a.atk -= dt; a.flash -= dt;
+    a.atk -= dt; a.flash -= dt; if (a.rageT > 0) a.rageT -= dt;
     if (a.life !== null) { a.life -= dt; if (a.life <= 0) { allyKill(a); continue; } }
     const d = a.def;
     let tgt = nearestEnemy(11, true, a.x, a.y);
@@ -200,7 +200,7 @@ function updateAllies(dt) {
     a.walk += Math.hypot(a.x - ox, a.y - oy);
     if (tgt && dist < d.r + tgt.def.r + 0.35 && a.atk <= 0) {
       a.atk = d.cd;
-      damageEnemy(tgt, a.dmg * rand(0.9, 1.1), { kx: dx / dist * 2, ky: dy / dist * 2, silent: false });
+      damageEnemy(tgt, a.dmg * (a.rageT > 0 ? 1.5 : 1) * rand(0.9, 1.1), { kx: dx / dist * 2, ky: dy / dist * 2, silent: false });
       if (d.poison) applyFx(tgt, { poison: d.poison });
     }
   }
@@ -233,7 +233,7 @@ function updateTraps(dt) {
 function updateZones(dt) {
   for (const z of G.zones) {
     z.t -= dt; z.tick -= dt;
-    if (Math.random() < dt * 18) (z.kind === 'plague' ? vfxPoisonTick : vfxThornsTick)(z);
+    if (Math.random() < dt * (z.trail ? 6 : 18)) (z.kind === 'plague' ? vfxPoisonTick : z.kind === 'thorns' ? vfxThornsTick : vfxZoneTick)(z);
     if (z.tick <= 0) {
       z.tick = 0.5;
       for (const e of enemiesIn(z.x, z.y, z.r)) {
@@ -498,7 +498,212 @@ const SKILLS = {
   } },
 };
 
-function skillOf(i) { const id = CLASSES[G.p.cls].skills[i]; return id ? SKILLS[id] : null; }
+// ---------------------------------------------------------------- Habilidades nuevas (más potentes cuanto más avanzada la clase)
+// ayudas: embestida en línea, zona genérica y marcas
+function dashStrike(dist, dmg, o = {}) {
+  const p = G.p, x0 = p.x, y0 = p.y, t = aimPos(dist);
+  if (!leapTo(t.x, t.y)) { p.x = t.x - Math.cos(p.a) * 0.4; p.y = t.y - Math.sin(p.a) * 0.4; }
+  p.inv = Math.max(p.inv, 0.35);
+  const hit = new Set();
+  for (let k = 0; k <= 6; k++) {
+    const x = lerp(x0, p.x, k / 6), y = lerp(y0, p.y, k / 6);
+    for (const e of enemiesIn(x, y, o.r || 1.2)) if (!hit.has(e)) { hit.add(e); damageEnemy(e, dmg, { kx: Math.cos(p.a) * (o.kb || 6), ky: Math.sin(p.a) * (o.kb || 6) }); applyFx(e, o.fx); }
+    burst(x, y, 0.4, 3, o.col || rgb(230, 230, 255), 1.6, 0.4);
+  }
+  Sfx.play('dash'); G.shake = Math.max(G.shake, 0.2);
+  return hit.size;
+}
+function zoneAt(x, y, r, t, dmg, fx, kind, col) { G.zones.push({ kind, x, y, r, t, tick: 0, dmg, fx, col }); vRing(x, y, 0.03, r, 0.3, (kind === 'fire' ? VR.fire : kind === 'ice' ? VR.ice : kind === 'holy' ? VR.gold : VR.poison).slice(1, 5), 30); }
+function enemiesNear(r) { const p = G.p; return G.enemies.filter(e => !e.dead && Math.hypot(e.x - p.x, e.y - p.y) <= r + e.def.r && canHit(e)); }
+function buffOn(id) { return G.p.buffs.some(b => b.id === id); }
+// golpes con efectos de buff (llamado desde los golpes básicos)
+function buffHit(e) {
+  if (e.dead) return;
+  if (buffOn('venom')) applyFx(e, { poison: 4 });
+  if (buffOn('spellblade')) applyFx(e, { slow: 1 });
+}
+Object.assign(SKILLS, {
+  // ----- Ladrón (base)
+  poisonblade: { name: 'Hoja envenenada', cd: 12, use(p) { addBuff('venom', 'Hoja envenenada', 8, { dmg: 1.1 }, C.green); ringFx(p.x, p.y, 1.4, rgb(120, 230, 90), 20); Sfx.play('blade'); } },
+  caltrops: { name: 'Abrojos', cd: 9, use(p) { zoneAt(p.x, p.y, 2.2, 6, 6 * p.dmgMul, { slow: 1.5 }, 'thorns', rgb(200, 200, 210)); Sfx.play('trap'); } },
+  // ----- Luchador (base)
+  charge: { name: 'Embestida', cd: 8, use(p) { dashStrike(4.5, 32 * p.dmgMul, { kb: 9, fx: { stun: 0.8 } }); } },
+  ironskin: { name: 'Piel de hierro', cd: 16, use(p) { addBuff('ironskin', 'Piel de hierro', 6, { armor: 0.6 }, C.dim); healP(p.maxHp * 0.08); vfxDome('steel', 0.8); Sfx.play('blade'); } },
+  // ----- Mago (base)
+  arcanebolt: { name: 'Proyectil arcano', cd: 3, use(p) { fireProj({ spr: 'orbBlue', size: 0.5, spd: 15, dmg: 32 * p.dmgMul, pierce: 2, life: 1.4, r: 0.25 }); p.anim = 1; Sfx.play('shoot'); } },
+  blink: { name: 'Traslación', cd: 7, use(p) { const x0 = p.x, y0 = p.y, t = aimPos(5); vfxBlink(p.x, p.y); if (!leapTo(t.x, t.y)) { p.x = t.x; p.y = t.y; } vfxBlink(p.x, p.y); aoe(x0, y0, 2.2, 18 * p.dmgMul, { slow: 2.5 }); vfxIceNova(x0, y0, 2.2); p.inv = Math.max(p.inv, 0.3); Sfx.play('dash'); } },
+  // ----- Asesino
+  deathmark: { name: 'Marca de muerte', cd: 14, use(p) { const t = nearestEnemy(SKILL_RANGE, true); if (!t) return false; t.mark = 8; vfxBlink(t.x, t.y, 'void'); Sfx.play('blade'); logMsg('Marcas a tu presa: recibe +50% de daño', C.red); } },
+  garrote: { name: 'Degollar', cd: 9, use(p) { const t = nearestEnemy(2.4, true); if (!t) return false; const m = p.stealth > 0 ? 2.5 : 1; p.stealth = 0; damageEnemy(t, 90 * p.dmgMul * m, { crit: m > 1 }); applyFx(t, { stun: 1 }); vfxImpact(t.x, t.y, 0.6, 'impact', 1.2); Sfx.play('hit'); } },
+  // ----- Arquero
+  piercing: { name: 'Disparo perforante', cd: 5, use(p) { fireProj({ spr: 'orbArrow', size: 0.4, spd: 24, dmg: 70 * p.dmgMul, pierce: 6, life: 1.4, r: 0.25, fx: { slow: 1 } }); p.anim = 1; Sfx.play('shoot'); } },
+  hawkeye: { name: 'Ojo de halcón', cd: 18, use(p) { addBuff('hawk', 'Ojo de halcón', 10, { crit: 0.25, rate: 1.15 }, C.goldL); ringFx(p.x, p.y, 1.6, rgb(255, 230, 140), 24); Sfx.play('level'); } },
+  // ----- Paladín
+  consecrate: { name: 'Consagrar', cd: 12, use(p) { zoneAt(p.x, p.y, 3, 6, 12 * p.dmgMul, { slow: 0.5 }, 'holy', rgb(255, 230, 140)); Sfx.play('nova'); } },
+  hammer: { name: 'Martillo de luz', cd: 7, use(p) { fireProj({ spr: 'orbGold', size: 0.7, spd: 12, dmg: 55 * p.dmgMul, pierce: 1, life: 1.6, r: 0.35, fx: { stun: 1 } }); p.anim = 1; Sfx.play('shoot'); } },
+  // ----- Guerrero
+  cleave: { name: 'Tajo brutal', cd: 6, use(p) { aoe(p.x, p.y, 2.8, 60 * p.dmgMul, { kb: 8, cone: { a: p.a, arc: 3.4 } }); p.swing = { t: 0, dur: 0.45, dir: 1, move: 'slash', strong: true }; G.shake = Math.max(G.shake, 0.3); Sfx.play('hit'); } },
+  bloodlust: { name: 'Sed de batalla', cd: 18, use(p) { addBuff('bloodlust', 'Sed de batalla', 8, { dmg: 1.3, leech: 0.1 }, C.red); ringFx(p.x, p.y, 2, rgb(220, 40, 40), 28); Sfx.play('roar'); } },
+  // ----- Druida
+  entangle: { name: 'Raíces', cd: 10, use(p) { const n = aoe(p.x, p.y, 4, 14 * p.dmgMul, { stun: 2.5, poison: 3 }); vRing(p.x, p.y, 0.03, 4, 0.4, VR.poison.slice(1, 5), 40); Sfx.play('summon'); if (!n) return; } },
+  moonbeam: { name: 'Rayo lunar', cd: 6, use(p) { const t = nearestEnemy(SKILL_RANGE, true); if (!t) return false; vfxHolyPillar(t.x, t.y); aoe(t.x, t.y, 1.6, 50 * p.dmgMul, { slow: 2 }); Sfx.play('bolt'); } },
+  // ----- Hechicero
+  icelance: { name: 'Lanza de hielo', cd: 4, use(p) { fireProj({ spr: 'orbIce', size: 0.55, spd: 17, dmg: 45 * p.dmgMul, pierce: 3, life: 1.4, r: 0.28, fx: { slow: 2.5 } }); p.anim = 1; Sfx.play('shoot'); } },
+  firewall: { name: 'Muro de fuego', cd: 12, use(p) { for (let k = 1; k <= 3; k++) { const x = p.x + Math.cos(p.a) * (1.5 + k * 1.3), y = p.y + Math.sin(p.a) * (1.5 + k * 1.3); if (!G.lv.solid(x, y)) zoneAt(x, y, 1.4, 6, 14 * p.dmgMul, { burn: 3 }, 'fire', rgb(255, 130, 40)); } Sfx.play('nova'); } },
+  // ----- Hoja Oscura
+  nightblades: { name: 'Hojas nocturnas', cd: 8, use(p) { for (let k = 0; k < 10; k++) fireProj({ a: p.a + k / 10 * TAU, spr: 'orbPurple', size: 0.3, spd: 13, dmg: 34 * p.dmgMul, pierce: 2, life: 0.9, r: 0.22 }); Sfx.play('swing'); } },
+  eclipse: { name: 'Eclipse', cd: 22, use(p) { for (const e of enemiesNear(8)) applyFx(e, { stun: 2.2, slow: 4 }); p.stealth = Math.max(p.stealth, 4); vfxBlackHole(p.x, p.y, 4); G.flashFx = 0.3; Sfx.play('nova'); } },
+  soulreap: { name: 'Siega de almas', cd: 14, use(p) { let n = 0; for (const e of enemiesNear(5)) { damageEnemy(e, e.maxHp * (e.def.boss ? 0.04 : 0.15) + 20 * p.dmgMul, { silent: n++ > 0 }); if (e.dead) healP(p.maxHp * 0.05); } vRing(p.x, p.y, 0.4, 5, 0.4, VR.void.slice(0, 5), 44); Sfx.play('nova'); if (!n) return; } },
+  // ----- Duelista
+  lunge: { name: 'Estocada fulgurante', cd: 5, use(p) { dashStrike(5, 80 * p.dmgMul, { kb: 4, r: 1 }); } },
+  bladedance: { name: 'Danza de acero', cd: 16, use(p) { addBuff('dance', 'Danza de acero', 6, { rate: 1.5, spd: 1.2 }, C.cyan); p.inv = Math.max(p.inv, 0.6); ringFx(p.x, p.y, 1.6, rgb(200, 230, 255), 26); Sfx.play('blade'); } },
+  execute: { name: 'Golpe de gracia', cd: 12, use(p) { const t = nearestEnemy(2.6, true); if (!t) return false; if (!t.def.boss && t.hp < t.maxHp * 0.35) damageEnemy(t, t.hp + 1, { crit: true }); else damageEnemy(t, 120 * p.dmgMul, { crit: true }); vfxImpact(t.x, t.y, 0.6, 'impact', 1.5); G.shake = Math.max(G.shake, 0.3); Sfx.play('hit'); } },
+  // ----- Domador
+  packrage: { name: 'Furia de la manada', cd: 18, use(p) { if (!G.allies.length) return false; for (const a of G.allies) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * 0.4); a.rageT = 10; } ringFx(p.x, p.y, 3, rgb(255, 160, 80), 30); Sfx.play('roar'); } },
+  beastroar: { name: 'Rugido bestial', cd: 12, use(p) { aoe(p.x, p.y, 4, 20 * p.dmgMul, { stun: 1.5, kb: 6 }); for (const a of G.allies) a.hp = Math.min(a.maxHp, a.hp + a.maxHp * 0.3); vRing(p.x, p.y, 0.4, 4, 0.4, VR.fire.slice(2, 6), 40); Sfx.play('roar'); } },
+  netshot: { name: 'Red', cd: 9, use(p) { fireProj({ spr: 'orbArrow', size: 0.6, spd: 14, dmg: 20 * p.dmgMul, pierce: 0, life: 1.2, r: 0.4, explode: { r: 2, dmg: 10 * p.dmgMul, fx: { stun: 3, slow: 4 }, col: [200, 200, 180] } }); p.anim = 1; Sfx.play('shoot'); } },
+  // ----- Arquero mágico
+  starfall: { name: 'Lluvia estelar', cd: 14, use(p) { const t = nearestEnemy(SKILL_RANGE, true), c = t ? { x: t.x, y: t.y } : aimPos(6); for (let k = 0; k < 7; k++) later(k * 0.12, () => { const x = c.x + rand(-1.8, 1.8), y = c.y + rand(-1.8, 1.8); vfxStrike(x, y); aoe(x, y, 1.3, 30 * G.p.dmgMul, { kb: 3, silent: true }); Sfx.play('bolt'); }); } },
+  runicarrow: { name: 'Flecha rúnica', cd: 6, use(p) { const el = p.element || 'fire'; fireProj({ spr: arrowSprFor(el), size: 0.5, spd: 16, dmg: 30 * p.dmgMul, life: 1.5, r: 0.3, explode: { r: 2.6, dmg: 70 * p.dmgMul, fx: arrowFxFor(el), col: el === 'ice' ? [150, 220, 255] : el === 'bolt' ? [255, 230, 120] : [255, 120, 40] } }); p.anim = 1; Sfx.play('shoot'); } },
+  phasearrow: { name: 'Flecha espectral', cd: 9, use(p) { fireProj({ spr: 'orbPurple', size: 0.45, spd: 20, dmg: 55 * p.dmgMul, pierce: 99, life: 1.6, r: 0.3, fx: { slow: 2 } }); p.anim = 1; Sfx.play('shoot'); } },
+  // ----- Heraldo
+  judgment: { name: 'Sentencia', cd: 15, use(p) { aoe(p.x, p.y, 6, 90 * p.dmgMul, { stun: 1, kb: 8 }); vfxHolyRing(p.x, p.y, 6); G.flashFx = 0.4; G.shake = Math.max(G.shake, 0.4); Sfx.play('boss'); } },
+  guardian: { name: 'Ángel guardián', cd: 28, use(p) { addBuff('angel', 'Ángel guardián', 10, { regenPct: 0.05, armor: 0.7 }, C.goldL); vfxDome('holy', 1.5); Sfx.play('level'); } },
+  sanctuary: { name: 'Santuario', cd: 20, use(p) { addBuff('sanct', 'Santuario', 5, { armor: 0.3 }, C.gold); zoneAt(p.x, p.y, 2.6, 5, 10 * p.dmgMul, {}, 'holy', rgb(255, 240, 180)); vfxDome('holy', 5); Sfx.play('level'); } },
+  // ----- Hereje
+  hellfire: { name: 'Fuego infernal', cd: 10, use(p) { aoe(p.x, p.y, 4.5, 70 * p.dmgMul, { burn: 4, kb: 4, cone: { a: p.a, arc: 1.4 } }); vfxAcid(p.x, p.y, p.a); Sfx.play('nova'); } },
+  curse: { name: 'Maldición', cd: 12, use(p) { const l = enemiesNear(6); if (!l.length) return false; for (const e of l) { e.mark = 8; e.weak = 8; } vRing(p.x, p.y, 0.4, 6, 0.4, VR.void.slice(0, 5), 44); Sfx.play('summon'); } },
+  soulsiphon: { name: 'Sifón de almas', cd: 18, use(p) { const l = enemiesNear(6); if (!l.length) return false; let tot = 0; for (const e of l) { const d = 30 * p.dmgMul; damageEnemy(e, d, { silent: true }); tot += d; vfxArc(e.x, e.y, p.x, p.y, 'pink', 0.4); } healP(tot * 0.4); Sfx.play('bolt'); } },
+  // ----- Campeón
+  earthshatter: { name: 'Rompetierra', cd: 12, use(p) { for (let k = 1; k <= 4; k++) later(k * 0.08, () => { const q = G.p, x = q.x + Math.cos(q.a) * k * 1.4, y = q.y + Math.sin(q.a) * k * 1.4; if (G.lv.solid(x, y)) return; aoe(x, y, 1.5, 80 * q.dmgMul, { stun: 1.2, kb: 6, silent: k > 1 }); vfxShock(x, y, 1.5); }); G.shake = Math.max(G.shake, 0.5); Sfx.play('boss'); } },
+  bulwark: { name: 'Baluarte', cd: 20, use(p) { addBuff('bulwark', 'Baluarte', 6, { armor: 0.45 }, C.dim); p.riposte = 1.5; vfxDome('steel', 1.5); Sfx.play('blade'); } },
+  heroic: { name: 'Golpe heroico', cd: 7, use(p) { const n = aoe(p.x, p.y, 2.6, 140 * p.dmgMul, { kb: 10, cone: { a: p.a, arc: 1.2 } }); p.swing = { t: 0, dur: 0.5, dir: 1, move: 'slash', strong: true }; G.shake = Math.max(G.shake, n ? 0.45 : 0.15); Sfx.play('hit'); } },
+  // ----- Berserker
+  frenzy: { name: 'Frenesí', cd: 14, use(p) { addBuff('frenzy', 'Frenesí', 10, { rate: 1.35, dmg: 1.15 }, C.red); ringFx(p.x, p.y, 1.8, rgb(255, 60, 40), 24); Sfx.play('roar'); } },
+  bloodstorm: { name: 'Tormenta de sangre', cd: 12, use(p) { p.swing = { t: 0, dur: 0.9, dir: 1, spin: true }; for (let k = 0; k < 6; k++) later(k * 0.15, () => { const q = G.p, n = aoe(q.x, q.y, 3, 30 * q.dmgMul, { kb: 4 }); healP(n * 4); vRing(q.x, q.y, 0.4, 3, 0.2, VR.blood ? VR.blood.slice(0, 4) : VR.fire.slice(3, 7), 30); Sfx.play('swing'); }); } },
+  deathwish: { name: 'Deseo de muerte', cd: 25, use(p) { if (p.hp < p.maxHp * 0.35) { logMsg('Estás demasiado débil', C.dim); return false; } p.hp -= p.maxHp * 0.3; addBuff('deathwish', 'Deseo de muerte', 8, { dmg: 1.8 }, C.red); G.hurtFx = 0.5; Sfx.play('roar'); } },
+  // ----- Cambiaformas
+  feralpounce: { name: 'Abalanzarse', cd: 7, use(p) { const t = nearestEnemy(8, true); if (!t) return false; const a = Math.atan2(t.y - p.y, t.x - p.x); leapTo(t.x - Math.cos(a) * 0.9, t.y - Math.sin(a) * 0.9); p.a = a; aoe(t.x, t.y, 1.6, 70 * p.dmgMul, { stun: 1.2, kb: 5 }); vfxShock(t.x, t.y, 1.6); Sfx.play('roar'); } },
+  stampede: { name: 'Estampida', cd: 16, use(p) { for (let k = -1; k <= 1; k++) { const a = spawnAlly('wolf', p.x + Math.cos(p.a + k * 0.7) * 1.3, p.y + Math.sin(p.a + k * 0.7) * 1.3); if (a) a.life = 12; } } },
+  primal: { name: 'Instinto primario', cd: 20, use(p) { addBuff('primal', 'Instinto primario', 8, { spd: 1.3, dmg: 1.3, regenPct: 0.02 }, C.green); ringFx(p.x, p.y, 1.8, rgb(120, 230, 120), 24); Sfx.play('roar'); } },
+  // ----- Azote
+  pestilence: { name: 'Pestilencia', cd: 16, use(p) { const l = enemiesNear(8).filter(e => e.poison > 0); if (!l.length) return false; for (const e of l) { aoe(e.x, e.y, 2, 40 * p.dmgMul, { poison: 5, corrode: 4, silent: true }); vRing(e.x, e.y, 0.2, 2, 0.3, VR.poison.slice(1, 5), 20); } Sfx.play('nova'); } },
+  locust: { name: 'Plaga de langostas', cd: 12, use(p) { const a = aimPos(6); zoneAt(a.x, a.y, 4.2, 6, 14 * p.dmgMul, { slow: 2, poison: 2 }, 'plague', rgb(170, 200, 60)); if (typeof Ambient !== 'undefined' && G.cfg.ambient !== false) Ambient.bubbleBurst(); Sfx.play('summon'); } },
+  rot: { name: 'Podredumbre', cd: 8, use(p) { fireProj({ spr: 'orbGreen', size: 0.6, spd: 9, dmg: 40 * p.dmgMul, pierce: 2, life: 2, r: 0.32, fx: { poison: 5, corrode: 5, slow: 1 } }); p.anim = 1; Sfx.play('shoot'); } },
+  // ----- Archimago
+  timestop: { name: 'Detener el tiempo', cd: 30, use(p) { const l = enemiesNear(10); for (const e of l) { e.stun = Math.max(e.stun || 0, e.def.boss ? 1 : 3); e.slow = 4; } vfxDome('cyan', 1); G.flashFx = 0.5; Sfx.play('portal'); } },
+  blizzard: { name: 'Ventisca', cd: 14, use(p) { const t = nearestEnemy(SKILL_RANGE, true), a = t ? { x: t.x, y: t.y } : aimPos(6); zoneAt(a.x, a.y, 4, 6, 18 * p.dmgMul, { slow: 2.5 }, 'ice', rgb(170, 220, 255)); vfxIceNova(a.x, a.y, 4); Sfx.play('nova'); } },
+  singularity: { name: 'Singularidad', cd: 18, use(p) { const a = aimPos(5); vfxBlackHole(a.x, a.y, 4.5); for (const e of G.enemies) { if (e.dead || e.def.boss) continue; const d = Math.hypot(e.x - a.x, e.y - a.y); if (d < 5 && G.lv.los(a.x, a.y, e.x, e.y)) { e.kx += (a.x - e.x) / (d || 1) * 10; e.ky += (a.y - e.y) / (d || 1) * 10; } } later(0.45, () => { aoe(a.x, a.y, 3, 100 * G.p.dmgMul, { slow: 3 }); G.shake = Math.max(G.shake, 0.5); Sfx.play('boss'); }); } },
+  // ----- Caballero mágico
+  spellblade: { name: 'Hoja hechizada', cd: 6, use(p) { for (let k = -1; k <= 1; k++) fireProj({ a: p.a + k * 0.22, spr: 'orbPurple', size: 0.8, spd: 11, dmg: 48 * p.dmgMul, pierce: 4, life: 1.1, r: 0.4, fx: { slow: 1 } }); p.swing = { t: 0, dur: 0.45, dir: -p.swingDir, move: 'rise', strong: true }; Sfx.play('swing'); } },
+  arcanecharge: { name: 'Carga arcana', cd: 9, use(p) { dashStrike(5, 40 * p.dmgMul, { kb: 5, col: rgb(150, 120, 255) }); aoe(p.x, p.y, 3, 70 * p.dmgMul, { kb: 8, slow: 2 }); vfxEnergyNova(p.x, p.y, 3); } },
+  mirrorward: { name: 'Égida reflectante', cd: 18, use(p) { addBuff('mirror', 'Égida reflectante', 5, { armor: 0.7 }, C.cyan); vfxDome('cyan', 5); Sfx.play('level'); } },
+});
+
+// descripciones (las lee la tarjeta de aprender habilidad, el Mentor y el códice)
+const SKILL_DESC = {
+  knives: 'Lanza tres cuchillos en abanico que atraviesan a un enemigo.',
+  smoke: 'Bomba de humo: te vuelves invisible 3,5 s; el siguiente golpe desde las sombras hace más daño.',
+  warcry: 'Empuja a los enemigos cercanos y te da +25% de daño durante 8 s.',
+  shieldbash: 'El escudo sale hacia delante: daña, empuja y aturde a los enemigos de delante.',
+  whirlwind: 'Giras con el arma cinco veces dañando y empujando todo a tu alrededor.',
+  rally: 'Estandarte: +20% de daño, -25% de daño recibido durante 10 s y te cura un 10%.',
+  rage: 'Furia: +40% de daño, +25% de velocidad, +20% de cadencia y 12% de robo de vida durante 10 s.',
+  leap: 'Saltas hacia delante y al caer aplastas, empujas y aturdes en un área grande.',
+  fireball: 'Bola de fuego que estalla en un área y quema.',
+  frostnova: 'Onda de escarcha a tu alrededor que daña, empuja y ralentiza.',
+  chain: 'Rayo que salta entre hasta seis enemigos.',
+  meteor: 'Marca el suelo y un meteoro cae un instante después: gran daño en área y quemaduras.',
+  arcnova: 'Gran onda arcana que daña, empuja y ralentiza en un radio enorme.',
+  enchant: 'Arma encantada: +30% de daño y +20% de cadencia durante 12 s; tus golpes lanzan proyectiles mágicos.',
+  energyslash: 'Tajo de energía que avanza atravesando hasta cinco enemigos y los frena.',
+  arcaneArmor: 'Escudo arcano que absorbe daño durante 10 s.',
+  shadowstep: 'Apareces a la espalda del enemigo más cercano y te ocultas un instante.',
+  vanish: 'Sigilo total durante 5 s.',
+  clones: 'Invoca dos sombras aliadas que luchan a tu lado.',
+  shadowburst: 'Abre un agujero negro delante de ti que absorbe, daña y ralentiza.',
+  flurry: 'Saltas sobre el enemigo más cercano y das nueve estocadas seguidas siendo casi invulnerable.',
+  riposte: 'Parada: el siguiente golpe que recibas se anula y contraatacas en área.',
+  volley: 'Lluvia de nueve flechas en abanico.',
+  trap: 'Coloca una trampa de acero que daña y aturde al primero que la pisa.',
+  callwolf: 'Llama a un lobo aliado (hasta tres).',
+  callbear: 'Llama a un oso aliado muy resistente.',
+  imbue: 'Cambia el elemento de tus flechas: fuego, hielo o rayo.',
+  arcvolley: 'Salva arcana de siete flechas mágicas que atraviesan.',
+  selfbuff: 'Imbuirse: +30% de daño, +25% de cadencia y +10% de velocidad durante 9 s.',
+  holynova: 'Luz sagrada que daña y empuja a tu alrededor y te cura un 20%.',
+  divine: 'Escudo divino: invulnerable durante 2,5 s.',
+  smite: 'Pilares de luz caen sobre hasta cinco enemigos a la vista.',
+  aura: 'Aura sagrada: +25% de daño, regeneración y -15% de daño recibido durante 8 s.',
+  bloodpact: 'Sacrificas un 20% de vida a cambio de +60% de daño y 15% de robo de vida durante 10 s.',
+  fiend: 'Invoca un demonio aliado.',
+  drain: 'Drena la vida de hasta tres enemigos cercanos y te cura.',
+  thorns: 'Campo de zarzas que daña, ralentiza y envenena.',
+  regrowth: 'Regeneración durante 6 s y una pequeña curación inmediata.',
+  shapeshift: 'Cambias de forma: humano, lobo (veloz) u oso (resistente y brutal).',
+  formskill: 'Lobo: aullido que aturde y te acelera. Oso: pisotón que aturde. Humano: regeneración.',
+  plague: 'Nube de plaga que envenena, ralentiza y corroe la armadura.',
+  swarm: 'Invoca tres arañas de pesadilla aliadas.',
+  acid: 'Chorro de ácido en cono que envenena y corroe.',
+  poisonblade: 'Hoja envenenada: durante 8 s tus golpes envenenan y hacen un 10% más de daño.',
+  caltrops: 'Siembra abrojos a tus pies: dañan y ralentizan a quien los pisa durante 6 s.',
+  charge: 'Embestida: cargas 4,5 m arrollando, empujando y aturdiendo a todo lo que pillas.',
+  ironskin: 'Piel de hierro: -40% de daño recibido durante 6 s y te cura un 8%.',
+  arcanebolt: 'Proyectil arcano rápido y barato que atraviesa a dos enemigos.',
+  blink: 'Traslación: te teletransportas 5 m hacia delante y dejas una onda helada donde estabas.',
+  deathmark: 'Marca al enemigo más cercano: recibe un 50% más de daño durante 8 s.',
+  garrote: 'Degüellas al enemigo pegado a ti y lo aturdes; desde el sigilo hace x2,5.',
+  piercing: 'Flecha perforante que atraviesa hasta seis enemigos y los frena.',
+  hawkeye: 'Ojo de halcón: +25% de crítico y +15% de cadencia durante 10 s.',
+  consecrate: 'Consagra el suelo a tu alrededor: daña y frena a los enemigos 6 s.',
+  hammer: 'Lanzas un martillo de luz que aturde al primero que toca.',
+  cleave: 'Tajo brutal en un arco enorme por delante que empuja.',
+  bloodlust: 'Sed de batalla: +30% de daño y 10% de robo de vida durante 8 s.',
+  entangle: 'Raíces: atrapan (aturden) y envenenan a todo lo que hay cerca.',
+  moonbeam: 'Un rayo de luna cae sobre el enemigo más cercano: daño en área y lo frena.',
+  icelance: 'Lanza de hielo que atraviesa a tres enemigos y los congela casi del todo.',
+  firewall: 'Levanta un muro de fuego delante de ti que quema durante 6 s.',
+  nightblades: 'Diez hojas de sombra salen disparadas en círculo a tu alrededor.',
+  eclipse: 'Eclipse: aturde y frena a todos los enemigos cercanos y te oculta 4 s.',
+  soulreap: 'Siega de almas: quita un 15% de su vida a los enemigos cercanos (4% a jefes); cada muerte te cura.',
+  lunge: 'Estocada fulgurante: atraviesas 5 m de golpe hiriendo a todo lo que cruzas.',
+  bladedance: 'Danza de acero: +50% de cadencia y +20% de velocidad 6 s, y esquivas el primer instante.',
+  execute: 'Golpe de gracia: remata a un enemigo con menos del 35% de vida; si no, gran golpe crítico.',
+  packrage: 'Furia de la manada: tus aliados se curan un 40% y pegan un 50% más durante 10 s.',
+  beastroar: 'Rugido bestial que aturde y empuja a los enemigos y cura un 30% a tus aliados.',
+  netshot: 'Disparas una red que estalla y deja atrapados (aturdidos) a los enemigos.',
+  starfall: 'Lluvia estelar: siete estrellas caen sobre el enemigo más cercano y alrededor.',
+  runicarrow: 'Flecha rúnica que estalla con el elemento que tengan tus flechas.',
+  phasearrow: 'Flecha espectral que atraviesa a todos los enemigos que encuentra.',
+  judgment: 'Sentencia: gran explosión sagrada a tu alrededor que aturde y empuja.',
+  guardian: 'Ángel guardián: -30% de daño recibido y gran regeneración durante 10 s.',
+  sanctuary: 'Santuario: suelo sagrado que daña a los enemigos; dentro recibes un 70% menos de daño.',
+  hellfire: 'Fuego infernal en cono que quema con fuerza.',
+  curse: 'Maldición: los enemigos cercanos reciben +50% de daño y hacen un 30% menos durante 8 s.',
+  soulsiphon: 'Sifón de almas: absorbe vida de todos los enemigos cercanos y te cura.',
+  earthshatter: 'Rompetierra: una grieta avanza delante de ti aturdiendo y empujando.',
+  bulwark: 'Baluarte: -55% de daño recibido 6 s y el primer golpe que te den lo devuelves.',
+  heroic: 'Golpe heroico: un mandoble demoledor por delante.',
+  frenzy: 'Frenesí: +35% de cadencia y +15% de daño durante 10 s.',
+  bloodstorm: 'Tormenta de sangre: seis giros que dañan alrededor y te curan por cada enemigo golpeado.',
+  deathwish: 'Deseo de muerte: pierdes un 30% de vida a cambio de +80% de daño durante 8 s.',
+  feralpounce: 'Te abalanzas sobre el enemigo más cercano, lo aturdes y dañas en área.',
+  stampede: 'Estampida: tres lobos salvajes salen a luchar durante 12 s.',
+  primal: 'Instinto primario: +30% de velocidad y daño, y regeneración durante 8 s.',
+  pestilence: 'Pestilencia: cada enemigo envenenado cercano estalla en una nube de veneno y ácido.',
+  locust: 'Plaga de langostas: una gran nube que frena y envenena durante 6 s.',
+  rot: 'Proyectil de podredumbre que envenena, corroe y frena.',
+  timestop: 'Detener el tiempo: los enemigos cercanos quedan congelados 3 s (los jefes, 1 s).',
+  blizzard: 'Ventisca sobre el enemigo más cercano: daña y ralentiza durante 6 s.',
+  singularity: 'Singularidad: atrae a los enemigos hacia un punto y luego estalla.',
+  spellblade: 'Hoja hechizada: tres tajos de energía en abanico que atraviesan.',
+  arcanecharge: 'Carga arcana: te lanzas hacia delante y estallas al llegar.',
+  mirrorward: 'Égida reflectante: -30% de daño recibido y devuelves el doble de lo que te hacen durante 5 s.',
+};
+for (const k in SKILL_DESC) if (SKILLS[k]) SKILLS[k].desc = SKILL_DESC[k];
+
+// 3 habilidades activas (R, C, V) elegidas entre las aprendidas en la partida
+function skillOf(i) { const id = G.p.active && G.p.active[i]; return id ? SKILLS[id] : null; }
 function useSkill(i) {
   const p = G.p;
   if (G.state !== 'play') return;

@@ -570,7 +570,7 @@ function loadAssets() {
     // jefes de Pixellab (si existen) en lugar de los dibujados por código
     for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
-    for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
+    for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['mentor', 'npc_mentor'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
     // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
     for (const id of Object.keys(CLASSES)) {
       // mano de perfil (Sprite Fusion) si existe: la empuñadura atraviesa el puño y el pomo asoma bajo él
@@ -1051,6 +1051,32 @@ function drawSmith(frame) {
     for (let y = hy + 2; y < hy + 6; y++) set(hx + 2, y, PW.d);
   });
 }
+// Mentor: anciano de túnica azul con barba blanca, bastón y un libro abierto que brilla
+function drawMentor(frame) {
+  const robe = [52, 66, 120], robeD = [32, 40, 82], robeL = [80, 98, 160], trim = [210, 170, 70], skin = [200, 158, 124], beard = [206, 204, 198], beardD = [158, 154, 150];
+  return pix(24, 36, (set) => {
+    // túnica acampanada
+    for (let y = 11; y < 36; y++) { const w = 4 + Math.min(6, (y - 11) * 0.32); for (let x = Math.round(11.5 - w); x <= Math.round(11.5 + w); x++) set(x, y, x < 9 ? robeL : x > 14 ? robeD : robe); }
+    for (let x = 6; x < 18; x++) set(x, 35, trim); // ribete del bajo
+    for (let y = 12; y < 35; y++) set(11, y, trim); // ribete central
+    // capucha caída sobre los hombros y cabeza
+    for (let x = 6; x < 18; x++) set(x, 11, robeD);
+    for (let y = 2; y < 10; y++) for (let x = 8; x < 16; x++) { const d = Math.hypot((x - 11.5) / 4, (y - 6) / 4.2); if (d < 1) set(x, y, y < 4 ? beard : skin); }
+    set(10, 6, [40, 30, 30]); set(13, 6, [40, 30, 30]); // ojos
+    for (let x = 9; x < 15; x++) set(x, 5, beard); // cejas blancas
+    // barba larga hasta el pecho
+    for (let y = 7; y < 18; y++) { const w = y < 9 ? 3 : Math.max(0.5, 3 - (y - 9) * 0.3); for (let x = Math.round(11.5 - w); x <= Math.round(11.5 + w); x++) set(x, y, (x + y) % 3 ? beard : beardD); }
+    // bastón a la izquierda con gema
+    for (let y = 4; y < 36; y++) set(3, y, [96, 66, 40]);
+    const gem = frame & 1 ? [150, 200, 255] : [110, 160, 255];
+    set(3, 2, gem, true); set(2, 3, gem, true); set(4, 3, gem, true); set(3, 3, [230, 245, 255], true);
+    for (let y = 16; y < 19; y++) set(4, y, skin); // mano en el bastón
+    // libro abierto en la otra mano; las páginas brillan
+    const pg = [[255, 246, 210], [255, 236, 180], [240, 220, 160], [255, 250, 230]][frame & 3];
+    for (let y = 18; y < 23; y++) for (let x = 15; x < 23; x++) set(x, y, y === 22 ? [110, 60, 40] : x === 19 ? [180, 160, 120] : pg, y < 22 && x !== 19);
+    for (let y = 21; y < 24; y++) set(15, y, skin);
+  });
+}
 function drawAnvil() {
   return pix(18, 10, (set) => {
     for (let x = 0; x < 18; x++) for (let y = 0; y < 3; y++) set(x, y, y === 0 ? [140, 140, 150] : [90, 90, 100]);
@@ -1153,7 +1179,7 @@ function initSprites() {
   SPR.coins = drawCoins();
   SPR.torchItem = drawTorchItem();
   for (const s of ['anillo', 'amuleto', 'armadura', 'arma', 'escudo']) for (const r of ['comun', 'raro', 'epico', 'legendario']) SPR[`icon_${s}_${r}`] = drawItemIcon(s, { comun: [170, 170, 160], raro: [70, 130, 255], epico: [190, 80, 255], legendario: [255, 170, 40] }[r]);
-  SPR.merchant = [0, 1, 2, 3].map(drawMerchant); SPR.smith = [0, 1, 2, 3].map(drawSmith); SPR.anvil = [drawAnvil()];
+  SPR.merchant = [0, 1, 2, 3].map(drawMerchant); SPR.smith = [0, 1, 2, 3].map(drawSmith); SPR.mentor = [0, 1, 2, 3].map(drawMentor); SPR.anvil = [drawAnvil()];
   for (const k of ['melee', 'dagger', 'staff', 'bow']) SPR['ghost_' + k] = [drawGhost(k, 0), drawGhost(k, 1)];
   SPR.potionIcon = SPR.potion;
   SPR.altar = [0, 1, 2, 3].map(f => drawAltar(f, true)); SPR.altarOff = [drawAltar(0, false)];

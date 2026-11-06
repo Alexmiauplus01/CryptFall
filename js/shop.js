@@ -108,11 +108,12 @@ function updateNpcs() {
   for (const n of G.lv.npcs || []) {
     const near = Math.hypot(n.x - p.x, n.y - p.y) < 1.35;
     if (near && !n.near) {
-      if (n.type === 'merchant') openShop(); else openForge();
+      if (n.type === 'merchant') openShop(); else if (n.type === 'mentor') openMentor(); else openForge();
       if (!G.met[n.type]) {
         G.met[n.type] = true;
         jot('npc' + n.type + G.dg.n, n.type === 'merchant'
           ? `Un mercader encapuchado vende sus útiles en el ${levelName(G.z)}. Dice que la oscuridad es buen negocio.`
+          : n.type === 'mentor' ? `Un viejo mentor estudia sus libros en el ${levelName(G.z)}. Por un poco de oro me ayuda a elegir qué técnicas llevar.`
           : `Un herrero ha montado su yunque en el ${levelName(G.z)}. La primera mejora me la regala.`);
       }
     }
@@ -121,4 +122,41 @@ function updateNpcs() {
 }
 function openShop() { G.state = 'shop'; mouse.fire = false; if (document.exitPointerLock) document.exitPointerLock(); Sfx.play('coin'); }
 function openForge() { if (!G.forgeOpts || !G.forgeOpts.length) rollForge(); G.state = 'forge'; mouse.fire = false; if (document.exitPointerLock) document.exitPointerLock(); Sfx.play('unlock'); }
-function closeNpc() { if (G.state !== 'shop' && G.state !== 'forge') return; G.state = 'play'; lockMouse(); }
+function closeNpc() { if (G.state !== 'shop' && G.state !== 'forge' && G.state !== 'mentor') return; G.state = 'play'; lockMouse(); }
+
+// ---------------------------------------------------------------- Mentor
+// Guarda todo lo que has aprendido en la partida (habilidades de tu clase base hasta la maestra y pasivas)
+// y, por oro, te deja elegir qué 3 habilidades y qué 3 pasivas llevas activas.
+function mentorPrice() { return Math.round(20 * (1 + 0.45 * ((G.dg ? G.dg.n : 1) - 1))); }
+function openMentor() { G.state = 'mentor'; G.mentorSel = { kind: 'skill', i: Math.max(0, G.p.active.indexOf(null)) }; mouse.fire = false; if (document.exitPointerLock) document.exitPointerLock(); Sfx.play('shrine'); }
+function mentorPay() {
+  const c = mentorPrice();
+  if (G.loot < c) { toast('NO TE ALCANZA EL ORO', false); Sfx.play('locked'); return false; }
+  G.loot -= c; Sfx.play('coin'); return true;
+}
+function mentorAction(id) {
+  if (G.state !== 'mentor' || typeof id !== 'string') return;
+  const p = G.p, [k, v] = id.split(':');
+  if (k === 'sk') { G.mentorSel = { kind: 'skill', i: +v }; Sfx.play('gem'); return; }
+  if (k === 'pa') { G.mentorSel = { kind: 'pas', i: +v }; Sfx.play('gem'); return; }
+  if (k === 'kn') {
+    if (p.active.includes(v)) return;
+    let i = G.mentorSel && G.mentorSel.kind === 'skill' ? G.mentorSel.i : p.active.indexOf(null);
+    if (i < 0) i = 0;
+    if (!mentorPay()) return;
+    const old = p.active[i]; p.active[i] = v; p.skillCd[i] = 0; p.skillMax[i] = 1;
+    logMsg(`El Mentor te enseña a usar ${SKILLS[v].name}${old ? ` en lugar de ${SKILLS[old].name}` : ''}`, C.cyan);
+    G.mentorSel = { kind: 'skill', i };
+    return;
+  }
+  if (k === 'ps') {
+    if (G.pasOn.includes(v)) return;
+    let i = G.pasOn.length < MAX_PAS ? G.pasOn.length : (G.mentorSel && G.mentorSel.kind === 'pas' ? G.mentorSel.i : 0);
+    if (!mentorPay()) return;
+    const u = UPG.find(q => q.id === v), old = G.pasOn[i] && UPG.find(q => q.id === G.pasOn[i]);
+    G.pasOn[i] = v; recalc();
+    if (v === 'nova') G.novaT = Math.min(G.novaT, 1);
+    logMsg(`El Mentor despierta ${u.name}${old ? ` y adormece ${old.name}` : ''}`, C.orange);
+    G.mentorSel = { kind: 'pas', i };
+  }
+}

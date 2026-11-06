@@ -51,6 +51,7 @@ const DECOR = {
   bones:      { h: 0.15 },
   merchant:   { h: 0.95, anim: true },
   smith:      { h: 1.0, anim: true },
+  mentor:     { h: 0.98, anim: true },
   anvil:      { h: 0.34 },
   altar:      { h: 0.72, anim: true },
   bookshelf:  { h: 1.15 },
@@ -68,6 +69,7 @@ const ROOM_HINT = {
   biblioteca: 'Polvo, velas y saber olvidado', osario: 'Montañas de huesos... algunos se mueven',
   fuente: 'El agua aún brilla: beber de ella cura', almacen: 'Cajas y barriles de alguna expedición perdida',
   jardin: 'Hongos que brillan en la oscuridad', ritual: 'Un círculo de velas y una piedra que sangra luz',
+  mentor: 'Libros, velas y un anciano que lo sabe todo',
 };
 const PROJ_LIGHT = {
   orbBlue: [0.35, 0.6, 1.25], orbGold: [1.2, 0.95, 0.4], orbRed: [1.3, 0.55, 0.15], orbGreen: [0.3, 1.1, 0.55], orbPurple: [0.85, 0.3, 1.2], orbIce: [0.5, 0.9, 1.2], orbArrow: [0.9, 0.8, 0.5],
@@ -89,7 +91,14 @@ const UPG = [
   { id: 'blades', name: 'Cuchillas Orbitales', max: 6, passive: true, desc: (l) => l === 0 ? 'Cuchillas giran a tu alrededor y cortan' : '+1 cuchilla y más daño' },
   { id: 'nova',   name: 'Nova Gélida',         max: 5, passive: true, desc: (l) => l === 0 ? 'Onda helada periódica que daña y frena' : 'Más daño, radio y frecuencia' },
   { id: 'bolt',   name: 'Tormenta',            max: 5, passive: true, desc: (l) => l === 0 ? 'Rayos caen sobre enemigos cercanos' : '+1 rayo, más daño y frecuencia' },
+  { id: 'wisp',   name: 'Luz de mago',         max: 5, passive: true, desc: (l) => l === 0 ? 'Una esfera de luz va delante de ti e ilumina' : l < 2 ? 'Más luz; a nivel 3 abrasa a quien toca' : 'Más luz y abrasa más fuerte a quien toca' },
+  { id: 'spirit', name: 'Espíritu guardián',   max: 5, passive: true, desc: (l) => l === 0 ? 'Cada 12 s te envuelve un escudo que absorbe daño' : 'Escudo más fuerte y más a menudo' },
+  { id: 'thornaura', name: 'Aura de espinas',  max: 5, passive: true, desc: (l) => l === 0 ? 'Hiere a los enemigos pegados a ti y devuelve parte del daño' : 'Más daño y más daño devuelto' },
+  { id: 'flametrail', name: 'Estela de llamas', max: 5, passive: true, desc: (l) => l === 0 ? 'Al moverte dejas un rastro de fuego que quema' : 'Llamas más largas y que queman más' },
+  { id: 'familiar', name: 'Familiar arcano',   max: 5, passive: true, desc: (l) => l === 0 ? 'Un familiar flota a tu lado y dispara a los enemigos' : 'Dispara más a menudo y más fuerte' },
 ];
+const PASSIVE_IDS = new Set(UPG.filter(u => u.passive).map(u => u.id));
+const MAX_PAS = 3; // pasivas activas a la vez (las demás se guardan para el Mentor)
 
 // ---------------------------------------------------------------- Estado
 const G = {
@@ -106,12 +115,14 @@ const G = {
 const TORCH_FUEL = 240; // segundos que arde una antorcha
 const keys = {};
 const mouse = { fire: false };
-const L = (id) => G.upg[id] || 0;
+// nivel efectivo: las pasivas guardadas (no activas) no funcionan; LR es el nivel aprendido
+const LR = (id) => G.upg[id] || 0;
+const L = (id) => (PASSIVE_IDS.has(id) && !(G.pasOn || []).includes(id)) ? 0 : (G.upg[id] || 0);
 
 function makePlayer(cls = 'mago') {
   return { x: 0, y: 0, a: 0, hp: 100, maxHp: 100, xp: 0, lvl: 1, shootCd: 0, dashCd: 0, dashT: 0, dashDx: 0, dashDy: 0, inv: 0, bob: 0, moveAmt: 0, anim: 0, vx: 0, vy: 0,
     cls, slot: 0, weapon: 'staff', spell: 'arcane', off: 'none', torchFuel: 0, wantBlock: false, block: 0, swing: null, swingDir: 1,
-    form: 'human', element: null, buffs: [], skillCd: [0, 0, 0], skillMax: [1, 1, 1], stealth: 0, riposte: 0, absorb: 0, absorbT: 0 };
+    form: 'human', element: null, buffs: [], skillCd: [0, 0, 0], skillMax: [1, 1, 1], known: [], active: [null, null, null], stealth: 0, riposte: 0, absorb: 0, absorbT: 0 };
 }
 
 function recalc() {
@@ -143,7 +154,8 @@ function setClass(id, evolving) {
   p.cls = id; p.slot = 0; p.form = 'human'; p.buffs = []; p.skillCd = [0, 0, 0]; p.skillMax = [1, 1, 1];
   p.stealth = 0; p.riposte = 0; p.absorb = 0; p.swing = null;
   p.element = classPassive(id, 'element', null);
-  if (classPassive(id, 'arcana', false)) { for (const k of ['blades', 'nova', 'bolt']) G.upg[k] = Math.max(G.upg[k] || 0, 2); G.novaT = 1; }
+  if (classPassive(id, 'arcana', false)) { for (const k of ['blades', 'nova', 'bolt']) { G.upg[k] = Math.max(G.upg[k] || 0, 2); if (!G.pasOn.includes(k) && G.pasOn.length < MAX_PAS) G.pasOn.push(k); } G.novaT = 1; }
+  if (!evolving) { const sk = CLASSES[id].skills; p.known = sk.slice(0, 2); p.active = [sk[0], sk[1] || null, null]; } // empiezas con dos; el resto se aprende al subir de nivel
   const w = WEAPONS[CLASSES[id].slots[0].w];
   if (w.hands !== 1) p.wantBlock = false;
   recalc();
@@ -152,7 +164,7 @@ function setClass(id, evolving) {
 
 function newRun(cls) {
   G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
-  G.upg = {}; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
+  G.upg = {}; G.pasOn = []; G.learn = null; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
   G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
   G.p.hp = G.p.maxHp;
@@ -214,7 +226,7 @@ function populateLevel(lv) {
       }
       case 'secreta': box = chest(gold * rand(6, 10), 'potion'); break;
       case 'trampa': box = chest(gold * rand(5, 8)); break;
-      case 'santuario': case 'arena': case 'mercader': case 'herrero': case 'fuente': break;
+      case 'santuario': case 'arena': case 'mercader': case 'herrero': case 'mentor': case 'fuente': break;
       case 'biblioteca': // saber antiguo: experiencia en gemas y algún erudito corrupto
         for (let k = 0; k < randi(2, 4); k++) { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'gem', x, y, v: 5, vx: 0, vy: 0, t: rand(0, 6) }); }
         foes(randi(1, 2), 'cultist'); if (Math.random() < 0.35) box = chest(gold * rand(3, 5));
@@ -463,8 +475,14 @@ function hurtPlayer(d, sx, sy) {
       Sfx.play('hit');
     }
   }
+  // quién te pega (el enemigo más cercano al origen del golpe): maldito pega menos; égida y espinas devuelven daño
+  let src = null;
+  if (sx !== undefined) { let bd = 2.4; for (const e of G.enemies) { if (e.dead) continue; const q = Math.hypot(e.x - sx, e.y - sy); if (q < bd) { bd = q; src = e; } } }
+  if (src && src.weak > 0) d *= 0.7;
+  if (src && p.buffs.some(b => b.id === 'mirror')) { damageEnemy(src, d * 2, { silent: true }); vfxArc(p.x, p.y, src.x, src.y, 'cyan', 0.25); }
+  if (src && L('thornaura')) damageEnemy(src, d * (0.1 + 0.1 * L('thornaura')) * 2, { silent: true });
   d *= p.armor;
-  if (p.absorb > 0) { // armadura arcana
+  if (p.absorb > 0) { // armadura arcana o espíritu guardián
     const ab = Math.min(p.absorb, d); p.absorb -= ab; d -= ab;
     vfxDome('cyan', 0.6); G.dome.ripple = 1;
     if (p.absorb <= 0) { p.absorbT = 0; p.buffs = p.buffs.filter(b => b.id !== 'aarmor'); }
@@ -547,7 +565,7 @@ function meleeHit() {
     const crit = Math.random() < p.crit;
     const dd = w.dmg * p.dmgMul * (crit ? critMul() : 1) * sb * rand(0.9, 1.1);
     damageEnemy(e, dd, { kx: dx / (d || 1) * w.kb, ky: dy / (d || 1) * w.kb, crit });
-    forgeHit(e, dd); equipHit(e, dd, crit);
+    forgeHit(e, dd); equipHit(e, dd, crit); buffHit(e);
     if (hits < 4) vfxImpact(e.x, e.y, 0.5, shadow ? 'arcane' : 'steel', 0.7);
     if (shadow) applyFx(e, { slow: 1.5 });
     if (holy) healP(p.maxHp * 0.012);
@@ -711,7 +729,7 @@ function updateProjs(dt) {
             pr.hit.add(e);
             damageEnemy(e, pr.dmg, { kx: pr.vx * 0.12, ky: pr.vy * 0.12, crit: pr.crit });
             hitFx(e, pr.fx, pr);
-            if (pr.basic) { forgeHit(e, pr.dmg); equipHit(e, pr.dmg, pr.crit); }
+            if (pr.basic) { forgeHit(e, pr.dmg); equipHit(e, pr.dmg, pr.crit); buffHit(e); }
             if (!pr.explode) vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] === 'fire' ? 'impact' : PROJ_RAMP[pr.spr] || 'impact', 0.6);
             if (pr.explode) { explodeAt(pr.x, pr.y, pr.explode); pr.dead = true; break; }
             if (pr.pierce-- <= 0) { pr.dead = true; break; }
@@ -765,7 +783,7 @@ function findSpawn(minD, maxD, needHidden) {
   const lv = G.lv, p = G.p;
   for (let i = 0; i < 40; i++) {
     const c = pick(lv.floorCells), x = c[0] + 0.5, y = c[1] + 0.5, ri = lv.roomOf[c[1] * MW + c[0]];
-    if (ri >= 0 && ['secreta', 'mercader', 'herrero', 'santuario', 'entrada'].includes(lv.rooms[ri].type)) continue;
+    if (ri >= 0 && ['secreta', 'mercader', 'herrero', 'mentor', 'santuario', 'entrada'].includes(lv.rooms[ri].type)) continue;
     const d = Math.hypot(x - p.x, y - p.y);
     if (d < minD || d > maxD) continue;
     if (needHidden && lv.los(p.x, p.y, x, y)) continue;
@@ -830,6 +848,7 @@ function damageEnemy(e, dmg, o = {}) {
   if (e.armorMul) dmg *= e.armorMul;
   if (e.def.worm) { dmg *= e.openT > 0 ? 1.6 : 0.2; if (e.openT <= 0 && Math.random() < 0.4) Sfx.play('blade'); } // la boca abierta es su punto débil
   if (e.corrode > 0) dmg *= 1.4;
+  if (e.mark > 0) dmg *= 1.5; // marca de muerte o maldición
   e.hp -= dmg; e.flash = 0.1;
   if (e.sleep) wakeEnemy(e);
   const p = G.p;
@@ -900,7 +919,7 @@ function updateEnemies(dt) {
   for (const e of en) {
     if (e.dead) continue;
     const d = e.def;
-    e.flash -= dt; e.slow -= dt; e.atk -= dt; e.bladeCd -= dt; e.wob += dt * 6;
+    e.flash -= dt; e.slow -= dt; e.atk -= dt; e.bladeCd -= dt; e.wob += dt * 6; if (e.mark > 0) e.mark -= dt; if (e.weak > 0) e.weak -= dt;
     e.losT -= dt;
     if (e.burn > 0) { e.burn -= dt; dot(e, (e.burnDps || 6) * dt); if (Math.random() < dt * 16) vfxBurn(e); }
     if (e.poison > 0) { e.poison -= dt; dot(e, (e.poisDps || 4) * dt); if (Math.random() < dt * 6) vfxPoisoned(e); }
@@ -1119,6 +1138,98 @@ function updatePassives(dt) {
   }
 }
 
+// pasivas nuevas: luz de mago, espíritu guardián, aura de espinas, estela de llamas y familiar arcano
+function updatePassives2(dt) {
+  const p = G.p;
+  const lw = L('wisp');
+  if (lw > 0) { // la esfera flota por delante (sin atravesar paredes) e ilumina
+    const t = aimPos(1.7), w = G.wisp || (G.wisp = { x: p.x, y: p.y, cd: 0 }), k = Math.min(1, dt * 6);
+    w.x += (t.x - w.x) * k; w.y += (t.y - w.y) * k; w.cd -= dt;
+    if (lw >= 3 && w.cd <= 0) { w.cd = 0.5; for (const e of enemiesIn(w.x, w.y, 0.9)) { damageEnemy(e, (4 + 3 * lw) * p.dmgMul, { silent: true }); applyFx(e, { burn: 2 }); } }
+  } else G.wisp = null;
+  const ls = L('spirit');
+  if (ls > 0) {
+    G.spiritT = (G.spiritT ?? 3) - dt;
+    if (G.spiritT <= 0) {
+      G.spiritT = 13 - 1.3 * ls;
+      const sh = Math.round(12 + 10 * ls + p.lvl * 0.8);
+      if (p.absorb < sh) { p.absorb = sh; p.absorbT = 8; vfxDome('holy', 0.7); burst(p.x, p.y, 0.6, 12, rgb(255, 240, 190), 1.6, 0.6); Sfx.play('potion'); }
+    }
+  }
+  const lt = L('thornaura');
+  if (lt > 0) {
+    G.thornT = (G.thornT ?? 0.5) - dt;
+    if (G.thornT <= 0) {
+      G.thornT = 0.5;
+      const l = enemiesIn(p.x, p.y, 1.6);
+      for (const e of l) { damageEnemy(e, (3 + 2.5 * lt) * p.dmgMul, { silent: true }); burst(e.x, e.y, 0.3, 3, rgb(140, 220, 90), 1.4, 0.3, false); }
+    }
+  }
+  const lf = L('flametrail');
+  if (lf > 0) {
+    G.trailT = (G.trailT ?? 0) - dt;
+    if (G.trailT <= 0 && p.moveAmt > 0) {
+      G.trailT = 0.3;
+      G.zones.push({ kind: 'fire', trail: true, x: p.x - Math.cos(p.a) * 0.3, y: p.y - Math.sin(p.a) * 0.3, r: 0.7, t: 1.6 + 0.4 * lf, tick: 0.2, dmg: (2 + 1.6 * lf) * p.dmgMul, fx: { burn: 1.5 }, col: rgb(255, 130, 40) });
+    }
+  }
+  const la = L('familiar');
+  if (la > 0) { // flota sobre tu hombro izquierdo y dispara a lo que ve
+    const f = G.fam || (G.fam = { x: p.x, y: p.y, cd: 1 }), a = p.a + 2.3, k = Math.min(1, dt * 7);
+    f.x += (p.x + Math.cos(a) * 0.7 - f.x) * k; f.y += (p.y + Math.sin(a) * 0.7 - f.y) * k; f.cd -= dt;
+    if (f.cd <= 0) {
+      const t = nearestEnemy(8, true, p.x, p.y);
+      if (t && canHit(t)) {
+        f.cd = Math.max(0.55, 1.8 - 0.25 * la);
+        fireProj({ x: f.x, y: f.y, a: Math.atan2(t.y - f.y, t.x - f.x), spr: 'orbPurple', size: 0.2, spd: 12, dmg: (7 + 5 * la) * p.dmgMul, life: 1.2, r: 0.15 });
+        Sfx.play('shoot');
+      } else f.cd = 0.3;
+    }
+  } else G.fam = null;
+}
+
+// ---------------------------------------------------------------- Habilidades aprendidas (3 activas) y pasivas (3 activas)
+// Las que no caben se guardan: el Mentor deja reorganizarlas por oro.
+function learnableSkills() {
+  const p = G.p, out = [];
+  for (const c of lineageOf(p.cls)) for (const s of CLASSES[c].skills) if (SKILLS[s] && !p.known.includes(s) && !out.includes(s)) out.push(s);
+  return out;
+}
+function skillDescShort(id) { const s = SKILLS[id], d = s.desc || ''; return d.toUpperCase().startsWith(s.name.toUpperCase() + ':') ? d.slice(s.name.length + 1).trim().replace(/^./, c => c.toUpperCase()) : d; }
+function skillOpt(id) { const s = SKILLS[id]; return { id: 'sk:' + id, skill: id, name: s.name, max: 1, desc: () => skillDescShort(id) }; }
+function afterLevelUp() { if (G.pending > 0) openLevelUp(); else closeLevelUp(); }
+// aprende una habilidad: hueco libre si lo hay; si no, pregunta cuál sustituye (o la guarda para el Mentor)
+function learnSkill(id, then) {
+  const p = G.p;
+  if (!p.known.includes(id)) p.known.push(id);
+  if (p.active.includes(id)) { then(); return; }
+  const f = p.active.findIndex(a => !a);
+  if (f >= 0) { p.active[f] = id; p.skillCd[f] = 0; p.skillMax[f] = 1; logMsg(`Aprendes ${SKILLS[id].name} (${SKILL_LABEL[f]})`, C.cyan); then(); return; }
+  G.learn = { kind: 'skill', id, then }; G.state = 'learn'; mouse.fire = false;
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+function learnPassive(id, then) {
+  if (G.pasOn.includes(id)) { then(); return; }
+  if (G.pasOn.length < MAX_PAS) { G.pasOn.push(id); recalc(); then(); return; }
+  G.learn = { kind: 'pas', id, then }; G.state = 'learn'; mouse.fire = false;
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+// i = hueco que se sustituye (0-2) o 3 = guardar para el Mentor
+function resolveLearn(i) {
+  const l = G.learn, p = G.p; if (!l || i < 0 || i > 3) return;
+  if (l.kind === 'skill') {
+    if (i < 3) { const old = p.active[i]; p.active[i] = l.id; p.skillCd[i] = 0; p.skillMax[i] = 1; logMsg(old ? `${SKILLS[l.id].name} sustituye a ${SKILLS[old].name}` : `Aprendes ${SKILLS[l.id].name} (${SKILL_LABEL[i]})`, C.cyan); }
+    else logMsg(`Guardas ${SKILLS[l.id].name}: el Mentor te ayudará a usarla`, C.dim);
+  } else {
+    const u = UPG.find(u => u.id === l.id);
+    if (i < G.pasOn.length) { const old = UPG.find(u => u.id === G.pasOn[i]); G.pasOn[i] = l.id; logMsg(`${u.name} sustituye a ${old.name}`, C.orange); if (l.id === 'nova') G.novaT = Math.min(G.novaT, 1); }
+    else logMsg(`Guardas ${u.name}: el Mentor te ayudará a usarla`, C.dim);
+    recalc();
+  }
+  G.learn = null; Sfx.play('level');
+  l.then();
+}
+
 // ---------------------------------------------------------------- Recogidos y partículas
 function xpNeed(l) { return Math.round(4 + 2.4 * l + 0.16 * l * l); }
 
@@ -1224,9 +1335,13 @@ function openLevelUp() {
   G.state = 'levelup';
   if (document.exitPointerLock) document.exitPointerLock();
   mouse.fire = false;
-  const pool = UPG.filter(u => L(u.id) < u.max);
+  const pool = UPG.filter(u => LR(u.id) < u.max);
   const opts = [];
+  // a veces (más si te queda un hueco libre) puedes aprender una habilidad de tu clase
+  const ls = learnableSkills();
+  if (ls.length && Math.random() < (G.p.active.includes(null) ? 0.6 : 0.35)) opts.push(skillOpt(pick(ls)));
   while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  if (opts[0] && opts[0].skill && opts.length > 1) { const j = randi(0, opts.length - 1); [opts[0], opts[j]] = [opts[j], opts[0]]; }
   G.opts = opts;
   if (!opts.length) { G.p.hp = G.p.maxHp; G.pending = 0; closeLevelUp(); return; }
   Sfx.play('level');
@@ -1235,13 +1350,14 @@ function openLevelUp() {
 function chooseUpgrade(i) {
   if (G.state !== 'levelup') return;
   const u = G.opts[i]; if (!u) return;
-  G.upg[u.id] = L(u.id) + 1;
+  G.pending--;
+  if (u.skill) { learnSkill(u.skill, afterLevelUp); return; }
+  G.upg[u.id] = LR(u.id) + 1;
   if (u.id === 'vit') G.p.hp += 30;
   if (u.id === 'nova') G.novaT = Math.min(G.novaT, 1);
   recalc();
-  G.pending--;
-  logMsg(`Aprendes ${u.name} (nv ${L(u.id)})`, u.passive ? C.orange : C.gold);
-  if (G.pending > 0) openLevelUp(); else closeLevelUp();
+  logMsg(`Aprendes ${u.name} (nv ${LR(u.id)})`, u.passive ? C.orange : C.gold);
+  if (u.passive) learnPassive(u.id, afterLevelUp); else afterLevelUp();
 }
 
 function closeLevelUp() {
@@ -1255,7 +1371,7 @@ function classCard(id) {
   const c = CLASSES[id];
   return {
     name: c.name, tag: c.tag, tier: c.tier, desc: c.desc,
-    skills: c.skills.map((s, i) => `${SKILL_LABEL[i]} ${SKILLS[s].name}`),
+    skills: c.skills.map(s => `· ${SKILLS[s].name}`),
     weapons: c.slots.map(s => s.spell ? 'Bastón de ' + SPELLS[s.spell].name : WEAPONS[s.w].name),
     next: c.to ? c.to.map(t => CLASSES[t].name) : null, lvl: c.next,
   };
@@ -1272,7 +1388,13 @@ function openEvolve() {
   G.state = 'evolve'; mouse.fire = false;
   if (document.exitPointerLock) document.exitPointerLock();
   Sfx.play('portal');
-  G.choice = { title: '¡EVOLUCIÓN!', sub: `${c.name} alcanza el nivel ${p.lvl}: elige tu destino`, items: c.to.map(classCard), pick: (i) => { setClass(c.to[i], true); G.state = 'play'; G.choice = null; lockMouse(); } };
+  G.choice = { title: '¡EVOLUCIÓN!', sub: `${c.name} alcanza el nivel ${p.lvl}: elige tu destino`, items: c.to.map(classCard), pick: (i) => {
+    const id = c.to[i]; setClass(id, true); G.choice = null;
+    const ns = CLASSES[id].skills.find(s => !p.known.includes(s)); // la nueva clase te enseña su primera habilidad
+    const done = () => { G.state = 'play'; lockMouse(); };
+    G.state = 'play';
+    if (ns) learnSkill(ns, done); else done();
+  } };
 }
 function pickChoice(i) {
   if (!G.choice || i < 0 || i >= G.choice.items.length) return;
@@ -1391,7 +1513,7 @@ function update(dt) {
   updateSpawner(dt); updateWaves(dt);
   updateEnemies(dt);
   updateProjs(dt);
-  updatePassives(dt);
+  updatePassives(dt); updatePassives2(dt);
   updateAllies(dt); updateTraps(dt); updateZones(dt); updateTimers(dt);
   updatePickups(dt);
   updateParts(dt);
@@ -1458,6 +1580,8 @@ function buildItems() {
   vfxItems(items);
   for (const f of G.fx) if (f.type === 'pillar') items.push({ x: f.x, y: f.y, spr: SPR.pillar, w: 0.7 * f.scale, h: 5, z: 0, bright: true, add: true, k: Math.min(1, f.life / f.max * 1.6) });
   for (const f of G.fx) if (f.type === 'bolt') items.push({ x: f.x, y: f.y, spr: SPR['bolt' + f.v], w: 0.5, h: 3.2, z: 0, bright: true, add: true });
+  if (G.wisp) items.push({ x: G.wisp.x, y: G.wisp.y, spr: SPR.orbGold, w: 0.24, h: 0.24, z: 0.55 + Math.sin(tm * 3) * 0.05, bright: true, add: true });
+  if (G.fam) items.push({ x: G.fam.x, y: G.fam.y, spr: SPR.orbPurple, w: 0.2, h: 0.2, z: 0.62 + Math.sin(tm * 4 + 1) * 0.06, bright: true, add: true });
   const nb = L('blades');
   for (let i = 0; i < nb; i++) {
     const a = G.bladeAng + i / nb * TAU;
@@ -1473,7 +1597,13 @@ function dynLights() {
   for (const k of G.pickups) if (k.type === 'item') { const c = RARITY[k.item.rar].col; out.push({ x: k.x, y: k.y, c: c.map(v => v / 255 * 0.6), rad: 2.2 }); }
   for (const k of G.pickups) if (k.type === 'key') out.push({ x: k.x, y: k.y, c: KEYS[k.key].col.map(v => v / 255 * 0.7), rad: 2.5 });
   vfxLights(out);
-  for (const z of G.zones) out.push({ x: z.x, y: z.y, c: [0.25, 0.45, 0.12], rad: z.r + 1 });
+  let tr = 0;
+  for (const z of G.zones) {
+    if (z.trail && (tr++ & 1)) continue; // la estela de llamas: una luz de cada dos
+    out.push({ x: z.x, y: z.y, c: z.kind === 'fire' ? [0.6, 0.28, 0.06] : z.kind === 'ice' ? [0.2, 0.4, 0.6] : z.kind === 'holy' ? [0.55, 0.48, 0.2] : [0.25, 0.45, 0.12], rad: z.r + 1 });
+  }
+  if (G.wisp) out.push({ x: G.wisp.x, y: G.wisp.y, c: [1.15, 1.0, 0.7], rad: 3.6 + 0.9 * L('wisp') });
+  if (G.fam) out.push({ x: G.fam.x, y: G.fam.y, c: [0.5, 0.2, 0.75], rad: 1.8 });
   for (const f of G.fx) if (f.type === 'meteor') out.push({ x: f.x, y: f.y, c: [1.2, 0.5, 0.1], rad: 5 });
   for (const a of G.allies) if (a.type === 'fiend' || a.type === 'shadow') out.push({ x: a.x, y: a.y, c: [0.5, 0.15, 0.8], rad: 2 });
   for (const e of G.enemies) {
@@ -1517,9 +1647,11 @@ function render() {
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
   else {
-    ui.hud(G);
+    if (G.state !== 'learn' && G.state !== 'mentor') ui.hud(G);
     if (G.state === 'paused') ui.pause(G);
     else if (G.state === 'levelup') ui.levelUp(G);
+    else if (G.state === 'learn') ui.learn(G);
+    else if (G.state === 'mentor') ui.mentor(G);
     else if (G.state === 'dead') ui.dead(G);
     else if (G.state === 'journal') ui.journal(G);
     else if (G.state === 'inventory') ui.inventory(G);
@@ -1548,6 +1680,8 @@ document.addEventListener('keydown', (ev) => {
   keys[e.code] = true;
   const dig = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
   if (G.state === 'levelup') { if (dig !== undefined) chooseUpgrade(dig); return; }
+  if (G.state === 'learn') { const i = dig !== undefined ? dig : { Digit4: 3, Numpad4: 3 }[e.code]; if (i !== undefined) resolveLearn(i); return; }
+  if (G.state === 'mentor') { if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
   if (G.state === 'journal') {
     if (e.code === 'KeyJ' || e.code === 'Escape') closeJournal();
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') G.jpage = Math.max(0, G.jpage - 1);
@@ -1629,6 +1763,8 @@ function handleClick(x, y, button = 0) {
     case 'exitask': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) leaveDungeon(); else stayInDungeon(); } break; }
     case 'escaped': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) nextDungeon(); else retire(); } break; }
     case 'levelup': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) chooseUpgrade(h.id); break; }
+    case 'learn': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) resolveLearn(h.id); break; }
+    case 'mentor': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) mentorAction(h.id); else closeNpc(); break; }
     case 'play':
       lockMouse();
       if (e.button === 0) mouse.fire = true;

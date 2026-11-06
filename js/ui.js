@@ -443,7 +443,7 @@ class UI {
     const pk = cur ? G.pickups : lv.state.pickups;
     for (const k of pk) if (isSeen(k.x, k.y)) { if (k.type === 'chest' && !k.open) mark(k.x, k.y, C.gold, Math.max(3, cs - 1)); else if (k.type === 'key') mark(k.x, k.y, C.cyan, Math.max(3, cs - 1)); }
     for (const sh of lv.shrines) if (!sh.used && isSeen(sh.x, sh.y)) mark(sh.x, sh.y, C.blue, Math.max(3, cs - 1));
-    for (const n of lv.npcs) if (isSeen(n.x, n.y)) { mark(n.x, n.y, n.type === 'merchant' ? C.green : C.orange, Math.max(4, cs)); this.text(Math.round(ox + n.x * cs) + 4, Math.round(oy + n.y * cs) - 3, n.type === 'merchant' ? 'M' : 'H', n.type === 'merchant' ? C.green : C.orange); }
+    for (const n of lv.npcs) if (isSeen(n.x, n.y)) { const nc = n.type === 'merchant' ? C.green : n.type === 'mentor' ? C.cyan : C.orange; mark(n.x, n.y, nc, Math.max(4, cs)); this.text(Math.round(ox + n.x * cs) + 4, Math.round(oy + n.y * cs) - 3, n.type === 'merchant' ? 'M' : n.type === 'mentor' ? 'MT' : 'H', nc); }
     if (cur) { // jugador: punto y flecha
       const pcx = ox + p.x * cs, pcy = oy + p.y * cs;
       for (let t = 0; t < 7; t++) this.px(Math.round(pcx + Math.cos(p.a) * t), Math.round(pcy + Math.sin(p.a) * t), t < 3 ? rgb(255, 255, 255) : C.goldL);
@@ -453,7 +453,7 @@ class UI {
     this.text(12, 8, `MAPA · ${levelName(z).toUpperCase()}`, C.gold, { scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
     const lx = VW - 128;
     this.text(lx, 10, G.dg.name.toUpperCase().slice(0, 21), C.dim, { shadow: false });
-    const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO']];
+    const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO'], [C.cyan, 'MT MENTOR']];
     leg.forEach(([c, t], i) => { this.rect(lx, 30 + i * 12, 6, 6, c); this.text(lx + 10, 30 + i * 12, t, C.ink, { shadow: false }); });
     const vis = G.dg.zs.filter(q => G.dg.lv(q).visited);
     this.text(lx, 30 + leg.length * 12 + 8, 'NIVELES:', C.dim, { shadow: false });
@@ -472,12 +472,13 @@ class UI {
 
   // Habilidades activas (R, C, V) y mejoras temporales
   skills(G) {
-    const p = G.p, cl = CLASSES[p.cls], y0 = BOX_STAT.y + BOX_STAT.h + 30, x = BOX_STAT.x, w = BOX_STAT.w;
-    this.darken(x, y0, w, cl.skills.length * 12 + 4, 0.5);
-    cl.skills.forEach((id, i) => {
-      const sk = SKILLS[id], y = y0 + 3 + i * 12, cd = Math.max(0, p.skillCd[i]), rdy = cd <= 0;
-      this.text(x + 3, y, SKILL_LABEL[i], rdy ? C.goldL : C.dim, { shadow: false });
-      this.text(x + 15, y, sk.name.toUpperCase(), rdy ? C.ink : C.dim, { shadow: false });
+    const p = G.p, y0 = BOX_STAT.y + BOX_STAT.h + 30, x = BOX_STAT.x, w = BOX_STAT.w;
+    this.darken(x, y0, w, p.active.length * 12 + 4, 0.5);
+    p.active.forEach((id, i) => {
+      const sk = id && SKILLS[id], y = y0 + 3 + i * 12, cd = Math.max(0, p.skillCd[i]), rdy = cd <= 0;
+      this.text(x + 3, y, SKILL_LABEL[i], sk && rdy ? C.goldL : C.dim, { shadow: false });
+      this.text(x + 15, y, sk ? sk.name.toUpperCase().slice(0, Math.floor((w - 18) / 6)) : '-', sk && rdy ? C.ink : C.dim, { shadow: false });
+      if (!sk) return;
       if (!rdy) { const fw = Math.round((w - 6) * (1 - cd / p.skillMax[i])); this.rect(x + 3, y + 8, w - 6, 1, rgb(40, 30, 20)); this.rect(x + 3, y + 8, fw, 1, C.gold); }
       else this.rect(x + 3, y + 8, w - 6, 1, rgb(70, 52, 20));
     });
@@ -540,10 +541,13 @@ class UI {
       this.hot.push({ x, y, w: cw, h: ch, id: i });
       this.panel(x, y, cw, ch, hot);
       this.text(x + 8, y + 8, `[${i + 1}]`, C.dim);
-      if (u.passive) this.text(x + cw - 8, y + 8, 'HABILIDAD', C.orange, { align: 'right' });
-      const lvl = L(u.id);
-      wrapText(u.name, 20).forEach((ln, k) => this.text(x + cw / 2, y + 22 + k * 10, ln, u.passive ? C.orange : C.gold, { align: 'center' }));
+      if (u.skill) this.text(x + cw - 8, y + 8, 'HABILIDAD', C.cyan, { align: 'right' });
+      else if (u.passive) this.text(x + cw - 8, y + 8, 'PASIVA', C.orange, { align: 'right' });
+      const lvl = u.skill ? 0 : LR(u.id), col = u.skill ? C.cyan : u.passive ? C.orange : C.gold;
+      wrapText(u.name, 20).forEach((ln, k) => this.text(x + cw / 2, y + 22 + k * 10, ln, col, { align: 'center' }));
       wrapText(u.desc(lvl), 21).forEach((ln, k) => this.text(x + cw / 2, y + 48 + k * 9, ln, C.ink, { align: 'center' }));
+      if (u.skill) { this.text(x + cw / 2, y + ch - 14, 'NUEVA', C.cyan, { align: 'center' }); return; }
+      if (u.passive && lvl > 0 && !G.pasOn.includes(u.id)) this.text(x + cw / 2, y + ch - 24, 'GUARDADA', C.dim, { align: 'center', shadow: false });
       // marcadores de nivel
       const pw = u.max * 7 - 2, pxs = Math.round(x + cw / 2 - pw / 2);
       for (let k = 0; k < u.max; k++) {
@@ -551,6 +555,68 @@ class UI {
         this.rect(pxs + k * 7, y + ch - 14, 5, 5, C.dark); this.rect(pxs + k * 7 + 1, y + ch - 13, 3, 3, c);
       }
     });
+  }
+
+  // Aprender una habilidad o pasiva sin hueco: ¿cuál sustituye? (o se guarda para el Mentor)
+  learn(G) {
+    const l = G.learn; if (!l) return;
+    this.darken(VX, VY, VW, VH, 0.75);
+    const cx = VX + VW / 2, sk = l.kind === 'skill', it = sk ? SKILLS[l.id] : UPG.find(u => u.id === l.id);
+    this.text(cx, 14, sk ? 'NUEVA HABILIDAD' : 'NUEVA PASIVA', sk ? C.cyan : C.orange, { align: 'center', scale: 2, shadow: 'outline' });
+    this.text(cx, 34, it.name.toUpperCase(), C.goldL, { align: 'center' });
+    wrapText((sk ? it.desc : it.desc(0)).toUpperCase(), 70).forEach((t, k) => this.text(cx, 46 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+    this.text(cx, 72, sk ? `SOLO PUEDES LLEVAR ${SKILL_LABEL.length} ACTIVAS: ¿CUÁL SUSTITUYE?` : `SOLO PUEDES LLEVAR ${MAX_PAS} PASIVAS: ¿CUÁL SUSTITUYE?`, C.dim, { align: 'center' });
+    const cur = sk ? G.p.active.map(id => id && SKILLS[id]) : G.pasOn.map(id => UPG.find(u => u.id === id));
+    const cards = cur.map((c, i) => ({ head: sk ? SKILL_LABEL[i] : 'PASIVA', name: c ? c.name : '-', desc: c ? (sk ? c.desc : c.desc(LR(c.id) - 1)) : '', col: sk ? C.cyan : C.orange }));
+    cards.push({ head: '', name: 'GUARDAR PARA EL MENTOR', desc: 'No la usas por ahora: podrás activarla con el Mentor', col: C.dim, keep: true });
+    const cw = 104, ch = 120, gap = 8, x0 = Math.round(cx - (cards.length * cw + (cards.length - 1) * gap) / 2), y = 86;
+    cards.forEach((c, i) => {
+      const x = x0 + i * (cw + gap), hot = this.hit(x, y, cw, ch), id = c.keep ? 3 : i;
+      this.hot.push({ x, y, w: cw, h: ch, id });
+      this.panel(x, y, cw, ch, hot);
+      this.text(x + 6, y + 6, `[${id + 1}]`, C.dim);
+      if (c.head) this.text(x + cw - 6, y + 6, c.head, c.col, { align: 'right' });
+      wrapText(c.name.toUpperCase(), 16).forEach((t, k) => this.text(x + cw / 2, y + 22 + k * 10, t, c.keep ? C.goldL : C.gold, { align: 'center' }));
+      wrapText(c.desc.toUpperCase(), 16).slice(0, 8).forEach((t, k) => this.text(x + cw / 2, y + 46 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+      if (!c.keep) this.text(x + cw / 2, y + ch - 12, 'SUSTITUIR', C.red, { align: 'center', shadow: false });
+    });
+    this.text(cx, y + ch + 12, 'LO QUE SUSTITUYAS NO SE PIERDE: EL MENTOR LO GUARDA', C.dim, { align: 'center', shadow: false });
+  }
+
+  // El Mentor: reorganiza por oro las habilidades y pasivas activas entre todas las aprendidas en la partida
+  mentor(G) {
+    this.darken(VX, VY, VW, VH, 0.75);
+    const p = G.p, cx = VX + VW / 2, cost = mentorPrice(), ok = G.loot >= cost, sel = G.mentorSel || { kind: 'skill', i: 0 };
+    this.text(cx, 8, 'EL MENTOR', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 28, `CADA CAMBIO: ${cost} ORO · TIENES ${G.loot}`, ok ? C.dim : C.red, { align: 'center' });
+    let tip = null;
+    const row = (x, y, w, label, name, col, id, on, desc) => {
+      const hot = this.hit(x, y, w, 11);
+      this.hot.push({ x, y, w, h: 11, id });
+      if (on) this.rect(x, y, w, 11, rgb(70, 46, 18)); else if (hot) this.rect(x, y, w, 11, rgb(46, 30, 14));
+      if (label) this.text(x + 3, y + 2, label, on ? C.goldL : C.dim, { shadow: false });
+      this.text(x + (label ? 16 : 4), y + 2, name.toUpperCase().slice(0, Math.floor((w - (label ? 18 : 6)) / 6)), col, { shadow: false });
+      if (hot) tip = desc;
+    };
+    // habilidades
+    const lx = VX + 14, lw = 214, top = 42;
+    this.panel(lx - 6, top, lw + 12, 186);
+    this.text(lx, top + 6, 'HABILIDADES ACTIVAS', C.cyan);
+    p.active.forEach((id, i) => row(lx, top + 18 + i * 12, lw, SKILL_LABEL[i], id ? SKILLS[id].name : '- vacío -', id ? C.ink : C.dim, 'sk:' + i, sel.kind === 'skill' && sel.i === i, id ? SKILLS[id].desc : ''));
+    const stored = p.known.filter(id => !p.active.includes(id));
+    this.text(lx, top + 60, stored.length ? 'GUARDADAS (ELIGE UNA)' : 'NINGUNA GUARDADA', C.dim, { shadow: false });
+    stored.forEach((id, k) => row(lx + (k % 2) * (lw / 2 + 2), top + 72 + Math.floor(k / 2) * 12, lw / 2 - 2, '', SKILLS[id].name, ok ? C.goldL : C.dim, 'kn:' + id, false, SKILLS[id].desc));
+    // pasivas
+    const rx = VX + VW / 2 + 18, rw = VW / 2 - 32;
+    this.panel(rx - 6, top, rw + 12, 186);
+    this.text(rx, top + 6, 'PASIVAS ACTIVAS', C.orange);
+    for (let i = 0; i < MAX_PAS; i++) { const id = G.pasOn[i], u = id && UPG.find(q => q.id === id); row(rx, top + 18 + i * 12, rw, String(i + 1), u ? `${u.name} ${LR(id)}` : '- vacío -', u ? C.ink : C.dim, 'pa:' + i, sel.kind === 'pas' && sel.i === i, u ? u.desc(LR(id) - 1) : ''); }
+    const pst = UPG.filter(u => u.passive && LR(u.id) > 0 && !G.pasOn.includes(u.id));
+    this.text(rx, top + 60, pst.length ? 'GUARDADAS' : 'NINGUNA GUARDADA', C.dim, { shadow: false });
+    pst.forEach((u, k) => row(rx, top + 72 + k * 12, rw, '', `${u.name} ${LR(u.id)}`, ok ? C.goldL : C.dim, 'ps:' + u.id, false, u.desc(LR(u.id) - 1)));
+    if (tip) wrapText(tip.toUpperCase(), 74).slice(0, 2).forEach((t, k) => this.text(cx, top + 192 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+    else this.text(cx, top + 192, 'ELIGE UN HUECO ACTIVO Y LUEGO LO QUE QUIERES PONER EN ÉL', C.dim, { align: 'center', shadow: false });
+    this.text(cx, VY + VH - 12, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
   dead(G) {

@@ -3,7 +3,7 @@
 // en zonas alcanzables con las llaves anteriores, así que la mazmorra tiene solución por construcción.
 const DG_PRE = ['Las Catacumbas', 'La Cripta', 'La Fortaleza Hundida', 'El Osario', 'Las Bóvedas', 'El Santuario Profanado', 'La Torre Enterrada', 'Las Galerías'];
 const DG_SUF = ['de Ulmar', 'de Vel Kharn', 'del Rey Ciego', 'de Morhaven', 'de Ashgrave', 'de la Orden Gris', 'de Duskmere', 'de los Mil Huesos', 'de Karak Dum'];
-const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada',
+const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', mentor: 'estudio del mentor', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada',
   biblioteca: 'biblioteca olvidada', osario: 'osario', fuente: 'fuente antigua', almacen: 'almacén', jardin: 'jardín de hongos', ritual: 'círculo ritual' };
 
 function levelName(z) { return z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }
@@ -96,6 +96,10 @@ class Dungeon {
     const others = calm.filter(c => c !== m && (!m || c.z !== m.z));
     const h = others.length ? pick(others) : calm.find(c => c !== m);
     if (h) h.r.type = 'herrero';
+    // el Mentor, en otra sala tranquila (mejor en un nivel donde no estén los otros dos)
+    const free = calm.filter(c => c !== m && c !== h), apart = free.filter(c => (!m || c.z !== m.z) && (!h || c.z !== h.z));
+    const mt = apart.length ? pick(apart) : free.length ? pick(free) : null;
+    if (mt) mt.r.type = 'mentor';
     // 6. puertas de madera en otros huecos de sala
     for (const z of this.zs) {
       const lv = this.levels[z];
@@ -192,6 +196,13 @@ class Dungeon {
       lv.addDecor('anvil', r.cx + 0.5 + (r.w > 5 ? 1 : 0.6), r.cy + 0.5, false);
       lv.addDecor('brazier', r.cx + 0.5 - (r.w > 5 ? 1.2 : 0.8), r.cy + 0.5, true);
       lv.npcs.push({ type: 'smith', x: r.cx + 0.5, y: r.cy + 0.5 });
+    }
+    if (r.type === 'mentor') {
+      lv.addDecor('mentor', r.cx + 0.5, r.cy + 0.5, false);
+      lv.addDecor('bookshelf', r.cx + 0.5 + (r.w > 5 ? 1.4 : 0.9), r.cy + 0.5 - (r.h > 5 ? 1.2 : 0.7), false);
+      lv.addDecor('candles', r.cx + 0.5 - (r.w > 5 ? 1.1 : 0.7), r.cy + 0.5, true);
+      lv.lights.push({ x: r.cx + 0.5, y: r.cy + 0.5, c: [0.55, 0.65, 1.1], rad: 4 });
+      lv.npcs.push({ type: 'mentor', x: r.cx + 0.5, y: r.cy + 0.5 });
     }
     if (r.type === 'santuario') { r.shrine = lv.addDecor('altar', r.cx + 0.5, r.cy + 0.5, true); r.shrine.used = false; lv.shrines.push(r.shrine); }
     // ---- salas temáticas

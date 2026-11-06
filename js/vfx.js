@@ -24,7 +24,7 @@ VR.void = rampOf(['#f4fbff', '#dcecff', '#b37bff', '#7a5cff', '#4c25ab', '#2b156
 VR.blood = rampOf(['#d83030', '#a01818', '#6a0e0e', '#3a0808']);
 VR.earth = rampOf(['#8a7a68', '#6a5c4c', '#4c4038', '#2e2620']);
 const PROJ_RAMP = { orbBlue: 'cyan', orbRed: 'fire', orbIce: 'ice', orbGold: 'gold', orbGreen: 'poison', orbPurple: 'pink', orbArrow: 'impact' };
-const BUFF_RAMP = { rage: 'fire', pact: 'fire', warcry: 'gold', rally: 'holy', aura: 'holy', divine: 'holy', enchant: 'cyan', aarmor: 'cyan', imbued: 'cyan', riposte: 'steel', howl: 'ice', regrow: 'heal' };
+const BUFF_RAMP = { venom: 'poison', ironskin: 'steel', hawk: 'gold', bloodlust: 'fire', dance: 'steel', angel: 'holy', sanct: 'holy', bulwark: 'steel', frenzy: 'fire', deathwish: 'fire', primal: 'heal', mirror: 'cyan', rage: 'fire', pact: 'fire', warcry: 'gold', rally: 'holy', aura: 'holy', divine: 'holy', enchant: 'cyan', aarmor: 'cyan', imbued: 'cyan', riposte: 'steel', howl: 'ice', regrow: 'heal' };
 const rgbOf = (c) => [c & 255, (c >> 8) & 255, (c >> 16) & 255];
 
 // ---------------------------------------------------------------- Sistema de partículas del mundo
@@ -248,6 +248,14 @@ function vfxThornsTick(z) {
   const a = rand(0, TAU), d = Math.sqrt(Math.random()) * z.r;
   vp({ x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d, z: 0, vz: rand(0.6, 1.4), grav: 2, life: rand(0.4, 0.7), ramp: [P[2], P[3], P[4]], s0: 0.05, maxPx: 3, add: false });
   if (Math.random() < 0.5) vp({ x: z.x + Math.cos(a + 1) * d, y: z.y + Math.sin(a + 1) * d, z: 0.05, vz: 0.6, life: 0.6, ramp: [P[1], P[2]], s0: 0.03, maxPx: 2 });
+}
+// zonas de fuego, hielo o luz sagrada (muro de fuego, ventisca, consagrar, estela de llamas...)
+function vfxZoneTick(z) {
+  const P = z.kind === 'fire' ? VR.fire : z.kind === 'ice' ? VR.ice : z.kind === 'holy' ? VR.holy : VR.poison;
+  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * z.r;
+  if (z.kind === 'fire') vp({ x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d, z: 0.02, vz: rand(0.6, 1.3), life: rand(0.35, 0.7), ramp: [P[1], P[3], P[5], P[7]], s0: 0.09, s1: 0.03, maxPx: 6, add: true });
+  else if (z.kind === 'ice') vp({ x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d, z: rand(0.6, 1.2), vx: rand(-0.6, 0.6), vy: rand(-0.6, 0.6), vz: rand(-0.9, -0.4), life: rand(0.6, 1), ramp: [P[0], P[1], P[2]], s0: 0.04, maxPx: 3, add: true });
+  else vp({ x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d, z: 0.03, vz: rand(0.3, 0.8), life: rand(0.5, 0.9), ramp: [P[0], P[2], P[3]], s0: 0.05, maxPx: 3, add: true });
 }
 // Ácido: gotas en arco que salpican el suelo
 function vfxAcid(x, y, a) {
