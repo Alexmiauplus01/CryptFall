@@ -206,6 +206,7 @@ function enterLevel(z, at, first) {
   p.x = at.x; p.y = at.y; p.a = at.a; p.vx = p.vy = 0;
   G.allies.forEach(a => { a.x = p.x + rand(-0.4, 0.4); a.y = p.y + rand(-0.4, 0.4); if (lv.blocked(a.x, a.y, 0.25)) { a.x = p.x; a.y = p.y; } });
   G.spawnT = 6; G.flowT = 0; G.touchCd = 0.6; G.fade = first ? 0 : 1;
+  G.waveT = 0; G.waveN = 0; // las oleadas empiezan de cero en cada piso
   lv.flowField(p.x, p.y, G.flow);
   if (!first && G.state !== 'title') {
     toast(levelName(z).toUpperCase(), true); toast(G.theme.name.toUpperCase(), false);
@@ -602,14 +603,16 @@ function pickType() {
   return 'skeleton';
 }
 
+// cada mazmorra nueva es más dura por sí misma, además de la profundidad y el tiempo
+const DG_HP = 0.25, DG_DMG = 0.06;
 function spawnEnemy(type, x, y) {
-  const d = ENEMY[type], diff = (G.floor - 1) + Math.min(3, G.t / 120);
-  let hp = d.hp * (1 + 0.4 * diff);
-  if (d.boss) hp = d.hp * (1 + 0.75 * (G.floor - 1));
+  const d = ENEMY[type], diff = (G.floor - 1) + Math.min(3, G.t / 120), dk = G.dg ? G.dg.n - 1 : 0;
+  let hp = d.hp * (1 + 0.4 * diff) * (1 + DG_HP * dk);
+  if (d.boss) hp = d.hp * (1 + 0.75 * (G.floor - 1)) * (1 + DG_HP * dk);
   const e = {
     type, def: d, x, y, hp, maxHp: hp,
     spd: d.spd * Math.min(1.45, 1 + 0.04 * diff) * rand(0.92, 1.08),
-    dmgM: 1 + 0.14 * diff, atk: rand(0, 0.6), flash: 0, slow: 0, shoot: rand(0.8, 2), los: false, losT: 0,
+    dmgM: 1 + 0.14 * diff + DG_DMG * dk, atk: rand(0, 0.6), flash: 0, slow: 0, shoot: rand(0.8, 2), los: false, losT: 0,
     wob: rand(0, TAU), bladeCd: 0, kx: 0, ky: 0, ring: 6, walk: rand(0, 2),
   };
   G.enemies.push(e);
@@ -642,6 +645,30 @@ function updateSpawner(dt) {
   const pos = findSpawn(10, 26, true);
   if (!pos) return;
   for (let i = 0; i < n; i++) spawnEnemy(type, pos[0] + rand(-0.4, 0.4), pos[1] + rand(-0.4, 0.4));
+}
+
+// Oleadas: cada 2 minutos en el mismo piso llega una horda desde un punto al azar, cada vez mayor y más dura.
+// El contador vuelve a 0 al cambiar de piso o de mazmorra.
+const WAVE_EVERY = 120, WAVE_WARN = 10;
+function updateWaves(dt) {
+  if (G.arena || (G.boss && !G.boss.dead && !G.boss.sleep)) return; // no interrumpe la pelea con el jefe
+  const before = G.waveT || 0; G.waveT = before + dt;
+  if (before < WAVE_EVERY - WAVE_WARN && G.waveT >= WAVE_EVERY - WAVE_WARN) {
+    toast('SE OYEN PASOS QUE SE ACERCAN...', false); logMsg('Algo se acerca desde las sombras...', C.orange); Sfx.play('roar');
+  }
+  if (G.waveT < WAVE_EVERY) return;
+  const pos = findSpawn(9, 30, true) || findSpawn(7, 40, false);
+  if (!pos) { G.waveT = WAVE_EVERY - 3; return; }
+  G.waveT = 0; G.waveN = (G.waveN || 0) + 1;
+  const k = G.waveN, n = Math.min(26, 3 + 3 * k + (G.dg ? G.dg.n : 1)), hpMul = 1 + 0.3 * k;
+  const types = [pickType(), pickType(), pickType()];
+  for (let i = 0; i < n; i++) {
+    const e = spawnEnemy(types[i % 3], pos[0] + rand(-0.6, 0.6), pos[1] + rand(-0.6, 0.6));
+    if (G.lv.blocked(e.x, e.y, 0.25)) { e.x = pos[0]; e.y = pos[1]; }
+    e.hp *= hpMul; e.maxHp *= hpMul; e.sleep = false; e.wave = k;
+  }
+  toast(`¡OLEADA ${k}!`, true); logMsg(`Oleada ${k}: ${n} enemigos salen de las sombras`, C.red);
+  Sfx.play('boss'); G.shake = Math.max(G.shake, 0.4);
 }
 
 function wakeEnemy(e) {
@@ -1152,7 +1179,7 @@ function update(dt) {
   updatePlayer(dt);
   if (G.state !== 'play') return; // una escalera o la salida pueden cambiar de estado
   updateRooms(dt);
-  updateSpawner(dt);
+  updateSpawner(dt); updateWaves(dt);
   updateEnemies(dt);
   updateProjs(dt);
   updatePassives(dt);
