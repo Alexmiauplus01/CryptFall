@@ -749,6 +749,81 @@ function drawDeepOne(frame, mage) {
     }
   });
 }
+// ---- generador de humanoides en pixel art: cada enemigo es una combinación de rasgos
+// o: { w, h, skin, cloth, cloth2, eye, ears, horns, hood, hair, cape, wings, weapon, tusks, hunch, female, glow }
+function drawHumanoid(o, frame) {
+  const W = o.w || 56, H = o.h || 76, cx = W >> 1, s = frame ? 1 : -1;
+  const sk = o.skin, skD = shade3(sk, 0.72), skL = shade3(sk, 1.22);
+  const cl = o.cloth, clD = shade3(cl, 0.7), clL = shade3(cl, 1.25), cl2 = o.cloth2 || clD;
+  const k = H / 76; // escala vertical
+  const Y = (v) => Math.round(v * k);
+  return pix(W, H, (set) => {
+    // alas (detrás)
+    if (o.wings) for (const side of [-1, 1]) for (let i = 0; i < 18; i++) for (let j = 0; j < 14 - Math.abs(i - 6); j++) {
+      const x = cx + side * (8 + i), y = Y(20) + j + Math.round(Math.abs(i - 4) * 0.6) + (frame ? 0 : 2);
+      set(x, y, j === 0 || (i % 5 === 0) ? shade3(o.wings, 0.6) : o.wings);
+    }
+    // capa (detrás)
+    if (o.cape) for (let y = Y(24); y < Y(70); y++) { const w = 10 + (y - Y(24)) * 0.22; for (let x = Math.round(cx - w); x < Math.round(cx + w); x++) set(x, y, x < cx - w + 2 ? shade3(o.cape, 1.2) : shade3(o.cape, 0.8)); }
+    // piernas
+    const legY = Y(50), legH = Y(24);
+    for (const [lx, ph] of [[cx - 7, s], [cx + 2, -s]]) for (let y = legY; y < legY + legH; y++) for (let x = lx; x < lx + 5; x++) set(x + (y > legY + legH / 2 ? ph : 0), y, x === lx ? clL : x === lx + 4 ? clD : cl2);
+    for (const [lx, ph] of [[cx - 8, s], [cx + 1, -s]]) for (let x = lx; x < lx + 7; x++) { set(x + ph, legY + legH - 1, [40, 30, 26]); set(x + ph, legY + legH - 2, [60, 46, 38]); }
+    // torso
+    const tY = Y(o.hunch ? 28 : 24), tH = Y(28);
+    for (let y = tY; y < tY + tH; y++) { const w = (o.female ? 8 : 11) + (o.bulk || 0) - (y > tY + tH * 0.6 ? 2 : 0); for (let x = cx - w; x < cx + w; x++) set(x + (o.hunch ? 1 : 0), y, x < cx - w + 2 ? clL : x > cx + w - 3 ? clD : (y === tY + Math.round(tH * 0.55) ? cl2 : cl)); }
+    // brazos
+    const aw = 5 + Math.round((o.bulk || 0) / 2), tw = (o.female ? 8 : 11) + (o.bulk || 0);
+    for (const [ax, ph] of [[cx - tw - aw + 1, -s], [cx + tw - 1, s]]) {
+      for (let y = tY + 1; y < tY + Y(20); y++) for (let x = ax; x < ax + aw; x++) set(x, y + (y > tY + Y(10) ? ph : 0), x === ax ? clL : cl);
+      for (let x = ax; x < ax + aw; x++) for (let y = 0; y < 3; y++) set(x, tY + Y(20) + y + ph, o.claws ? skL : sk);
+      if (o.claws) for (let x = ax; x < ax + aw; x += 1) set(x, tY + Y(20) + 3 + ph, [240, 236, 220]);
+    }
+    // cabeza
+    const hY = Y(o.hunch ? 13 : 10), hr = o.headR || 8;
+    pEll(set, cx + (o.hunch ? 2 : 0), hY, hr, hr + 1, (x, y) => x < -2 ? skL : x > 3 ? skD : sk);
+    const hx = cx + (o.hunch ? 2 : 0);
+    if (o.hair) for (let x = hx - hr; x <= hx + hr; x++) for (let y = hY - hr - 1; y < hY - hr + 3 + (Math.abs(x - hx) > hr - 2 ? 5 : 0); y++) set(x, y, o.hair);
+    if (o.hood) { for (let y = hY - hr - 2; y < hY + hr; y++) for (let x = hx - hr - 1; x <= hx + hr + 1; x++) { const inner = Math.abs(x - hx) < hr - 1 && y > hY - hr + 1; if (!inner) set(x, y, o.hood); } for (let y = hY - hr + 2; y < hY + hr - 1; y++) for (let x = hx - hr + 2; x < hx + hr - 1; x++) set(x, y, [16, 12, 18]); }
+    if (o.ears) for (const side of [-1, 1]) for (let i = 0; i < 5; i++) { set(hx + side * (hr + i), hY - 1 - i, sk); set(hx + side * (hr + i), hY - i, skD); }
+    if (o.horns) for (const side of [-1, 1]) for (let i = 0; i < 6; i++) set(hx + side * (3 + Math.round(i * 0.6)), hY - hr - i, i > 3 ? [230, 220, 200] : [120, 100, 90]);
+    const ec = o.eye || [255, 40, 30];
+    set(hx - 2, hY, ec, true); set(hx + 2, hY, ec, true);
+    if (o.mouth) for (let x = hx - 2; x <= hx + 2; x++) set(x, hY + 3, [40, 10, 14]);
+    if (o.fangs) { set(hx - 1, hY + 4, [250, 250, 245]); set(hx + 1, hY + 4, [250, 250, 245]); }
+    if (o.tusks) { set(hx - 3, hY + 3, [240, 230, 200]); set(hx - 3, hY + 2, [240, 230, 200]); set(hx + 3, hY + 3, [240, 230, 200]); set(hx + 3, hY + 2, [240, 230, 200]); }
+    // arma en la mano derecha
+    const wx = cx + 14 + (o.bulk || 0), wy = tY + Y(20) + s;
+    if (o.weapon === 'staff') { for (let y = Y(6); y < Y(66); y++) set(wx + 1, y, [80, 56, 36]); pEll(set, wx + 1, Y(5), 3, 3, o.glow || [180, 90, 255], true); }
+    if (o.weapon === 'bow') { for (let y = wy - Y(14); y < wy + Y(10); y++) set(wx + 3 - Math.round(Math.abs(y - wy) * 0.12), y, [120, 80, 40]); for (let y = wy - Y(14); y < wy + Y(10); y++) set(wx, y, [220, 210, 180]); }
+    if (o.weapon === 'axe') { for (let y = wy - Y(18); y < wy + 3; y++) set(wx + 1, y, [90, 60, 36]); for (let y = wy - Y(18); y < wy - Y(10); y++) for (let x = wx + 2; x < wx + 7; x++) set(x, y, x === wx + 6 ? [220, 220, 230] : [150, 150, 160]); }
+    if (o.weapon === 'dagger') for (let y = wy - 7; y < wy; y++) set(wx + 1, y, y < wy - 5 ? [230, 230, 240] : [170, 170, 180]);
+    if (o.weapon === 'cleaver') { for (let y = wy - Y(14); y < wy + 2; y++) set(wx + 1, y, [70, 50, 30]); for (let y = wy - Y(14); y < wy - Y(5); y++) for (let x = wx - 3; x < wx + 1; x++) set(x, y, [170, 160, 150]); }
+  });
+}
+const HUMANOIDS = {
+  vampspawn:   { skin: [170, 160, 176], cloth: [70, 60, 80], cloth2: [40, 34, 48], eye: [255, 30, 30], fangs: true, mouth: true, claws: true, hunch: true, hair: [30, 26, 34] },
+  vampire:     { skin: [214, 206, 220], cloth: [40, 30, 44], cloth2: [120, 20, 30], eye: [255, 50, 40], fangs: true, hair: [24, 20, 28], cape: [110, 16, 26] },
+  necromancer: { skin: [176, 186, 170], cloth: [44, 46, 52], cloth2: [70, 120, 70], eye: [120, 255, 140], hood: [34, 36, 42], weapon: 'staff', glow: [120, 255, 140] },
+  fury:        { skin: [200, 70, 70], cloth: [70, 30, 34], cloth2: [40, 16, 20], eye: [255, 220, 60], horns: true, wings: [120, 40, 50], female: true, hair: [30, 14, 16], claws: true },
+  goblin:      { w: 46, h: 54, skin: [110, 160, 70], cloth: [110, 80, 50], cloth2: [80, 56, 34], eye: [255, 220, 40], ears: true, mouth: true, weapon: 'dagger', headR: 7 },
+  goblinarcher:{ w: 46, h: 54, skin: [96, 146, 66], cloth: [70, 90, 50], cloth2: [56, 70, 40], eye: [255, 220, 40], ears: true, hood: [60, 80, 44], weapon: 'bow', headR: 7 },
+  orc:         { w: 64, h: 82, skin: [96, 130, 70], cloth: [110, 96, 86], cloth2: [70, 56, 44], eye: [255, 70, 30], tusks: true, bulk: 4, weapon: 'axe', hair: [30, 26, 22], headR: 9 },
+};
+function drawWorm(open) {
+  const B = [[176, 120, 120], [140, 90, 96], [110, 64, 74], [210, 160, 150]];
+  return pix(72, 72, (set) => {
+    // cuerpo segmentado que llena el túnel
+    pEll(set, 36, 44, 32, 28, (x, y) => (((y + 40) / 6 | 0) % 2 ? B[1] : B[0]).map((v, i) => Math.round(v * (x < -18 ? 1.15 : x > 18 ? 0.8 : 1))));
+    for (let k = 0; k < 6; k++) for (let x = 8; x < 64; x++) { const y = 22 + k * 8; if (Math.abs(x - 36) < 30 - Math.abs(k - 3) * 3) set(x, y, B[2]); }
+    // boca circular con dientes
+    const r = open ? 15 : 7;
+    pEll(set, 36, 40, r, r, (x, y) => x * x + y * y > (r - 3) * (r - 3) ? [120, 40, 50] : open ? [40, 8, 14] : [80, 24, 30], open);
+    const nT = open ? 14 : 8;
+    for (let i = 0; i < nT; i++) { const a = i / nT * Math.PI * 2; for (let d = 0; d < (open ? 4 : 2); d++) set(Math.round(36 + Math.cos(a) * (r - 1 - d)), Math.round(40 + Math.sin(a) * (r - 1 - d)), [240, 236, 214]); }
+    if (open) for (let d = 0; d < 5; d++) pEll(set, 36, 40 + d, 3 - (d >> 1), 2, [140, 230, 80], true); // veneno dentro
+  });
+}
 // ---- decorado de las salas nuevas (pixel art a mano, contorno automático)
 function drawBookshelf() {
   const W = [[96, 64, 38], [70, 46, 26], [124, 86, 50]], spines = [[150, 40, 34], [40, 70, 130], [60, 110, 60], [150, 120, 50], [90, 50, 110], [170, 150, 120], [60, 60, 70]];
@@ -1012,6 +1087,11 @@ function initSprites() {
   SPR.ritual = [0, 1, 2, 3].map(drawRitualStone); SPR.icecrystal = [0, 1, 2, 3].map(drawIceCrystal);
   SPR.yeti = [0, 1].map(drawYeti); SPR.icewisp = [0, 1].map(drawIceWisp); SPR.rat = [0, 1].map(drawRat);
   SPR.deepwarrior = [0, 1].map(f => drawDeepOne(f, false)); SPR.deepmage = [0, 1].map(f => drawDeepOne(f, true));
+  for (const k in HUMANOIDS) SPR[k] = [0, 1].map(f => drawHumanoid(HUMANOIDS[k], f));
+  SPR.worm = [drawWorm(false), drawWorm(true)];
+  // variantes teñidas de sprites existentes
+  SPR.vampbat = SPR.bat.map(s => tintSprite(s, [1.5, 0.45, 0.5], false));
+  SPR.malevolent = SPR.wraith.map(s => tintSprite(s, [1.6, 0.35, 0.45], true));
 
   SPR.orbBlue = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [150, 220, 255, 255]], [0.65, [60, 110, 255, 170]], [1, [20, 40, 200, 0]]]);
   SPR.orbGold = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [255, 240, 130, 255]], [0.65, [255, 170, 40, 170]], [1, [200, 80, 10, 0]]]);

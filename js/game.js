@@ -23,6 +23,17 @@ const ENEMY = {
   rat:         { name: 'Rata mutante', hp: 15, spd: 3.4, dmg: 5, r: 0.26, h: 0.42, z: 0, spr: 'rat', xp: 1, pack: [3, 4], bite: { poison: 3, dps: 2.5 } },
   deepwarrior: { name: 'Guerrero abisal', hp: 72, spd: 1.9, dmg: 15, r: 0.32, h: 1.2, z: 0, spr: 'deepwarrior', xp: 5 },
   deepmage:    { name: 'Hechicero abisal', hp: 40, spd: 1.5, dmg: 0, r: 0.3, h: 1.2, z: 0, spr: 'deepmage', xp: 5, ranged: { cd: 2.6, dmg: 10, spd: 6, proj: 'orbPurple', keep: 6, spread: 3 } },
+  // vampiros, nigromantes, furias, espectros malignos, goblins, orcos y gusanos
+  vampspawn:   { name: 'Engendro vampírico', hp: 40, spd: 2.8, dmg: 9, r: 0.3, h: 0.95, z: 0, spr: 'vampspawn', xp: 4, drain: 1.2 },
+  vampire:     { name: 'Vampiro noble', hp: 95, spd: 2.0, dmg: 15, r: 0.3, h: 1.05, z: 0, spr: 'vampire', xp: 9, drain: 1, blink: { cd: 5 } },
+  vampbat:     { name: 'Murciélago vampiro', hp: 12, spd: 3.6, dmg: 5, r: 0.22, h: 0.42, z: 0.32, spr: 'vampbat', xp: 2, fly: true, drain: 2, pack: [2, 3] },
+  necromancer: { name: 'Nigromante', hp: 55, spd: 1.3, dmg: 0, r: 0.3, h: 1.0, z: 0, spr: 'necromancer', xp: 7, ranged: { cd: 2.6, dmg: 11, spd: 5.5, proj: 'orbGreen', keep: 6 }, summon: { cd: 9, type: 'skeleton', n: 2, max: 4 } },
+  fury:        { name: 'Furia', hp: 45, spd: 3.0, dmg: 12, r: 0.3, h: 1.0, z: 0.25, spr: 'fury', xp: 6, fly: true, charge: { cd: 4, mul: 2.2, dur: 0.8, min: 2, max: 7 } },
+  malevolent:  { name: 'Espectro maligno', hp: 40, spd: 1.6, dmg: 0, r: 0.3, h: 1.0, z: 0.06, spr: 'malevolent', xp: 6, ranged: { cd: 2.2, dmg: 13, spd: 5, proj: 'orbRed', keep: 5 }, phase: { on: 1.6, off: 3 } },
+  goblin:      { name: 'Goblin', hp: 18, spd: 3.0, dmg: 6, r: 0.26, h: 0.7, z: 0, spr: 'goblin', xp: 1, pack: [3, 4] },
+  goblinarcher:{ name: 'Goblin arquero', hp: 16, spd: 2.4, dmg: 0, r: 0.26, h: 0.7, z: 0, spr: 'goblinarcher', xp: 2, ranged: { cd: 2.0, dmg: 8, spd: 9, proj: 'orbArrow', keep: 6 } },
+  orc:         { name: 'Orco', hp: 95, spd: 1.6, dmg: 17, r: 0.38, h: 1.15, z: 0, spr: 'orc', xp: 7 },
+  worm:        { name: 'Gusano gigante', hp: 260, spd: 0, dmg: 14, r: 0.5, h: 1.0, z: 0, spr: 'worm', xp: 15, block: true, worm: { cd: 3.2, open: 1.9, dps: 4 } },
   lich:     { name: 'EL LICHE', hp: 470, spd: 1.3, dmg: 18, r: 0.5, h: 1.75, z: 0, spr: 'lich', xp: 60, boss: true, ai: 'lich' },
   queen:    { name: 'LA REINA ARAÑA', hp: 560, spd: 1.9, dmg: 20, r: 0.6, h: 1.3, z: 0, spr: 'queen', xp: 60, boss: true, ai: 'queen' },
   voidlord: { name: 'EL OJO PRIMIGENIO', hp: 500, spd: 1.0, dmg: 16, r: 0.6, h: 1.6, z: 0.2, spr: 'voidlord', xp: 60, boss: true, ai: 'eye' },
@@ -221,7 +232,25 @@ function populateLevel(lv) {
       else { const [x, y] = roomSpot(lv, r, used); P.push({ type: 'key', key: r.key, x, y, t: rand(0, 6) }); }
     }
   });
+  placeWorm(lv);
   G.enemies = saveE; G.floor = saveF; G.t = saveT;
+}
+// gusano gigante: en un túnel largo de una casilla de ancho, tapando el paso
+function placeWorm(lv) {
+  if (lv.z === 0 && Math.random() < 0.5) return; // en la planta de la entrada, menos frecuentes
+  if (Math.random() > 0.6) return;
+  const fl = (x, y) => lv.at(x, y) === 0 && lv.roomOf[y * MW + x] < 0;
+  const cands = [];
+  for (const [x, y] of lv.floorCells) {
+    if (!fl(x, y) || lv.nearSpecial(x, y)) continue;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      if (fl(x + dy, y + dx) || fl(x - dy, y - dx)) continue; // de una casilla de ancho
+      let run = 1; for (const sg of [1, -1]) for (let k = 1; k < 8 && fl(x + dx * k * sg, y + dy * k * sg); k++) run++;
+      if (run >= 9) cands.push([x, y]);
+    }
+  }
+  if (!cands.length) return;
+  const [x, y] = pick(cands), e = spawnEnemy('worm', x + 0.5, y + 0.5); e.sleep = true;
 }
 
 // entrar en un nivel (al empezar o por una escalera): el estado de cada nivel se conserva al volver
@@ -585,8 +614,52 @@ function invAction(id) {
   else if (id === 'close') closeInventory();
 }
 
-function enemyShot(x, y, a, spd, dmg, proj, size = 0.4, chill = 0) {
-  G.projs.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 0.2, life: 5, friendly: false, dmg, spr: proj, size, chill });
+// habilidades de los enemigos nuevos
+function specialAI(e, d, dt, dx, dy, dist) {
+  const p = G.p, lv = G.lv;
+  if (d.blink) { // vampiro noble: desaparece y reaparece a tu lado
+    e.blinkCd = (e.blinkCd ?? rand(1.5, d.blink.cd)) - dt;
+    if (e.blinkCd <= 0 && e.los && dist > 3) {
+      for (let k = 0; k < 8; k++) {
+        const a = rand(0, TAU), nx = p.x + Math.cos(a) * 1.5, ny = p.y + Math.sin(a) * 1.5;
+        if (lv.blocked(nx, ny, 0.3) || !lv.los(p.x, p.y, nx, ny)) continue;
+        vfxBlink(e.x, e.y, 'void'); e.x = nx; e.y = ny; vfxBlink(nx, ny, 'void'); e.atk = 0.35; Sfx.play('dash');
+        break;
+      }
+      e.blinkCd = d.blink.cd;
+    }
+  }
+  if (d.summon && e.los) { // nigromante: levanta esqueletos a su lado
+    e.sumCd = (e.sumCd ?? 3) - dt;
+    if (e.sumCd <= 0) {
+      e.sumCd = d.summon.cd;
+      const mine = G.enemies.filter(q => q.master === e && !q.dead).length;
+      for (let k = 0; k < Math.min(d.summon.n, d.summon.max - mine); k++) {
+        const a = rand(0, TAU), nx = e.x + Math.cos(a) * 0.9, ny = e.y + Math.sin(a) * 0.9;
+        if (lv.blocked(nx, ny, 0.3)) continue;
+        const s = spawnEnemy(d.summon.type, nx, ny); s.sleep = false; s.master = e; s.hp *= 0.6; s.maxHp *= 0.6;
+        burst(nx, ny, 0.2, 10, rgb(120, 255, 140), 2, 0.6);
+      }
+      Sfx.play('summon');
+    }
+  }
+  if (d.phase) { // espectro maligno: a ratos se vuelve intangible
+    const T = d.phase.on + d.phase.off; e.phT = ((e.phT ?? rand(0, T)) + dt) % T;
+    e.phased = e.phT < d.phase.on;
+  }
+  if (d.worm) { // gusano gigante: escupe veneno y abre la boca, su punto débil
+    e.openT = (e.openT || 0) - dt; e.wormCd = (e.wormCd ?? 1.5) - dt;
+    if (e.wormCd <= 0 && e.los && dist < 12) {
+      e.wormCd = d.worm.cd; e.openT = d.worm.open;
+      const a = Math.atan2(dy, dx);
+      for (const da of [-0.12, 0, 0.12]) enemyShot(e.x, e.y, a + da, 6.5, 9 * e.dmgM, 'orbGreen', 0.5, 0, d.worm.dps * e.dmgM);
+      Sfx.play('enemyShoot');
+    }
+  }
+}
+
+function enemyShot(x, y, a, spd, dmg, proj, size = 0.4, chill = 0, poison = 0) {
+  G.projs.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 0.2, life: 5, friendly: false, dmg, spr: proj, size, chill, poison });
 }
 
 function updateProjs(dt) {
@@ -621,7 +694,7 @@ function updateProjs(dt) {
       } else {
         const dx = p.x - pr.x, dy = p.y - pr.y, rr = 0.25 + pr.r;
         if (dx * dx + dy * dy < rr * rr && equipReflect(pr)) { vfxImpact(pr.x, pr.y, 0.45, 'steel', 0.8); Sfx.play('blade'); }
-        else if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); if (pr.chill && p.inv > 0) p.chill = Math.max(p.chill || 0, pr.chill); pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
+        else if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); if (pr.chill && p.inv > 0) p.chill = Math.max(p.chill || 0, pr.chill); if (pr.poison && p.inv > 0) { p.poisT = Math.max(p.poisT || 0, 3); p.poisDps = pr.poison; } pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
       }
     }
     pr.life -= dt;
@@ -726,12 +799,14 @@ function wakeEnemy(e) {
 
 function damageEnemy(e, dmg, o = {}) {
   if (e.dead) return;
+  if (e.phased) { if (Math.random() < 0.3) burst(e.x, e.y, 0.5, 2, rgb(255, 120, 140), 1, 0.3); return; } // intangible
+  if (e.def.worm) { dmg *= e.openT > 0 ? 1.6 : 0.2; if (e.openT <= 0 && Math.random() < 0.4) Sfx.play('blade'); } // la boca abierta es su punto débil
   if (e.corrode > 0) dmg *= 1.4;
   e.hp -= dmg; e.flash = 0.1;
   if (e.sleep) wakeEnemy(e);
   const p = G.p;
   if (p.leech > 0) p.hp = Math.min(p.maxHp, p.hp + dmg * p.leech);
-  const kb = e.def.boss ? 0.1 : 1;
+  const kb = e.def.worm ? 0 : e.def.boss ? 0.1 : 1;
   e.kx += (o.kx || 0) * kb; e.ky += (o.ky || 0) * kb;
   burst(e.x, e.y, 0.4, o.silent ? 2 : (o.crit ? 8 : 4), o.crit ? rgb(255, 220, 90) : rgb(255, 255, 255), 1.8, 0.4);
   G.hitMark = 0.12;
@@ -854,6 +929,7 @@ function updateEnemies(dt) {
         const hp0 = p.hp;
         hurtPlayer(Math.round(d.dmg * e.dmgM), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
         if (d.bite && p.hp < hp0) { p.poisT = Math.max(p.poisT || 0, d.bite.poison); p.poisDps = d.bite.dps * e.dmgM; }
+        if (d.drain && p.hp < hp0) { e.hp = Math.min(e.maxHp, e.hp + (hp0 - p.hp) * d.drain); burst(e.x, e.y, 0.6, 5, rgb(220, 30, 40), 1.5, 0.4); }
       }
     }
     // ataque a distancia
@@ -866,6 +942,7 @@ function updateEnemies(dt) {
         Sfx.play('enemyShoot');
       }
     }
+    if (!stunned) specialAI(e, d, dt, dx, dy, dist);
     if (d.boss && !stunned) bossAI(e, dt, dx, dy, dist);
   }
   // separación entre enemigos
@@ -1146,11 +1223,20 @@ function updatePlayer(dt) {
   const k = Math.min(1, dt * 14);
   const spd = p.spd * (p.wantBlock && p.off === 'shield' && WEAPONS[p.weapon].hands === 1 ? 0.55 : 1) * (p.chill > 0 ? 0.6 : 1);
   p.vx += (mx * spd - p.vx) * k; p.vy += (my * spd - p.vy) * k;
+  const ox0 = p.x, oy0 = p.y;
   if (p.dashT > 0) {
     p.dashT -= dt;
     lv.move(p, p.dashDx * 11 * dt, p.dashDy * 11 * dt, 0.22);
   } else {
     lv.move(p, p.vx * dt, p.vy * dt, 0.22);
+  }
+  {
+    // los gusanos gigantes tapan el túnel: no se puede pasar a través de ellos
+    for (const e of G.enemies) {
+      if (e.dead || !e.def.block) continue;
+      const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 0.001, min = e.def.r + 0.3;
+      if (d < min) { p.x = e.x + dx / d * min; p.y = e.y + dy / d * min; if (lv.blocked(p.x, p.y, 0.2)) { p.x = ox0; p.y = oy0; } }
+    }
   }
   if (len > 0) { const ob = p.bob; p.bob += dt * 9 * (p.spd / 3.6); if (Math.floor(ob / Math.PI) !== Math.floor(p.bob / Math.PI)) Sfx.play('step'); }
   if (offhandOf(p) === 'torch' && Math.random() < dt * 2.5) Sfx.play('crackle');
@@ -1271,7 +1357,8 @@ function buildItems() {
   }
   for (const e of G.enemies) {
     const d = e.def, fr = SPR[d.spr];
-    const f = d.fly ? ((tm * 8 + e.wob) | 0) & 1 : ((e.walk * 1.6) | 0) & 1;
+    if (e.phased && ((tm * 14) | 0) & 1) continue; // intangible: parpadea
+    const f = d.worm ? (e.openT > 0 ? 1 : 0) : d.fly ? ((tm * 8 + e.wob) | 0) & 1 : ((e.walk * 1.6) | 0) & 1;
     const s = fr[f];
     items.push({ x: e.x, y: e.y, spr: s, flash: e.flash > 0, h: d.h, w: d.h * s.w / s.h, z: d.z + (d.fly ? Math.sin(e.wob * 0.7) * 0.07 : 0) });
   }
