@@ -567,6 +567,8 @@ function loadAssets() {
       SPR['ghostskin_' + k] = [ghostly(SPR['skin_' + k], 0), ghostly(SPR['skin_' + k], 1)];
       SPR['doppel_' + k] = [ghostly(SPR['skin_' + k], 0, true), ghostly(SPR['skin_' + k], 1, true)];
     }
+    // araña enemiga con la araña de Pixellab, en marrón y rojo (dos fotogramas con un leve vaivén)
+    if (SPR.spider && SPR.spider.px) SPR.spiderE = [brownSpider(SPR.spider, 0), brownSpider(SPR.spider, -1)];
     // jefes de Pixellab (si existen) en lugar de los dibujados por código
     for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
@@ -1108,6 +1110,27 @@ function drawGhost(kind, frame) {
 }
 
 // versión fantasmal de un sprite: tonos azulados que brillan en la oscuridad y un halo tramado alrededor
+// Araña enemiga: la araña de Pixellab (la de tus invocaciones) repintada en marrón con toques rojizos.
+// Bandas de color por luminosidad (sin degradados) para que siga siendo pixel art; los ojos rojos se conservan.
+const SPIDER_BROWN = [[18, 10, 7], [52, 30, 18], [84, 50, 28], [114, 70, 40], [142, 92, 54], [172, 118, 72]];
+const SPIDER_RED = [[18, 10, 7], [74, 26, 16], [118, 40, 24], [158, 58, 34], [190, 84, 52], [214, 120, 84]];
+function brownSpider(spr, bob) {
+  const w = spr.w, h = spr.h, px = new Uint32Array(w * h), src = spr.px;
+  let lo = 255, hi = 0;
+  for (const c of src) if (c >>> 24) { const l = ((c & 255) + ((c >> 8) & 255) + ((c >> 16) & 255)) / 3; lo = Math.min(lo, l); hi = Math.max(hi, l); }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const c = src[y * w + x]; if (!(c >>> 24)) continue;
+    const r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255, a = c >>> 24;
+    const yy = y + bob; if (yy < 0 || yy >= h) continue;
+    if (r > 150 && r > g * 2 && r > b * 1.6) { px[yy * w + x] = c; continue; } // ojos
+    // luminosidad realzada (la original es casi negra) y repartida en bandas
+    const t = Math.pow(((r + g + b) / 3 - lo) / Math.max(1, hi - lo), 0.6);
+    // el caparazón y las articulaciones (zonas más claras) tiran a rojo; el resto, marrón
+    const P = t > 0.62 ? SPIDER_RED : SPIDER_BROWN, q = P[Math.min(P.length - 1, Math.floor(t * P.length))];
+    px[yy * w + x] = rgb(q[0], q[1], q[2], a);
+  }
+  return { w, h, px, flash: px };
+}
 function ghostly(spr, frame, red) {
   const P = 3, w = spr.w + P * 2, h = spr.h + P * 2, px = new Uint32Array(w * h), src = spr.px;
   const at = (x, y) => (x >= 0 && y >= 0 && x < spr.w && y < spr.h) ? src[y * spr.w + x] : 0;
