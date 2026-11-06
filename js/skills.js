@@ -5,7 +5,13 @@ function aimPos(dist) {
   while (d < dist && !G.lv.solid(p.x + Math.cos(p.a) * (d + 0.25), p.y + Math.sin(p.a) * (d + 0.25))) d += 0.25;
   return { x: p.x + Math.cos(p.a) * d, y: p.y + Math.sin(p.a) * d };
 }
-function enemiesIn(x, y, r) { return G.enemies.filter(e => !e.dead && Math.hypot(e.x - x, e.y - y) <= r + e.def.r); }
+// Las habilidades no atraviesan paredes: solo alcanzan a enemigos a menos de 10 m del jugador
+// y con línea de visión desde el origen del golpe (otra habitación tras un muro queda a salvo)
+const SKILL_RANGE = 10;
+function canHit(e, x = G.p.x, y = G.p.y) {
+  return Math.hypot(e.x - G.p.x, e.y - G.p.y) <= SKILL_RANGE + e.def.r && G.lv.los(x, y, e.x, e.y);
+}
+function enemiesIn(x, y, r) { return G.enemies.filter(e => !e.dead && Math.hypot(e.x - x, e.y - y) <= r + e.def.r && canHit(e, x, y)); }
 function nearestEnemy(maxD, los = true, x = G.p.x, y = G.p.y, skip) {
   let best = null, bd = maxD;
   for (const e of G.enemies) {
@@ -48,6 +54,7 @@ function aoe(x, y, r, dmg, o = {}) {
     if (e.dead) continue;
     const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy);
     if (d > r + e.def.r) continue;
+    if (!canHit(e, x, y)) continue; // ni a través de muros ni a más de 10 m
     if (o.cone) {
       let da = Math.atan2(dy, dx) - o.cone.a; da = Math.atan2(Math.sin(da), Math.cos(da));
       if (Math.abs(da) > o.cone.arc / 2 && d > e.def.r + 0.4) continue;
@@ -335,7 +342,7 @@ const SKILLS = {
     aoe(p.x, p.y, 3.8, 22 * p.dmgMul, { kb: 5, slow: 3.5 }); vfxIceNova(p.x, p.y, 3.8); G.novaFx = 1; Sfx.play('nova');
   } },
   chain: { name: 'Rayo en cadena', cd: 7, use(p) {
-    const t = nearestEnemy(11, true); if (!t) return false;
+    const t = nearestEnemy(SKILL_RANGE, true); if (!t) return false;
     chainFrom(t, 6, 30 * p.dmgMul); p.anim = 1;
   } },
   meteor: { name: 'Meteoro', cd: 13, use(p) {
@@ -421,7 +428,7 @@ const SKILLS = {
   smite: { name: 'Juicio divino', cd: 11, use(p) {
     const done = new Set(); let n = 0;
     for (let i = 0; i < 5; i++) {
-      const t = nearestEnemy(11, false, p.x, p.y, done); if (!t) break;
+      const t = nearestEnemy(SKILL_RANGE, true, p.x, p.y, done); if (!t) break;
       done.add(t); n++;
       later(i * 0.12, () => {
         if (t.dead) return;

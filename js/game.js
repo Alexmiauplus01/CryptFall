@@ -886,7 +886,7 @@ function updatePassives(dt) {
     for (let i = 0; i < nb; i++) {
       const a = G.bladeAng + i / nb * TAU, bx = p.x + Math.cos(a) * 1.3, by = p.y + Math.sin(a) * 1.3;
       for (const e of G.enemies) {
-        if (e.dead || e.bladeCd > 0) continue;
+        if (e.dead || e.bladeCd > 0 || !G.lv.los(p.x, p.y, e.x, e.y)) continue;
         const dx = e.x - bx, dy = e.y - by, rr = e.def.r + 0.3;
         if (dx * dx + dy * dy < rr * rr) {
           e.bladeCd = 0.35; Sfx.play('blade');
@@ -903,7 +903,7 @@ function updatePassives(dt) {
       const rad = 3.2 + 0.5 * ln, dmg = (14 + 10 * ln) * p.dmgMul;
       for (const e of G.enemies) {
         const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
-        if (e.dead || d > rad) continue;
+        if (e.dead || d > rad || !canHit(e)) continue;
         e.slow = 2.5;
         damageEnemy(e, dmg, { kx: dx / (d || 1) * 9, ky: dy / (d || 1) * 9 });
       }
@@ -916,7 +916,7 @@ function updatePassives(dt) {
     G.boltT -= dt;
     if (G.boltT <= 0) {
       G.boltT = Math.max(0.9, 3.2 - 0.45 * lb);
-      const targets = G.enemies.filter(e => !e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 10).sort(() => Math.random() - 0.5).slice(0, lb + 1);
+      const targets = G.enemies.filter(e => !e.dead && canHit(e)).sort(() => Math.random() - 0.5).slice(0, lb + 1);
       if (targets.length) {
         for (const e of targets) {
           vfxStrike(e.x, e.y);
