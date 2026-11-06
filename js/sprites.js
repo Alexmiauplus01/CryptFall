@@ -569,6 +569,9 @@ function loadAssets() {
     }
     // araña enemiga con la araña de Pixellab, en marrón y rojo (dos fotogramas con un leve vaivén)
     if (SPR.spider && SPR.spider.px) SPR.spiderE = [brownSpider(SPR.spider, 0), brownSpider(SPR.spider, -1)];
+    // lobo y oso enemigos: los de Pixellab (los de tus invocaciones) en un tono más oscuro
+    if (SPR.wolf && SPR.wolf.px) SPR.wolfE = [darkBeast(SPR.wolf, 0, 0.58), darkBeast(SPR.wolf, -1, 0.58)];
+    if (SPR.bear && SPR.bear.px) SPR.bearE = [darkBeast(SPR.bear, 0, 0.62), darkBeast(SPR.bear, -1, 0.62)];
     // jefes de Pixellab (si existen) en lugar de los dibujados por código
     for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
@@ -1131,6 +1134,19 @@ function brownSpider(spr, bob) {
   }
   return { w, h, px, flash: px };
 }
+// Bestias enemigas: más oscuras y algo menos saturadas que tus aliados; los ojos y la boca conservan su brillo
+function darkBeast(spr, bob, k) {
+  const w = spr.w, h = spr.h, px = new Uint32Array(w * h), src = spr.px;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const c = src[y * w + x]; if (!(c >>> 24)) continue;
+    const yy = y + bob; if (yy < 0 || yy >= h) continue;
+    const r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255, a = c >>> 24;
+    if ((r > 170 && g > 120 && b < 90) || (r > 160 && r > g * 1.8)) { px[yy * w + x] = c; continue; } // ojos amarillos y boca roja
+    const l = (r + g + b) / 3, m = k * 0.85;
+    px[yy * w + x] = rgb((r * 0.8 + l * 0.2) * m + 4, (g * 0.8 + l * 0.2) * m + 2, (b * 0.8 + l * 0.2) * m + 4, a);
+  }
+  return { w, h, px, flash: px };
+}
 function ghostly(spr, frame, red) {
   const P = 3, w = spr.w + P * 2, h = spr.h + P * 2, px = new Uint32Array(w * h), src = spr.px;
   const at = (x, y) => (x >= 0 && y >= 0 && x < spr.w && y < spr.h) ? src[y * spr.w + x] : 0;
@@ -1212,6 +1228,7 @@ function initSprites() {
   SPR.mushroom = [0, 1, 2, 3].map(f => drawMushroom(f, 'green')); SPR.mushroomB = [0, 1, 2, 3].map(f => drawMushroom(f, 'blue'));
   SPR.ritual = [0, 1, 2, 3].map(drawRitualStone); SPR.icecrystal = [0, 1, 2, 3].map(drawIceCrystal);
   SPR.yeti = [0, 1].map(drawYeti); SPR.icewisp = [0, 1].map(drawIceWisp); SPR.rat = [0, 1].map(drawRat);
+  SPR.wolfE = SPR.hound; SPR.bearE = SPR.yeti; // provisionales hasta que carguen los de Pixellab
   SPR.deepwarrior = [0, 1].map(f => drawDeepOne(f, false)); SPR.deepmage = [0, 1].map(f => drawDeepOne(f, true));
   for (const k in HUMANOIDS) SPR[k] = [0, 1].map(f => drawHumanoid(HUMANOIDS[k], f));
   SPR.worm = [drawWorm(false), drawWorm(true)];
