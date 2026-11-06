@@ -197,7 +197,9 @@ function populateLevel(lv) {
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
-    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' }; P.push(c); return c; };
+    const chest = (g, item) => { const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' };
+      if (c.eq) { c.eqItem = makeItem(c.eqSrc); if ((c.eqItem.rar === 'epico' || c.eqItem.rar === 'legendario') && Math.random() < 0.5) c.doppel = true; } // tesoro valioso: tu doble lo vigila
+      P.push(c); return c; };
     const foes = (n, type) => { for (let k = 0; k < n; k++) { const [x, y] = roomSpot(lv, r, used); const e = spawnEnemy(type || pickType(), x, y); e.sleep = true; } };
     let box = null;
     switch (r.type) {
@@ -651,6 +653,26 @@ function specialAI(e, d, dt, dx, dy, dist) {
     const T = d.phase.on + d.phase.off; e.phT = ((e.phT ?? rand(0, T)) + dt) % T;
     e.phased = e.phT < d.phase.on;
   }
+  if (d.doppel && e.los) { // doppelgänger: usa habilidades como las tuyas
+    e.skCd = (e.skCd ?? rand(2, 4)) - dt;
+    if (e.skCd <= 0) {
+      e.skCd = rand(5, 7);
+      if (d.branch === 'luchador' && dist < 3.2) { // grito / golpe de choque
+        vRing(e.x, e.y, 0.05, 3, 0.35, VR.steel.slice(0, 5), 36); G.shake = Math.max(G.shake, 0.3); Sfx.play('roar');
+        hurtPlayer(Math.round((d.dmg || 12) * 1.4), e.x, e.y); p.chill = Math.max(p.chill || 0, 1);
+      } else if (d.branch === 'ladron') { // aparece a tu espalda
+        const nx = p.x - Math.cos(p.a) * 1.3, ny = p.y - Math.sin(p.a) * 1.3;
+        if (!lv.blocked(nx, ny, 0.3)) { vfxBlink(e.x, e.y, 'void'); e.x = nx; e.y = ny; vfxBlink(nx, ny, 'void'); e.atk = 0.2; Sfx.play('dash'); }
+      } else { // ráfaga de su hechizo
+        const a0 = Math.atan2(dy, dx), pr = d.ranged ? d.ranged : { dmg: 10, proj: 'orbPurple' };
+        for (let k = -2; k <= 2; k++) enemyShot(e.x, e.y, a0 + k * 0.16, 7, pr.dmg * 1.1, pr.proj, 0.5);
+        Sfx.play('enemyShoot');
+      }
+    }
+    // tus mejoras pasivas también las tiene él
+    if (L('nova') > 0) { e.novaCd = (e.novaCd ?? 4) - dt; if (e.novaCd <= 0) { e.novaCd = Math.max(3, 7 - L('nova')); vfxIceNova(e.x, e.y, 3.2); if (dist < 3.2) { hurtPlayer(Math.round(8 + 4 * L('nova')), e.x, e.y); p.chill = Math.max(p.chill || 0, 1.5); } } }
+    if (L('bolt') > 0) { e.boltCd = (e.boltCd ?? 3) - dt; if (e.boltCd <= 0) { e.boltCd = Math.max(2, 4.5 - 0.4 * L('bolt')); const tx = p.x, ty = p.y; vRing(tx, ty, 0.02, 0.9, 0.6, VR.volt.slice(0, 4), 18); later(0.6, () => { vfxStrike(tx, ty); Sfx.play('bolt'); if (Math.hypot(G.p.x - tx, G.p.y - ty) < 0.9) hurtPlayer(Math.round(10 + 5 * L('bolt')), tx, ty); }); } }
+  }
   if (d.worm) { // gusano gigante: escupe veneno y abre la boca, su punto débil
     e.openT = (e.openT || 0) - dt; e.wormCd = (e.wormCd ?? 1.5) - dt;
     if (e.wormCd <= 0 && e.los && dist < 12) {
@@ -788,12 +810,13 @@ function updateWaves(dt) {
     e.hp *= hpMul; e.maxHp *= hpMul; e.sleep = false; e.wave = k;
   }
   toast(`¡OLEADA ${k}!`, true); logMsg(`Oleada ${k}: ${n} enemigos salen de las sombras`, C.red);
+  if (k % 5 === 0) { const dp = spawnDoppel(pos[0], pos[1]); wakeEnemy(dp); } // cada 5 oleadas viene tu doble
   Sfx.play('boss'); G.shake = Math.max(G.shake, 0.4);
 }
 
 function wakeEnemy(e) {
   e.sleep = false;
-  if (e.ghost && G.elite !== e) { G.elite = e; toast(`¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(`Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
+  if (e.ghost && G.elite !== e) { G.elite = e; toast(e.ghost.doppel ? '¡TU DOPPELGÄNGER!' : `¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(e.ghost.doppel ? 'Una copia exacta de ti sale de las sombras...' : `Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, e.ghost.doppel ? C.red : C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
   if (e.def.boss && !G.boss) {
     G.boss = e;
     toast(`¡${e.def.name} DESPIERTA!`, true); logMsg('Un rugido sacude la mazmorra...', C.red);
@@ -804,6 +827,7 @@ function wakeEnemy(e) {
 function damageEnemy(e, dmg, o = {}) {
   if (e.dead) return;
   if (e.phased) { if (Math.random() < 0.3) burst(e.x, e.y, 0.5, 2, rgb(255, 120, 140), 1, 0.3); return; } // intangible
+  if (e.armorMul) dmg *= e.armorMul;
   if (e.def.worm) { dmg *= e.openT > 0 ? 1.6 : 0.2; if (e.openT <= 0 && Math.random() < 0.4) Sfx.play('blade'); } // la boca abierta es su punto débil
   if (e.corrode > 0) dmg *= 1.4;
   e.hp -= dmg; e.flash = 0.1;
@@ -832,7 +856,12 @@ function dropGem(x, y, v) {
 function killEnemy(e) {
   e.dead = true; G.kills++;
   forgeOnKill(e); equipOnKill(e);
-  if (e.ghost) {
+  if (e.ghost && e.ghost.doppel) { // doppelgänger: botín de jefe
+    if (G.elite === e) G.elite = null;
+    toast('TU DOBLE SE DESVANECE', true); G.flashFx = 0.8; Sfx.play('portal');
+    dropItem('boss', e.x, e.y + 0.3);
+    jot('doppel' + G.dg.n + '_' + G.kills, `Me enfrenté a mi propio doble en el ${levelName(G.z)}. Luchaba como yo... pero vencí.`);
+  } else if (e.ghost) {
     onGhostKilled(e);
     // 50%: recuperas uno de los legendarios que llevaba el caído; si no, un objeto normal de fantasma
     const L = e.ghost.legends || [];
@@ -933,7 +962,7 @@ function updateEnemies(dt) {
         if (ally.hp <= 0) allyKill(ally);
       } else if (dist < d.r + 0.5 && !hidden) {
         const hp0 = p.hp;
-        hurtPlayer(Math.round(d.dmg * e.dmgM * (e.weak > 0 ? 0.7 : 1)), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
+        hurtPlayer(Math.round(d.dmg * e.dmgM * (e.weak > 0 ? 0.7 : 1) * (e.crit && Math.random() < e.crit ? 2 : 1)), e.x, e.y); e.atk = d.atkCd || (d.boss ? 1.1 : 0.9);
         if (d.bite && p.hp < hp0) { p.poisT = Math.max(p.poisT || 0, d.bite.poison); p.poisDps = d.bite.dps * e.dmgM; }
         if (d.hitrun) e.fleeT = d.hitrun; // arpía: tras el zarpazo se aleja
         if (d.drain && p.hp < hp0) { e.hp = Math.min(e.maxHp, e.hp + (hp0 - p.hp) * d.drain); burst(e.x, e.y, 0.6, 5, rgb(220, 30, 40), 1.5, 0.4); }
@@ -1136,6 +1165,11 @@ function updatePickups(dt) {
         k.dead = true; takeKey(k.key);
       }
     } else if (k.type === 'chest') {
+      if (k.doppel && !k.open && d < 6 && G.lv.los(p.x, p.y, k.x, k.y)) { // al acercarte, tu doble sale a defender el tesoro
+        k.doppel = false; const a = Math.atan2(p.y - k.y, p.x - k.x);
+        let x = k.x + Math.cos(a) * 0.8, y = k.y + Math.sin(a) * 0.8; if (G.lv.blocked(x, y, 0.3)) { x = k.x; y = k.y; }
+        wakeEnemy(spawnDoppel(x, y));
+      }
       if (!k.open && d < 0.95) openChest(k);
     }
   }
@@ -1164,7 +1198,8 @@ function openChest(c) {
   }
   if (c.item === 'potion') G.pickups.push({ type: 'potion', x: c.x, y: c.y + 0.3, t: 0 });
   if (c.torch) G.pickups.push({ type: 'torch', x: c.x - 0.3, y: c.y + 0.2, t: 0 });
-  if (c.eq) dropItem(c.eqSrc || 'chest', c.x + 0.3, c.y + 0.2);
+  if (c.eqItem) G.pickups.push({ type: 'item', item: c.eqItem, x: c.x + 0.3, y: c.y + 0.2, t: 0 });
+  else if (c.eq) dropItem(c.eqSrc || 'chest', c.x + 0.3, c.y + 0.2);
   else if (c.item && c.item.key !== undefined) takeKey(c.item.key);
   burst(c.x, c.y, 0.3, 14, rgb(255, 220, 110), 2, 0.7, true, 0.05);
   logMsg(`Abres un cofre: ${c.gold} de oro`, C.gold);
@@ -1445,7 +1480,7 @@ function dynLights() {
     else if (e.def.boss) out.push({ x: e.x, y: e.y, c: [0.9, 0.25, 0.1], rad: 3.5 });
     else if (e.type === 'hound') out.push({ x: e.x, y: e.y, c: [0.8, 0.35, 0.05], rad: 2 });
     else if (e.type === 'eye' || e.type === 'cultist') out.push({ x: e.x, y: e.y, c: [0.45, 0.15, 0.6], rad: 1.8 });
-    else if (e.ghost) out.push({ x: e.x, y: e.y, c: [0.25, 0.55, 0.9], rad: 3 });
+    else if (e.ghost) out.push({ x: e.x, y: e.y, c: e.ghost.doppel ? [1.0, 0.2, 0.15] : [0.25, 0.55, 0.9], rad: 3 });
   }
   if (p.anim > 0.05) out.push({ x: p.x + Math.cos(p.a) * 0.6, y: p.y + Math.sin(p.a) * 0.6, c: PROJ_LIGHT.orbBlue.map(v => v * p.anim), rad: 3.5 });
   if (G.novaFx > 0) out.push({ x: p.x, y: p.y, c: [0.6 * G.novaFx, 1.2 * G.novaFx, 1.7 * G.novaFx], rad: 7 });

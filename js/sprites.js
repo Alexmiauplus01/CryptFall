@@ -562,7 +562,13 @@ function loadAssets() {
     SPR.claws_wolfL = flipSprite(SPR.claws_wolf);
     SPR.claws_bearL = flipSprite(SPR.claws_bear);
     // aspectos de las clases principales (Pixellab): los fantasmas rencorosos los usan con un halo azulado
-    for (const k of ['ladron', 'luchador', 'mago']) if (SPR['skin_' + k]) SPR['ghostskin_' + k] = [ghostly(SPR['skin_' + k], 0), ghostly(SPR['skin_' + k], 1)];
+    // aspecto de cada clase (Pixellab): fantasmas con halo azul y doppelgänger con aura roja
+    for (const k of Object.keys(CLASSES)) if (SPR['skin_' + k]) {
+      SPR['ghostskin_' + k] = [ghostly(SPR['skin_' + k], 0), ghostly(SPR['skin_' + k], 1)];
+      SPR['doppel_' + k] = [ghostly(SPR['skin_' + k], 0, true), ghostly(SPR['skin_' + k], 1, true)];
+    }
+    // jefes de Pixellab (si existen) en lugar de los dibujados por código
+    for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
     for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
     // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
@@ -1076,20 +1082,21 @@ function drawGhost(kind, frame) {
 }
 
 // versión fantasmal de un sprite: tonos azulados que brillan en la oscuridad y un halo tramado alrededor
-function ghostly(spr, frame) {
+function ghostly(spr, frame, red) {
   const P = 3, w = spr.w + P * 2, h = spr.h + P * 2, px = new Uint32Array(w * h), src = spr.px;
   const at = (x, y) => (x >= 0 && y >= 0 && x < spr.w && y < spr.h) ? src[y * spr.w + x] : 0;
   for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) {
     const c = src[y * spr.w + x]; if (!(c >>> 24)) continue;
     const l = ((c & 255) + ((c >> 8) & 255) + ((c >> 16) & 255)) / 3;
-    px[(y + P) * w + x + P] = rgb(Math.min(255, l * 0.5 + 25), Math.min(255, l * 0.78 + 45), Math.min(255, l * 0.95 + 80), 250);
+    px[(y + P) * w + x + P] = red ? rgb(((c & 255) + l) / 2 * 1.05 + 30, ((c >> 8) & 255) * 0.55, ((c >> 16) & 255) * 0.5, 250)
+      : rgb(Math.min(255, l * 0.5 + 25), Math.min(255, l * 0.78 + 45), Math.min(255, l * 0.95 + 80), 250);
   }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (px[y * w + x]) continue;
     let d = 9;
     for (let ey = -P; ey <= P; ey++) for (let ex = -P; ex <= P; ex++) if (at(x - P + ex, y - P + ey) >>> 24) d = Math.min(d, Math.max(Math.abs(ex), Math.abs(ey)));
     if (d > P) continue;
-    if (d === 1 || (d === 2 && ((x + y + frame) & 1)) || (d === 3 && ((x + y * 2 + frame) % 4 === 0))) px[y * w + x] = rgb(d === 1 ? 150 : 90, d === 1 ? 220 : 170, 255, 250);
+    if (d === 1 || (d === 2 && ((x + y + frame) & 1)) || (d === 3 && ((x + y * 2 + frame) % 4 === 0))) px[y * w + x] = red ? rgb(255, d === 1 ? 70 : 30, d === 1 ? 60 : 30, 250) : rgb(d === 1 ? 150 : 90, d === 1 ? 220 : 170, 255, 250);
   }
   return { w, h, px, flash: px.map(c => c ? rgb(255, 255, 255, 250) : 0) };
 }

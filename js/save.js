@@ -29,7 +29,7 @@ function unpackLevel(o) {
   // enemigos: se recrean con su definición y se les devuelve su estado
   const save = G.enemies; G.enemies = lv.state.enemies;
   for (const s of o.enemies) {
-    const e = s.ghost ? spawnGhost(s.ghost, s.x, s.y) : spawnEnemy(s.type, s.x, s.y);
+    const e = s.ghost ? (s.ghost.doppel ? spawnDoppel(s.x, s.y) : spawnGhost(s.ghost, s.x, s.y)) : spawnEnemy(s.type, s.x, s.y);
     Object.assign(e, { hp: s.hp, maxHp: s.maxHp, spd: s.spd, dmgM: s.dmgM, sleep: s.sleep });
   }
   G.enemies = save;
@@ -102,7 +102,7 @@ function ghostList() { try { return JSON.parse(localStorage.getItem(GHOST_KEY) |
 function spawnGhost(g, x, y) {
   const c = CLASSES[g.cls] || CLASSES.luchador, cm = classMods(g.cls), w = WEAPONS[g.weapon] || WEAPONS.sword;
   const lvl = g.lvlNow || g.lvl, n = G.dg ? G.dg.n : 1;
-  const base = lineageOf(g.cls)[0], skin = SPR['ghostskin_' + base] ? 'ghostskin_' + base : null;
+  const base = lineageOf(g.cls)[0], skin = SPR['ghostskin_' + g.cls] ? 'ghostskin_' + g.cls : SPR['ghostskin_' + base] ? 'ghostskin_' + base : null;
   const sprK = skin || (w.kind === 'cast' ? 'ghost_staff' : w.kind === 'shoot' ? 'ghost_bow' : (g.weapon === 'dagger' || g.weapon === 'daggers') ? 'ghost_dagger' : 'ghost_melee');
   const def = Object.assign({}, ENEMY.ghost, {
     name: `Fantasma de ${c.name}`, spr: sprK,
@@ -114,6 +114,28 @@ function spawnGhost(g, x, y) {
   const e = spawnEnemy('ghost', x, y);
   e.def = def; e.hp = e.maxHp = def.hp; e.spd = def.spd; e.dmgM = 1;
   e.ghost = { cls: g.cls, lvl, weapon: g.weapon, lost: g.lost, where: g.where, lvlNow: lvl, legends: g.legends || [] };
+  return e;
+}
+
+// Doppelgänger: copia exacta del jugador actual (aura roja). Mismas estadísticas, arma, habilidades de su rama,
+// mejoras pasivas y equipo (armadura, críticos, robo de vida). Usa el aspecto de la clase del jugador.
+function spawnDoppel(x, y) {
+  const p = G.p, cls = p.cls, base = lineageOf(cls)[0], w = WEAPONS[p.weapon] || WEAPONS.sword;
+  const sprK = SPR['doppel_' + cls] ? 'doppel_' + cls : SPR['doppel_' + base] ? 'doppel_' + base : (w.kind === 'cast' ? 'ghost_staff' : w.kind === 'shoot' ? 'ghost_bow' : 'ghost_melee');
+  const hit = (w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].dmg : (w.dmg || 20)) * (p.dmgMul || 1);
+  const cd = (w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].cd : (w.cd || 0.6)) / (p.rate || 1);
+  const def = Object.assign({}, ENEMY.ghost, {
+    name: `Doppelgänger (${CLASSES[cls].name})`, spr: sprK, doppel: true,
+    hp: p.maxHp * 2.5, spd: (p.spd || 3) * 0.8,
+    dmg: w.kind === 'melee' ? Math.max(8, Math.round(hit * 0.3)) : 0, atkCd: Math.max(0.5, cd * 1.3),
+    ranged: w.kind !== 'melee' ? { cd: Math.max(0.6, cd * 1.6), dmg: Math.max(7, Math.round(hit * 0.3)), spd: w.kind === 'cast' ? 8 : 12, proj: w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].proj : 'orbArrow', keep: 4.5 } : null,
+    xp: 20 + p.lvl * 2, drain: (p.leech || 0) * 3, branch: base,
+  });
+  const e = spawnEnemy('ghost', x, y);
+  e.def = def; e.hp = e.maxHp = def.hp; e.spd = def.spd; e.dmgM = 1; e.sleep = false;
+  e.armorMul = p.armor || 1; e.crit = p.crit || 0;
+  e.ghost = { doppel: true, cls, lvl: p.lvl, lvlNow: p.lvl, legends: [] };
+  vfxBlink(x, y, 'void'); Sfx.play('roar');
   return e;
 }
 
