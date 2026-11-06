@@ -670,6 +670,85 @@ function drawAltar(frame, lit) {
     }
   });
 }
+// ---- enemigos de las temáticas nuevas (pixel art a mano, 2 fotogramas al andar)
+function pEll(set, cx, cy, rx, ry, col, em) { for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + 0.5) + (y * y) / (ry * ry + 0.5) <= 1) set(cx + x, cy + y, typeof col === 'function' ? col(x, y) : col, em); }
+function shade3(c, k) { return c.map(v => Math.max(0, Math.min(255, Math.round(v * k)))); }
+function drawYeti(frame) {
+  const F = [214, 222, 232], Fd = [160, 172, 190], Fs = [120, 132, 156], skin = [96, 140, 196], skinD = [64, 96, 150];
+  const fur = (x, y) => ((x * 3 + y * 5) & 7) === 0 ? Fs : x < -4 ? F : x > 6 ? Fs : Fd;
+  return pix(64, 80, (set) => {
+    const s = frame ? 2 : -2;
+    // piernas
+    pEll(set, 22, 66 + (frame ? 0 : 2), 7, 12, (x) => x < 0 ? Fd : Fs); pEll(set, 42, 66 + (frame ? 2 : 0), 7, 12, (x) => x < 0 ? Fd : Fs);
+    pEll(set, 21, 77, 8, 3, skinD); pEll(set, 43, 77, 8, 3, skinD);
+    // cuerpo enorme
+    pEll(set, 32, 42, 20, 22, (x, y) => fur(x, y));
+    pEll(set, 32, 46, 10, 12, (x, y) => ((x + y) & 3) ? [196, 204, 216] : Fd); // pecho
+    // brazos largos colgando
+    pEll(set, 10 - (frame ? 0 : 1), 46 + s, 6, 16, (x) => x < 0 ? F : Fd); pEll(set, 54 + (frame ? 1 : 0), 46 - s, 6, 16, (x) => x < 0 ? Fd : Fs);
+    pEll(set, 9, 63 + s, 5, 4, skin); pEll(set, 55, 63 - s, 5, 4, skin);
+    // cabeza con cara azulada
+    pEll(set, 32, 17, 12, 11, (x, y) => fur(x, y));
+    pEll(set, 32, 21, 8, 6, (x, y) => y < 0 ? skin : skinD);
+    set(28, 18, [20, 30, 60]); set(29, 18, [20, 30, 60]); set(35, 18, [20, 30, 60]); set(36, 18, [20, 30, 60]);
+    set(28, 17, [180, 220, 255], true); set(35, 17, [180, 220, 255], true);
+    for (let x = 27; x < 38; x++) set(x, 24, [40, 30, 50]);
+    set(28, 25, [240, 240, 230]); set(36, 25, [240, 240, 230]); // colmillos
+  });
+}
+function drawIceWisp(frame) {
+  const C = [[235, 250, 255], [170, 225, 255], [100, 170, 240], [60, 110, 200]];
+  return pix(32, 40, (set) => {
+    const b = frame ? 1 : 0;
+    pEll(set, 16, 15 + b, 9, 10, (x, y) => x * x + y * y < 12 ? C[0] : x * x + y * y < 40 ? C[1] : C[2], true);
+    for (let k = 0; k < 4; k++) { const x = 9 + k * 5; for (let y = 24 + b; y < 33 + ((k + frame) & 1) * 3; y++) set(x + ((y + k + frame) & 1), y, y > 29 ? C[3] : C[2], true); }
+    for (const [dx, dy] of [[-12, -6], [12, -4], [-9, 8], [11, 9]]) { set(16 + dx, 15 + dy + b, C[1], true); set(16 + dx, 14 + dy + b, C[0], true); }
+    set(13, 13 + b, [20, 40, 90]); set(19, 13 + b, [20, 40, 90]);
+  });
+}
+function drawRat(frame) {
+  const B = [134, 112, 112], Bd = [96, 78, 82], Bl = [170, 146, 140], pink = [214, 140, 150], pus = [130, 200, 60];
+  return pix(52, 32, (set) => {
+    const l = frame ? 2 : -2;
+    for (let x = 0; x < 14; x++) set(x, 18 + Math.round(Math.sin(x / 3 + frame) * 2), pink); // cola
+    pEll(set, 24, 19, 13, 9, (x, y) => y < -4 ? Bl : y > 4 ? Bd : B); // cuerpo
+    for (const [x, y] of [[18, 13], [27, 12], [31, 17], [21, 20]]) { pEll(set, x, y, 2, 2, pus, true); set(x - 1, y - 1, [200, 255, 120], true); } // pústulas
+    pEll(set, 40, 17, 8, 6, (x, y) => y < -2 ? Bl : B); // cabeza
+    pEll(set, 47, 19, 3, 2, pink); set(50, 19, [40, 20, 20]);
+    set(41, 15, [255, 40, 30], true); set(42, 15, [255, 90, 60], true); // ojo rojo
+    pEll(set, 37, 10, 3, 3, pink); // oreja
+    for (let y = 22; y < 26; y++) { set(48, y, [235, 230, 210]); } // dientes
+    for (const [x, ph] of [[16, 1], [22, -1], [30, 1], [36, -1]]) for (let y = 25; y < 31; y++) set(x + (y > 27 ? ph * l / 2 : 0), y, Bd);
+  });
+}
+function drawDeepOne(frame, mage) {
+  const H = mage ? [140, 90, 170] : [70, 150, 140], Hd = mage ? [96, 56, 124] : [44, 104, 100], Hl = mage ? [186, 140, 210] : [120, 200, 180];
+  const robe = mage ? [[60, 40, 100], [40, 26, 70], [90, 66, 140]] : [[90, 96, 110], [60, 64, 78], [140, 146, 160]];
+  return pix(48, 78, (set) => {
+    const s = frame ? 1 : -1;
+    // piernas o faldón
+    if (mage) { for (let y = 46; y < 76; y++) { const w = 8 + (y - 46) * 0.35; for (let x = Math.round(24 - w); x < Math.round(24 + w); x++) set(x, y, x < 20 ? robe[2] : x > 28 ? robe[1] : robe[0]); } }
+    else { pEll(set, 18, 64 + (frame ? 0 : 1), 5, 12, Hd); pEll(set, 30, 64 + (frame ? 1 : 0), 5, 12, Hd); pEll(set, 24, 46, 11, 6, robe[0]); }
+    // torso con coraza o túnica
+    pEll(set, 24, 38, 12, 13, (x, y) => mage ? (x < -5 ? robe[2] : x > 5 ? robe[1] : robe[0]) : (y === -4 || y === 3 ? robe[1] : x < -4 ? robe[2] : robe[0]));
+    // cabeza de pulpo
+    pEll(set, 24, 13, 10, 11, (x, y) => x < -4 ? Hl : x > 5 ? Hd : H);
+    set(19, 13, [255, 230, 90], true); set(20, 13, [255, 230, 90], true); set(28, 13, [255, 230, 90], true); set(29, 13, [255, 230, 90], true);
+    set(20, 14, [20, 10, 10]); set(28, 14, [20, 10, 10]);
+    // tentáculos de la barba
+    for (let k = 0; k < 5; k++) { const x0 = 18 + k * 3; for (let y = 21; y < 31 + (k & 1) * 3; y++) set(x0 + Math.round(Math.sin(y / 3 + k + frame) * 1.2), y, (y & 1) ? H : Hd); }
+    // brazos
+    pEll(set, 10, 38 + s, 3, 9, H); pEll(set, 38, 38 - s, 3, 9, H);
+    if (mage) { // bastón con orbe
+      for (let y = 14; y < 60; y++) set(41, y, [92, 64, 40]);
+      pEll(set, 41, 12, 4, 4, (x, y) => x * x + y * y < 5 ? [230, 200, 255] : [170, 90, 255], true);
+    } else { // tridente
+      for (let y = 6; y < 66; y++) set(41, y, [130, 130, 140]);
+      for (let x = 37; x < 46; x++) set(x, 12, [150, 150, 160]);
+      for (const x of [37, 41, 45]) for (let y = 4; y < 12; y++) set(x, y, y < 6 ? [220, 220, 230] : [160, 160, 170]);
+    }
+  });
+}
 // ---- decorado de las salas nuevas (pixel art a mano, contorno automático)
 function drawBookshelf() {
   const W = [[96, 64, 38], [70, 46, 26], [124, 86, 50]], spines = [[150, 40, 34], [40, 70, 130], [60, 110, 60], [150, 120, 50], [90, 50, 110], [170, 150, 120], [60, 60, 70]];
@@ -931,6 +1010,8 @@ function initSprites() {
   SPR.fountain = [0, 1, 2, 3].map(f => drawFountain(f, true)); SPR.fountainOff = [drawFountain(0, false)];
   SPR.mushroom = [0, 1, 2, 3].map(f => drawMushroom(f, 'green')); SPR.mushroomB = [0, 1, 2, 3].map(f => drawMushroom(f, 'blue'));
   SPR.ritual = [0, 1, 2, 3].map(drawRitualStone); SPR.icecrystal = [0, 1, 2, 3].map(drawIceCrystal);
+  SPR.yeti = [0, 1].map(drawYeti); SPR.icewisp = [0, 1].map(drawIceWisp); SPR.rat = [0, 1].map(drawRat);
+  SPR.deepwarrior = [0, 1].map(f => drawDeepOne(f, false)); SPR.deepmage = [0, 1].map(f => drawDeepOne(f, true));
 
   SPR.orbBlue = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [150, 220, 255, 255]], [0.65, [60, 110, 255, 170]], [1, [20, 40, 200, 0]]]);
   SPR.orbGold = buildOrb(24, [[0, [255, 255, 255, 255]], [0.3, [255, 240, 130, 255]], [0.65, [255, 170, 40, 170]], [1, [200, 80, 10, 0]]]);

@@ -17,6 +17,12 @@ const ENEMY = {
   spider:   { name: 'Araña', hp: 16, spd: 3.1, dmg: 7, r: 0.3, h: 0.52, z: 0, spr: 'spiderE', xp: 2 },
   hound:    { name: 'Can infernal', hp: 34, spd: 3.5, dmg: 11, r: 0.32, h: 0.62, z: 0, spr: 'hound', xp: 3 },
   eye:      { name: 'Ojo del vacío', hp: 40, spd: 1.2, dmg: 0, r: 0.3, h: 0.55, z: 0.35, spr: 'eye', xp: 4, fly: true, ranged: { cd: 1.9, dmg: 12, spd: 7, proj: 'orbPurple', keep: 6 } },
+  // temáticas nuevas: Cuevas Heladas, Cloacas, Templo Hundido
+  yeti:        { name: 'Yeti', hp: 120, spd: 1.35, dmg: 19, r: 0.5, h: 1.55, z: 0, spr: 'yeti', xp: 7, charge: { cd: 6, mul: 2.8, dur: 1.0, min: 2.5, max: 8 } },
+  icewisp:     { name: 'Fuego fatuo helado', hp: 26, spd: 2.0, dmg: 0, r: 0.28, h: 0.62, z: 0.35, spr: 'icewisp', xp: 3, fly: true, ranged: { cd: 2.2, dmg: 9, spd: 6.5, proj: 'orbIce', keep: 5, chill: 2 } },
+  rat:         { name: 'Rata mutante', hp: 15, spd: 3.4, dmg: 5, r: 0.26, h: 0.42, z: 0, spr: 'rat', xp: 1, pack: [3, 4], bite: { poison: 3, dps: 2.5 } },
+  deepwarrior: { name: 'Guerrero abisal', hp: 72, spd: 1.9, dmg: 15, r: 0.32, h: 1.2, z: 0, spr: 'deepwarrior', xp: 5 },
+  deepmage:    { name: 'Hechicero abisal', hp: 40, spd: 1.5, dmg: 0, r: 0.3, h: 1.2, z: 0, spr: 'deepmage', xp: 5, ranged: { cd: 2.6, dmg: 10, spd: 6, proj: 'orbPurple', keep: 6, spread: 3 } },
   lich:     { name: 'EL LICHE', hp: 470, spd: 1.3, dmg: 18, r: 0.5, h: 1.75, z: 0, spr: 'lich', xp: 60, boss: true, ai: 'lich' },
   queen:    { name: 'LA REINA ARAÑA', hp: 560, spd: 1.9, dmg: 20, r: 0.6, h: 1.3, z: 0, spr: 'queen', xp: 60, boss: true, ai: 'queen' },
   voidlord: { name: 'EL OJO PRIMIGENIO', hp: 500, spd: 1.0, dmg: 16, r: 0.6, h: 1.6, z: 0.2, spr: 'voidlord', xp: 60, boss: true, ai: 'eye' },
@@ -579,8 +585,8 @@ function invAction(id) {
   else if (id === 'close') closeInventory();
 }
 
-function enemyShot(x, y, a, spd, dmg, proj, size = 0.4) {
-  G.projs.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 0.2, life: 5, friendly: false, dmg, spr: proj, size });
+function enemyShot(x, y, a, spd, dmg, proj, size = 0.4, chill = 0) {
+  G.projs.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 0.2, life: 5, friendly: false, dmg, spr: proj, size, chill });
 }
 
 function updateProjs(dt) {
@@ -615,7 +621,7 @@ function updateProjs(dt) {
       } else {
         const dx = p.x - pr.x, dy = p.y - pr.y, rr = 0.25 + pr.r;
         if (dx * dx + dy * dy < rr * rr && equipReflect(pr)) { vfxImpact(pr.x, pr.y, 0.45, 'steel', 0.8); Sfx.play('blade'); }
-        else if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
+        else if (dx * dx + dy * dy < rr * rr) { hurtPlayer(Math.round(pr.dmg), pr.x - pr.vx * 0.1, pr.y - pr.vy * 0.1); if (pr.chill && p.inv > 0) p.chill = Math.max(p.chill || 0, pr.chill); pr.dead = true; vfxImpact(pr.x, pr.y, 0.45, PROJ_RAMP[pr.spr] || 'impact', 0.8); }
       }
     }
     pr.life -= dt;
@@ -678,7 +684,7 @@ function updateSpawner(dt) {
   const awake = G.enemies.filter(e => !e.dead && !e.sleep).length;
   if (awake >= Math.min(30, 4 + f * 2 + t * 0.03)) return;
   const type = pickType();
-  const n = type === 'bat' ? randi(2, 3) : (Math.random() < Math.min(0.5, t / 400) ? 2 : 1);
+  const pk = ENEMY[type].pack, n = pk ? randi(pk[0], pk[1]) : type === 'bat' ? randi(2, 3) : (Math.random() < Math.min(0.5, t / 400) ? 2 : 1);
   const pos = findSpawn(10, 26, true);
   if (!pos) return;
   for (let i = 0; i < n; i++) spawnEnemy(type, pos[0] + rand(-0.4, 0.4), pos[1] + rand(-0.4, 0.4));
@@ -819,6 +825,11 @@ function updateEnemies(dt) {
     let ax = tx - e.x, ay = ty - e.y;
     const al = Math.hypot(ax, ay) || 0.001; ax /= al; ay /= al;
     let spd = e.spd * (e.slow > 0 ? 0.4 : 1);
+    if (d.charge) { // embestida: cada pocos segundos, si te ve a media distancia, carga a toda velocidad
+      e.chargeCd = (e.chargeCd ?? rand(1, d.charge.cd)) - dt; e.chargeT = (e.chargeT || 0) - dt;
+      if (e.chargeCd <= 0 && e.los && dist > d.charge.min && dist < d.charge.max && !stunned) { e.chargeCd = d.charge.cd; e.chargeT = d.charge.dur; Sfx.play('roar'); }
+      if (e.chargeT > 0) spd *= d.charge.mul;
+    }
     if (stunned) spd = 0;
     if (hidden && !ally) { ax = Math.cos(e.wob * 0.2 + e.walk); ay = Math.sin(e.wob * 0.2 + e.walk); spd *= 0.3; }
     if (d.ranged && e.los && !ally) {
@@ -840,7 +851,9 @@ function updateEnemies(dt) {
         ally.hp -= d.dmg * e.dmgM; ally.flash = 0.1; e.atk = 0.9;
         if (ally.hp <= 0) allyKill(ally);
       } else if (dist < d.r + 0.5 && !hidden) {
+        const hp0 = p.hp;
         hurtPlayer(Math.round(d.dmg * e.dmgM), e.x, e.y); e.atk = d.boss ? 1.1 : 0.9;
+        if (d.bite && p.hp < hp0) { p.poisT = Math.max(p.poisT || 0, d.bite.poison); p.poisDps = d.bite.dps * e.dmgM; }
       }
     }
     // ataque a distancia
@@ -848,7 +861,8 @@ function updateEnemies(dt) {
       e.shoot -= dt;
       if (e.shoot <= 0 && e.los && dist < 14) {
         e.shoot = d.ranged.cd * rand(0.85, 1.2);
-        enemyShot(e.x, e.y, Math.atan2(dy, dx), d.ranged.spd, d.ranged.dmg * e.dmgM, d.ranged.proj);
+        const n = d.ranged.spread || 1, a0 = Math.atan2(dy, dx);
+        for (let k = 0; k < n; k++) enemyShot(e.x, e.y, a0 + (k - (n - 1) / 2) * 0.22, d.ranged.spd, d.ranged.dmg * e.dmgM, d.ranged.proj, 0.4, d.ranged.chill || 0);
         Sfx.play('enemyShoot');
       }
     }
@@ -1130,7 +1144,7 @@ function updatePlayer(dt) {
   const mx = dX * f + rX * s, my = dY * f + rY * s;
   p.moveAmt = len > 0 ? 1 : 0;
   const k = Math.min(1, dt * 14);
-  const spd = p.spd * (p.wantBlock && p.off === 'shield' && WEAPONS[p.weapon].hands === 1 ? 0.55 : 1);
+  const spd = p.spd * (p.wantBlock && p.off === 'shield' && WEAPONS[p.weapon].hands === 1 ? 0.55 : 1) * (p.chill > 0 ? 0.6 : 1);
   p.vx += (mx * spd - p.vx) * k; p.vy += (my * spd - p.vy) * k;
   if (p.dashT > 0) {
     p.dashT -= dt;
@@ -1141,6 +1155,8 @@ function updatePlayer(dt) {
   if (len > 0) { const ob = p.bob; p.bob += dt * 9 * (p.spd / 3.6); if (Math.floor(ob / Math.PI) !== Math.floor(p.bob / Math.PI)) Sfx.play('step'); }
   if (offhandOf(p) === 'torch' && Math.random() < dt * 2.5) Sfx.play('crackle');
   p.inv -= dt; p.dashCd -= dt; p.shootCd -= dt; p.anim = Math.max(0, p.anim - dt * 5);
+  if (p.chill > 0) p.chill -= dt;
+  if (p.poisT > 0) { p.poisT -= dt; p.hp -= (p.poisDps || 2) * dt; if (Math.random() < dt * 5) burst(p.x, p.y, 0.6, 1, rgb(120, 220, 70), 0.8, 0.5); if (p.hp <= 0) { p.hp = 0; die(); } }
   for (let i = 0; i < 3; i++) p.skillCd[i] -= dt;
   const rg = p.regen + p.regenPct * p.maxHp;
   if (rg > 0) p.hp = Math.min(p.maxHp, p.hp + rg * dt);

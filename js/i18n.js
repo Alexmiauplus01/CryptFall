@@ -33,7 +33,7 @@ const EN_DATA = {
   spells: { arcane: 'Arcane', fire: 'Fire', ice: 'Ice', bolt: 'Lightning', nature: 'Nature', plague: 'Plague', dark: 'Shadow', holy: 'Light' },
   weapons: { staff: 'Staff', sword: 'Sword', greatsword: 'Greatsword', dagger: 'Dagger', daggers: 'Twin daggers', bow: 'Bow', claws: 'Claws' },
   allies: { wolf: 'Wolf', bear: 'Bear', spider: 'Spider', shadow: 'Shadow', fiend: 'Demon' },
-  enemies: { skeleton: 'Skeleton', bat: 'Bat', slime: 'Slime', wraith: 'Wraith', imp: 'Imp', ghost: 'Ghost', zombie: 'Ghoul', cultist: 'Acolyte', spider: 'Spider', hound: 'Hellhound', eye: 'Void eye', lich: 'THE LICH', queen: 'THE SPIDER QUEEN', voidlord: 'THE PRIMORDIAL EYE', boss: 'THE GUARDIAN' },
+  enemies: { skeleton: 'Skeleton', bat: 'Bat', slime: 'Slime', wraith: 'Wraith', imp: 'Imp', ghost: 'Ghost', zombie: 'Ghoul', cultist: 'Acolyte', spider: 'Spider', hound: 'Hellhound', eye: 'Void eye', yeti: 'Yeti', icewisp: 'Frost wisp', rat: 'Mutant rat', deepwarrior: 'Deep warrior', deepmage: 'Deep sorcerer', lich: 'THE LICH', queen: 'THE SPIDER QUEEN', voidlord: 'THE PRIMORDIAL EYE', boss: 'THE GUARDIAN' },
   upg: {
     might: ['Arcane Power', '+20% spell damage'], haste: ['Haste', '+15% casting speed'], multi: ['Multishot', '+1 projectile per cast'],
     pierce: ['Piercing', 'Spells pierce +1 more enemy'], speed: ['Light Feet', '+10% movement speed'], vit: ['Vitality', '+30 max health and healing'],
