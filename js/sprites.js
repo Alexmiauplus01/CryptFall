@@ -572,6 +572,16 @@ function loadAssets() {
     // lobo y oso enemigos: los de Pixellab (los de tus invocaciones) en un tono más oscuro
     if (SPR.wolf && SPR.wolf.px) SPR.wolfE = [darkBeast(SPR.wolf, 0, 0.58), darkBeast(SPR.wolf, -1, 0.58)];
     if (SPR.bear && SPR.bear.px) SPR.bearE = [darkBeast(SPR.bear, 0, 0.62), darkBeast(SPR.bear, -1, 0.62)];
+    // enemigos normales de Pixellab (assets/pixellab/enemy_<id>.png) en lugar de los dibujados por código;
+    // dos fotogramas con un leve vaivén (el gusano usa enemy_worm_open.png para la boca abierta)
+    for (const id of Object.keys(ENEMY)) {
+      const s = SPR['enemy_' + id], d = ENEMY[id];
+      if (!s || d.boss || id === 'ghost') continue;
+      SPR[d.spr] = id === 'worm' && SPR.enemy_worm_open ? [s, SPR.enemy_worm_open] : [s, bobSprite(s, -1)];
+    }
+    // murciélago vampiro y espectro maligno: si no tienen sprite propio, se tiñen a partir del nuevo
+    if (SPR.enemy_bat && !SPR.enemy_vampbat) SPR.vampbat = SPR.bat.map(s => tintSprite(s, [1.5, 0.45, 0.5], false));
+    if (SPR.enemy_wraith && !SPR.enemy_malevolent) SPR.malevolent = SPR.wraith.map(s => tintSprite(s, [1.6, 0.35, 0.45], true));
     // jefes de Pixellab (si existen) en lugar de los dibujados por código
     for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
@@ -1145,6 +1155,11 @@ function darkBeast(spr, bob, k) {
     const l = (r + g + b) / 3, m = k * 0.85;
     px[yy * w + x] = rgb((r * 0.8 + l * 0.2) * m + 4, (g * 0.8 + l * 0.2) * m + 2, (b * 0.8 + l * 0.2) * m + 4, a);
   }
+  return { w, h, px, flash: px };
+}
+function bobSprite(spr, dy) {
+  const w = spr.w, h = spr.h, px = new Uint32Array(w * h);
+  for (let y = 0; y < h; y++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let x = 0; x < w; x++) px[yy * w + x] = spr.px[y * w + x]; }
   return { w, h, px, flash: px };
 }
 function ghostly(spr, frame, red) {

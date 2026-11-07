@@ -25,7 +25,7 @@ table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}th,td{bord
 .sw{display:flex;gap:3px;margin-bottom:6px}.sw i{width:22px;height:14px;border-radius:3px}.where{color:#9ec3e6;font-size:13px}.todo-list li{margin:6px 0}
 @media (max-width:640px){.card.cls,.card.set{flex-direction:column}.grid.wide{grid-template-columns:1fr}}
 </style></head><body>
-<header><h1>CÓDICE DE CRYPTFALL</h1><p>Todo lo que hay en el juego, generado a partir de sus datos. Versión del juego 893d0dd · actualizado el 7/11/2026, 11:28:14.</p></header>
+<header><h1>CÓDICE DE CRYPTFALL</h1><p>Todo lo que hay en el juego, generado a partir de sus datos. Versión del juego 1f39955 · actualizado el 7/11/2026, 23:05:32.</p></header>
 <nav><div class="in"><button data-t="resumen" class="on">Resumen</button><button data-t="clases" class="">Clases</button><button data-t="habilidades" class="">Habilidades</button><button data-t="objetos" class="">Objetos</button><button data-t="legendarios" class="">Legendarios y sets</button><button data-t="bestiario" class="">Bestiario</button><button data-t="jefes" class="">Jefes</button><button data-t="mundo" class="">Mundo</button><button data-t="pendiente" class="">Pendiente</button></div></nav>
 <main><section id="resumen" class="on">
     <div class="stats"><div class="stat"><b>21</b><span>Clases</span></div><div class="stat"><b>97</b><span>Habilidades</span></div><div class="stat"><b>30</b><span>Enemigos</span></div><div class="stat"><b>7</b><span>Jefes</span></div><div class="stat"><b>7</b><span>Temáticas</span></div><div class="stat"><b>17</b><span>Salas especiales</span></div><div class="stat"><b>41</b><span>Legendarios</span></div><div class="stat"><b>7</b><span>Sets</span></div></div>
@@ -361,7 +361,7 @@ table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}th,td{bord
       <li><b>Enemigos con sprite provisional (26):</b> Esqueleto, Murciélago, Légamo, Espectro, Diablillo, Fantasma, Necrófago, Acólito, Can infernal, Ojo del vacío, Yeti, Fuego fatuo helado, Rata mutante, Guerrero abisal, Hechicero abisal, Engendro vampírico, Vampiro noble, Murciélago vampiro, Nigromante, Furia, Espectro maligno, Goblin, Goblin arquero, Arpía, Orco, Gusano gigante</li>
       <li><b>Mentor:</b> hecho (Pixellab)</li>
       <li><b>Yunque del herrero:</b> hecho</li></ul>
-    <h2>Cola diaria de Pixellab</h2><ol><li>Mano del caballero mágico y yunque</li><li>Los jefes</li><li>Aspectos del resto de clases</li></ol></section></main>
+    <h2>Cola diaria de Pixellab</h2><ol><li>Los jefes que faltan</li><li>Enemigos normales</li><li>Aspectos del resto de clases</li></ol></section></main>
 <script>
 const show=(id)=>{document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id===id));try{localStorage.setItem('codexTab',id)}catch(e){}};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{show(b.dataset.t);scrollTo(0,0)});
