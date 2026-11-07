@@ -166,7 +166,7 @@ function setClass(id, evolving) {
 
 function newRun(cls) {
   G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
-  G.upg = {}; G.pasOn = []; G.learn = null; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
+  G.upg = {}; G.pasOn = []; G.learn = null; G.dgScale = null; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
   G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
   G.p.hp = G.p.maxHp;
@@ -184,11 +184,13 @@ function newRun(cls) {
 function newDungeon(n) {
   G.dg = new Dungeon(n);
   G.lv = null; G.loot = 0; G.keys = []; G.journal = []; G.jpage = -1; G.arena = null; G.boss = null; G.t = 0;
+  G.waveT = 0; G.waveN = 0; // las oleadas solo vuelven a cero al cambiar de mazmorra
+  scaleToPlayer(); // los enemigos de esta mazmorra se ajustan a tus estadísticas actuales
   for (const z of G.dg.zs) populateLevel(G.dg.lv(z));
   placeGhost(G.dg); G.elite = null; G.phoenixUsed = false; G.phylUsed = false; G.raiseT = undefined; G.unbreakT = 0;
   enterLevel(G.dg.start.z, G.dg.start, true);
   jot('start', `Llego a ${G.dg.name}. Dicen que sus niveles guardan riquezas olvidadas... y un Guardián. Debo salir con vida y con el botín.`);
-  if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); }
+  if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); logMsg(`Los enemigos se miden contigo: vida x${G.dgScale.hp.toFixed(2)} · daño x${G.dgScale.dmg.toFixed(2)}`, C.red); }
 }
 
 // celda libre aleatoria dentro de una sala (lejos de puertas, pinchos y columnas)
@@ -288,7 +290,6 @@ function enterLevel(z, at, first) {
   p.x = at.x; p.y = at.y; p.a = at.a; p.vx = p.vy = 0;
   G.allies.forEach(a => { a.x = p.x + rand(-0.4, 0.4); a.y = p.y + rand(-0.4, 0.4); if (lv.blocked(a.x, a.y, 0.25)) { a.x = p.x; a.y = p.y; } });
   G.spawnT = 6; G.flowT = 0; G.touchCd = 0.6; G.fade = first ? 0 : 1;
-  G.waveT = 0; G.waveN = 0; // las oleadas empiezan de cero en cada piso
   lv.flowField(p.x, p.y, G.flow);
   if (!first && G.state !== 'title') {
     toast(levelName(z).toUpperCase(), true); toast(G.theme.name.toUpperCase(), false);
@@ -765,16 +766,34 @@ function pickType() {
   return 'skeleton';
 }
 
-// cada mazmorra nueva es más dura por sí misma, además de la profundidad y el tiempo
-const DG_HP = 0.25, DG_DMG = 0.06;
+// Enemigos a tu medida: al entrar en cada mazmorra se toman tus estadísticas (daño, cadencia, críticos, vida, armadura)
+// y se comparan con las de tu clase recién empezada. Los enemigos crecen en la misma proporción y siempre un 25% más:
+// su vida sigue a tu daño y su daño sigue a tu aguante. Nunca baja de una mazmorra a la siguiente.
+const DG_EDGE = 1.25;
+function playerPower(p) {
+  const off = p.dmgMul * p.rate * (1 + p.crit) * (1 + 0.5 * ((p.multi || 1) - 1)) * (1 + (p.leech || 0));
+  const def = p.maxHp / Math.max(0.2, p.armor) * (1 + (p.regen || 0) / 10);
+  return { off, def };
+}
+function classBasePower(cls) {
+  const cm = classMods(lineageOf(cls)[0]);
+  return { off: cm.dmg * cm.rate * (1.05 + cm.crit) * (1 + cm.leech), def: 100 * cm.hp / Math.max(0.2, cm.armor) };
+}
+function scaleToPlayer() {
+  const p = G.p; if (!p || !p.base) return;
+  const buffs = p.buffs; p.buffs = []; applyStats(); // sin mejoras temporales (Furia, Piel de hierro...)
+  const now = playerPower(p); p.buffs = buffs; applyStats();
+  const b = classBasePower(p.cls), prev = G.dgScale || { hp: 0, dmg: 0 };
+  G.dgScale = { hp: Math.max(prev.hp, DG_EDGE * Math.max(1, now.off / b.off)), dmg: Math.max(prev.dmg, DG_EDGE * Math.max(1, now.def / b.def)) };
+}
 function spawnEnemy(type, x, y) {
-  const d = ENEMY[type], diff = (G.floor - 1) + Math.min(3, G.t / 120), dk = G.dg ? G.dg.n - 1 : 0;
-  let hp = d.hp * (1 + 0.4 * diff) * (1 + DG_HP * dk);
-  if (d.boss) hp = d.hp * (1 + 0.75 * (G.floor - 1)) * (1 + DG_HP * dk);
+  const d = ENEMY[type], diff = (G.floor - 1) + Math.min(3, G.t / 120), sc = type === 'ghost' ? { hp: 1, dmg: 1 } : (G.dgScale || { hp: DG_EDGE, dmg: DG_EDGE });
+  let hp = d.hp * (1 + 0.4 * diff) * sc.hp;
+  if (d.boss) hp = d.hp * (1 + 0.75 * (G.floor - 1)) * sc.hp;
   const e = {
     type, def: d, x, y, hp, maxHp: hp,
     spd: d.spd * Math.min(1.45, 1 + 0.04 * diff) * rand(0.92, 1.08),
-    dmgM: 1 + 0.14 * diff + DG_DMG * dk, atk: rand(0, 0.6), flash: 0, slow: 0, shoot: rand(0.8, 2), los: false, losT: 0,
+    dmgM: (1 + 0.14 * diff) * sc.dmg, atk: rand(0, 0.6), flash: 0, slow: 0, shoot: rand(0.8, 2), los: false, losT: 0,
     wob: rand(0, TAU), bladeCd: 0, kx: 0, ky: 0, ring: 6, walk: rand(0, 2),
   };
   G.enemies.push(e);
@@ -809,8 +828,8 @@ function updateSpawner(dt) {
   for (let i = 0; i < n; i++) spawnEnemy(type, pos[0] + rand(-0.4, 0.4), pos[1] + rand(-0.4, 0.4));
 }
 
-// Oleadas: cada 2 minutos en el mismo piso llega una horda desde un punto al azar, cada vez mayor y más dura.
-// El contador vuelve a 0 al cambiar de piso o de mazmorra.
+// Oleadas: cada 2 minutos llega una horda desde un punto al azar del piso en el que estés, cada vez mayor y más dura.
+// El contador sigue al cambiar de piso y solo vuelve a 0 al entrar en otra mazmorra.
 const WAVE_EVERY = 120, WAVE_WARN = 10;
 function updateWaves(dt) {
   if (G.arena || (G.boss && !G.boss.dead && !G.boss.sleep)) return; // no interrumpe la pelea con el jefe

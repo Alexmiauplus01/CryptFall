@@ -339,6 +339,7 @@ const EN_UI = {
 };
 // patrones para textos con números o nombres dentro (los grupos se traducen también)
 const EN_RX = [
+  [/^LOS ENEMIGOS SE MIDEN CONTIGO: VIDA X([\d.]+) · DAÑO X([\d.]+)$/, 'ENEMIES MEASURE UP TO YOU: HEALTH X$1 · DAMAGE X$2'],
   [/^CADA CAMBIO: (\d+) ORO · TIENES (\d+)$/, 'EACH CHANGE: $1 GOLD · YOU HAVE $2'], 
   [/^NIVEL ([+-]?\d+)$/, 'LEVEL $1'], [/^NV (\d+) (.+)$/, 'LV $1 $2'], [/^NV (\d+)\/3$/, 'LV $1/3'], [/^NV (\d+)$/, 'LV $1'], [/^BOTÍN (\d+)$/, 'LOOT $1'], [/^BOTÍN: (\d+) ORO$/, 'LOOT: $1 GOLD'],
   [/^BASTÓN DE (.+)$/, '$1 STAFF'], [/^ARCO DE (.+)$/, '$1 BOW'], [/^ANTORCHA (\d+:\d+)$/, 'TORCH $1'], [/^ANTORCHAS X(\d+)(.*)$/, 'TORCHES X$1$2'], [/^POCIONES X(\d+)$/, 'POTIONS X$1'],

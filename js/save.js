@@ -46,7 +46,7 @@ function saveRun() {
     player: { cls: p.cls, lvl: p.lvl, xp: p.xp, hp: p.hp, slot: p.slot, off: p.off, torchFuel: p.torchFuel, form: p.form, x: p.x, y: p.y, a: p.a, known: p.known, active: p.active },
     pasOn: G.pasOn,
     upg: G.upg, forge: G.forge, inv: G.inv, equip: G.equip, phoenixUsed: !!G.phoenixUsed, phylUsed: !!G.phylUsed, keys: G.keys, loot: G.loot, bank: G.bank, kills: G.kills, totalTime: G.totalTime, t: G.t,
-    journal: G.journal, met: G.met, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
+    journal: G.journal, met: G.met, dgScale: G.dgScale, waveT: G.waveT || 0, waveN: G.waveN || 0, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
     dg: { n: G.dg.n, name: G.dg.name, zs: G.dg.zs, start: G.dg.start, lockRooms: G.dg.lockRooms.map(c => ({ z: c.z, ri: c.ri })) },
     z: G.z, levels: G.dg.zs.map(z => packLevel(G.dg.lv(z), G.dg.lv(z) === G.lv)),
   };
@@ -79,9 +79,10 @@ function loadRun() {
   G.dg = dg; G.floor = dg.diff(d.z);
   for (const o of d.levels) dg.levels[o.z] = unpackLevel(o);
   dg.lockRooms = d.dg.lockRooms.map(c => ({ z: c.z, ri: c.ri, r: dg.levels[c.z].rooms[c.ri] }));
-  G.lv = null; G.t = d.t || 0;
+  G.lv = null; G.t = d.t || 0; G.dgScale = d.dgScale || { hp: DG_EDGE * (1 + 0.25 * (d.dg.n - 1)), dmg: DG_EDGE * (1 + 0.06 * (d.dg.n - 1)) };
   G.state = 'play';
   enterLevel(d.z, { x: s.x, y: s.y, a: s.a }, true);
+  G.waveT = d.waveT || 0; G.waveN = d.waveN || 0;
   // si el Guardián estaba despierto, lo vuelve a estar
   if (d.bossSeen) for (const z of dg.zs) for (const e of dg.lv(z).state.enemies.concat(G.enemies)) if (e.def.boss && !e.sleep) G.boss = e;
   toast('CONTINÚAS LA PARTIDA', true); logMsg(`${dg.name}: ${levelName(d.z)}`, C.gold);
