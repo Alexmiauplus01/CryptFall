@@ -138,7 +138,7 @@ function itemPower(src) { const n = G.dg ? G.dg.n : 1; return (1 + 0.1 * (n - 1)
 function makeItem(src, kind, opt = {}) {
   const kinds = itemKinds();
   kind = kind && kinds.includes(kind) ? kind : pick(kinds);
-  let rar = opt.rar || rollRarity(src);
+  let rar = opt.rar || luckyRarity(src, rollRarity(src)); // los pactos y la pesadilla mejoran la suerte
   const P = itemPower(src);
   if (rar === 'legendario') {
     // jefe: una pieza de su set que la clase pueda usar; si no, un legendario suelto

@@ -17,7 +17,7 @@ const THEMES = [
     mortar: [26, 32, 22], moss: [64, 132, 48], mossAmt: 0.55, banner: [40, 100, 46], accent: [110, 24, 18],
     floor: [[82, 86, 70], [70, 76, 62], [94, 94, 76]], tiles: [[72, 84, 64], [56, 64, 58]],
     wood: [[76, 58, 34], [52, 38, 22]], ceil: 'stone', wallStyle: 'brick', altStyle: 'stone',
-    boss: 'queen', fauna: [['spider', 8], ['slime', 3], ['zombie', 3], ['goblin', 4], ['goblinarcher', 2, 0.5], ['harpy', 1.5], ['wolfE', 3], ['bearE', 1.2, 0.5, 15]],
+    boss: 'queen', fauna: [['spider', 8], ['slime', 3], ['zombie', 3], ['goblin', 4], ['goblinarcher', 2, 0.5], ['harpy', 1.5], ['wolfE', 3], ['bearE', 1.2, 0.5, 15], ['shaman', 1.2, 0.4, 10]],
   },
   {
     name: 'Foso Infernal', fog: [16, 4, 2], ambient: [0.07, 0.035, 0.03], glow: [255, 150, 50],
@@ -25,7 +25,7 @@ const THEMES = [
     mortar: [28, 10, 8], moss: [255, 120, 30], mossAmt: 0.0, banner: [30, 22, 24], accent: [150, 20, 12], lava: true,
     floor: [[96, 58, 50], [80, 46, 40], [108, 66, 52]], tiles: [[110, 40, 32], [52, 30, 30]],
     wood: [[70, 36, 24], [44, 22, 16]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick',
-    boss: ['dragon', 'boss'], fauna: [['hound', 6], ['imp', 3, 1], ['fury', 4], ['orc', 3, 0.5]],
+    boss: ['dragon', 'boss'], fauna: [['hound', 6], ['imp', 3, 1], ['fury', 4], ['orc', 3, 0.5], ['shaman', 1, 0.4, 10]],
   },
   {
     name: 'El Vacío', fog: [8, 4, 14], ambient: [0.05, 0.04, 0.08], glow: [225, 120, 255],
@@ -41,7 +41,7 @@ const THEMES = [
     mortar: [40, 48, 60], moss: [225, 240, 255], mossAmt: 0.38, banner: [40, 70, 120], accent: [60, 120, 170],
     floor: [[120, 134, 150], [104, 118, 134], [136, 150, 164]], tiles: [[150, 180, 200], [96, 110, 130]],
     wood: [[90, 80, 76], [60, 52, 50]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'icecrystal',
-    boss: ['lich', 'dragon'], fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['harpy', 4], ['wraith', 3], ['skeleton', 3], ['orc', 1.5], ['wolfE', 4], ['bearE', 1.5, 0.5]],
+    boss: ['lich', 'dragon'], fauna: [['yeti', 5, 0.5], ['icewisp', 6], ['harpy', 4], ['wraith', 3], ['skeleton', 3], ['orc', 1.5], ['wolfE', 4], ['bearE', 1.5, 0.5], ['shaman', 1, 0.4, 10]],
   },
   {
     name: 'Las Cloacas', fog: [6, 8, 3], ambient: [0.045, 0.055, 0.035], glow: [190, 230, 90],
@@ -49,7 +49,7 @@ const THEMES = [
     mortar: [24, 28, 16], moss: [90, 140, 40], mossAmt: 0.6, banner: [60, 80, 30], accent: [100, 90, 30],
     floor: [[70, 74, 56], [60, 64, 48], [82, 84, 62]], tiles: [[64, 80, 52], [50, 58, 42]],
     wood: [[70, 54, 32], [48, 36, 22]], ceil: 'stone', wallStyle: 'brick', altStyle: 'brick', corner: 'crate',
-    boss: 'queen', fauna: [['rat', 8], ['slime', 5], ['zombie', 3], ['spider', 2], ['goblin', 3], ['vampbat', 2]],
+    boss: 'queen', fauna: [['rat', 8], ['slime', 5], ['zombie', 3], ['spider', 2], ['goblin', 3], ['vampbat', 2], ['shaman', 1, 0.4, 10]],
   },
   {
     name: 'El Templo Hundido', fog: [12, 9, 4], ambient: [0.06, 0.05, 0.035], glow: [255, 210, 110],

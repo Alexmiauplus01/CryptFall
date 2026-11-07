@@ -61,7 +61,8 @@ class UI {
     const elite = G.elite && !G.elite.dead && !G.elite.sleep && G.enemies.includes(G.elite) ? G.elite : null;
     if (elite && !(G.boss && !G.boss.dead && !G.boss.sleep && G.enemies.includes(G.boss))) {
       const w = 160, x = cx - w / 2, y = VY + 27;
-      this.text(cx, y, `${elite.def.name.toUpperCase()} · NV ${elite.ghost.lvlNow}`, C.cyan, { align: 'center' });
+      const eTxt = elite.ghost ? `${elite.def.name.toUpperCase()} · NV ${elite.ghost.lvlNow}` : eliteName(elite).toUpperCase(), eCol = elite.elite ? rgb(...ELITE_AFFIX[elite.elite].col) : C.cyan;
+      this.text(cx, y, eTxt, eCol, { align: 'center' });
       this.rect(x, y + 9, w, 6, C.dark);
       const fw = Math.round((w - 4) * Math.max(0, elite.hp / elite.maxHp));
       for (let j = 0; j < 2; j++) this.rect(x + 2, y + 11 + j, fw, 1, [rgb(170, 240, 255), rgb(70, 160, 220)][j]);
@@ -88,7 +89,8 @@ class UI {
     this.darken(BOX_MAP.x, BOX_MAP.y, BOX_MAP.w, BOX_MAP.h, 0.45);
     this.darken(BOX_LOG.x, BOX_LOG.y, BOX_LOG.w, BOX_LOG.h, 0.5);
     this.darken(BOX_STAT.x, BOX_STAT.y, BOX_STAT.w, BOX_STAT.h, 0.5);
-    this.minimap(G); this.log(G); this.stats(G); this.skills(G);
+    if (G.pact !== 'ciego') this.minimap(G);
+    this.log(G); this.stats(G); this.skills(G);
     const pl = 'P' + G.z, pw = textWidth(pl) + 6, px0 = BOX_MAP.x - pw - 2, py0 = BOX_MAP.y + BOX_MAP.h - 13;
     this.darken(px0, py0, pw, 13, 0.45); this.text(px0 + 3, py0 + 3, pl, C.goldL, { shadow: false });
   }
@@ -576,8 +578,8 @@ class UI {
       this.panel(x, y, cw, ch, hot);
       this.text(x + 6, y + 6, `[${id + 1}]`, C.dim);
       if (c.head) this.text(x + cw - 6, y + 6, c.head, c.col, { align: 'right' });
-      wrapText(c.name.toUpperCase(), 16).forEach((t, k) => this.text(x + cw / 2, y + 22 + k * 10, t, c.keep ? C.goldL : C.gold, { align: 'center' }));
-      wrapText(c.desc.toUpperCase(), 16).slice(0, 8).forEach((t, k) => this.text(x + cw / 2, y + 46 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+      wrapText(String(tr(c.name.toUpperCase())), 16).forEach((t, k) => this.text(x + cw / 2, y + 22 + k * 10, t, c.keep ? C.goldL : C.gold, { align: 'center' }));
+      wrapText(String(tr(c.desc.toUpperCase())), 16).slice(0, 8).forEach((t, k) => this.text(x + cw / 2, y + 46 + k * 9, t, C.ink, { align: 'center', shadow: false }));
       if (!c.keep) this.text(x + cw / 2, y + ch - 12, 'SUSTITUIR', C.red, { align: 'center', shadow: false });
     });
     this.text(cx, y + ch + 12, 'LO QUE SUSTITUYAS NO SE PIERDE: EL MENTOR LO GUARDA', C.dim, { align: 'center', shadow: false });
@@ -619,6 +621,27 @@ class UI {
     this.text(cx, VY + VH - 12, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
+  // Pactos: al entrar en una mazmorra nueva, una maldición opcional a cambio de más oro y botín
+  pact(G) {
+    this.darken(VX, VY, VW, VH, 0.75);
+    const cx = VX + VW / 2, ids = G.pactOpts || [];
+    this.text(cx, 16, 'UN PACTO OSCURO', C.red, { align: 'center', scale: 2, grad: RED_GRAD, shadow: 'outline' });
+    this.text(cx, 38, 'ACEPTA UNA MALDICIÓN PARA ESTA MAZMORRA A CAMBIO DE MÁS ORO Y MEJOR BOTÍN', C.dim, { align: 'center' });
+    const cards = ids.map(id => ({ name: PACTS[id].name, desc: PACTS[id].desc, bonus: `+${Math.round(PACTS[id].bonus * 100)}% ORO Y BOTÍN` }));
+    cards.push({ name: 'Sin pacto', desc: 'Entras sin maldiciones', bonus: '', none: true });
+    const cw = 104, ch = 120, gap = 8, x0 = Math.round(cx - (cards.length * cw + (cards.length - 1) * gap) / 2), y = 60;
+    cards.forEach((c, i) => {
+      const x = x0 + i * (cw + gap), hot = this.hit(x, y, cw, ch);
+      this.hot.push({ x, y, w: cw, h: ch, id: i });
+      this.panel(x, y, cw, ch, hot);
+      this.text(x + 6, y + 6, `[${i + 1}]`, C.dim);
+      wrapText(String(tr(c.name.toUpperCase())), 16).forEach((t, k) => this.text(x + cw / 2, y + 22 + k * 10, t, c.none ? C.goldL : C.red, { align: 'center' }));
+      wrapText(String(tr(c.desc.toUpperCase())), 16).forEach((t, k) => this.text(x + cw / 2, y + 48 + k * 9, t, C.ink, { align: 'center', shadow: false }));
+      if (c.bonus) wrapText(String(tr(c.bonus)), 16).forEach((t, k) => this.text(x + cw / 2, y + ch - 22 + k * 9, t, C.gold, { align: 'center', shadow: false }));
+    });
+    if (G.pactNight) this.text(cx, y + ch + 12, 'MODO PESADILLA', C.red, { align: 'center' });
+  }
+
   dead(G) {
     this.darken(VX, VY, VW, VH, 0.35);
     this.flashTint(VX, VY, VW, VH);
@@ -656,7 +679,7 @@ class UI {
     this.text(cx, 20, 'HAS ESCAPADO', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
     this.text(cx, 50, s.name.toUpperCase(), C.dim, { align: 'center' });
     this.statRows(cx, 62, [['BOTÍN', s.loot], ['ORO DE LA PARTIDA', s.bank], ['NIVEL', s.lvl], ['ABATIDOS', s.kills], ['TIEMPO', s.time]]);
-    this.buttons(cx, 148, ['SIGUIENTE MAZMORRA (MÁS DIFÍCIL)', 'RETIRARSE CON EL ORO']);
+    this.buttons(cx, 142, ['SIGUIENTE MAZMORRA (MÁS DIFÍCIL)', 'MODO PESADILLA (DOBLE ORO)', 'RETIRARSE CON EL ORO']);
   }
 
   // Diario: libro antiguo abierto, dos páginas de pergamino; lo resuelto aparece tachado

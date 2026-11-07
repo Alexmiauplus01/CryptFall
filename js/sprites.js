@@ -830,6 +830,7 @@ const HUMANOIDS = {
   vampire:     { skin: [214, 206, 220], cloth: [40, 30, 44], cloth2: [120, 20, 30], eye: [255, 50, 40], fangs: true, hair: [24, 20, 28], cape: [110, 16, 26] },
   necromancer: { skin: [176, 186, 170], cloth: [44, 46, 52], cloth2: [70, 120, 70], eye: [120, 255, 140], hood: [34, 36, 42], weapon: 'staff', glow: [120, 255, 140] },
   fury:        { skin: [200, 70, 70], cloth: [70, 30, 34], cloth2: [40, 16, 20], eye: [255, 220, 60], horns: true, wings: [120, 40, 50], female: true, hair: [30, 14, 16], claws: true },
+  shaman:      { w: 46, h: 58, skin: [96, 140, 70], cloth: [120, 60, 40], cloth2: [70, 40, 26], eye: [140, 255, 150], ears: true, mouth: true, weapon: 'staff', glow: [140, 255, 150], headR: 7, hair: [200, 196, 180] },
   goblin:      { w: 46, h: 54, skin: [110, 160, 70], cloth: [110, 80, 50], cloth2: [80, 56, 34], eye: [255, 220, 40], ears: true, mouth: true, weapon: 'dagger', headR: 7 },
   goblinarcher:{ w: 46, h: 54, skin: [96, 146, 66], cloth: [70, 90, 50], cloth2: [56, 70, 40], eye: [255, 220, 40], ears: true, hood: [60, 80, 44], weapon: 'bow', headR: 7 },
   harpy:       { skin: [214, 170, 140], cloth: [130, 96, 64], cloth2: [96, 70, 46], eye: [255, 210, 40], female: true, hair: [70, 44, 30], wings: [150, 112, 74], talons: true, claws: true },
