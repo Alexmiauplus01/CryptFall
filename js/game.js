@@ -54,7 +54,7 @@ const DECOR = {
   merchant:   { h: 0.95, anim: true },
   smith:      { h: 1.0, anim: true },
   mentor:     { h: 0.98, anim: true },
-  anvil:      { h: 0.34 },
+  anvil:      { h: 0.5 },
   altar:      { h: 0.72, anim: true },
   bookshelf:  { h: 1.15 },
   crate:      { h: 0.5 },
