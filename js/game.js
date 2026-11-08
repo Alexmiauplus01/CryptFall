@@ -43,7 +43,7 @@ const ENEMY = {
   voidlord: { name: 'EL OJO PRIMIGENIO', hp: 500, spd: 1.0, dmg: 16, r: 0.6, h: 1.6, z: 0.2, spr: 'voidlord', xp: 60, boss: true, ai: 'eye' },
   lilith:   { name: 'LILITH', hp: 520, spd: 2.0, dmg: 18, r: 0.45, h: 1.5, z: 0.05, spr: 'lilith', xp: 60, boss: true, ai: 'lilith', drain: 1 },
   cthulhu:  { name: 'CTHULHU', hp: 650, spd: 0.9, dmg: 24, r: 0.7, h: 1.8, z: 0, spr: 'cthulhu', xp: 60, boss: true, ai: 'cthulhu' },
-  dragon:   { name: 'EL DRAGÓN ROJO', hp: 600, spd: 1.5, dmg: 22, r: 0.7, h: 1.6, z: 0, spr: 'dragon', xp: 60, boss: true, ai: 'dragon', charge: { cd: 8, mul: 2.4, dur: 0.9, min: 3, max: 9 } },
+  dragon:   { name: 'EL DRAGÓN ROJO', hp: 600, spd: 1.5, dmg: 22, r: 0.7, h: 1.9, z: 0, spr: 'dragon', xp: 60, boss: true, ai: 'dragon', charge: { cd: 8, mul: 2.4, dur: 0.9, min: 3, max: 9 } },
   boss:     { name: 'EL GUARDIÁN', hp: 520, spd: 1.5, dmg: 22, r: 0.55, h: 1.75, z: 0, spr: 'boss', xp: 60, boss: true },
 };
 const DECOR = {
