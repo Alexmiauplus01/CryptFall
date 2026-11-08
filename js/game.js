@@ -8,7 +8,7 @@ const ui = new UI(canvas);
 const ENEMY = {
   skeleton: { name: 'Esqueleto', hp: 24, spd: 1.75, dmg: 8, r: 0.3, h: 0.95, z: 0, spr: 'skeleton', xp: 1 },
   bat:      { name: 'Murciélago', hp: 9, spd: 3.5, dmg: 5, r: 0.22, h: 0.42, z: 0.32, spr: 'bat', xp: 1, fly: true },
-  slime:    { name: 'Légamo', hp: 46, spd: 1.0, dmg: 12, r: 0.38, h: 0.62, z: 0, spr: 'slime', xp: 3 },
+  slime:    { name: 'Slime', hp: 46, spd: 1.0, dmg: 12, r: 0.38, h: 0.62, z: 0, spr: 'slime', xp: 3 },
   wraith:   { name: 'Espectro', hp: 22, spd: 1.5, dmg: 0, r: 0.3, h: 1.0, z: 0.06, spr: 'wraith', xp: 3, ranged: { cd: 2.6, dmg: 11, spd: 4.2, proj: 'orbGreen', keep: 5.5 } },
   imp:      { name: 'Diablillo', hp: 34, spd: 2.2, dmg: 8, r: 0.3, h: 0.78, z: 0, spr: 'imp', xp: 4, ranged: { cd: 2.0, dmg: 12, spd: 6, proj: 'orbRed', keep: 3.5 } },
   ghost:    { name: 'Fantasma', hp: 200, spd: 2.1, dmg: 12, r: 0.3, h: 1.0, z: 0.05, spr: 'ghost_melee', xp: 15, elite: true },
