@@ -228,6 +228,7 @@ class UI {
       ['toggle', 'BOTONES TÁCTILES', o.bigTouch ? 'GRANDES' : 'NORMALES', 'bigtouch'],
       ['toggle', 'CONTROLES', '>', 'controls'],
     ];
+    if (G.installEvt) rows.push(['toggle', 'INSTALAR COMO APP', '>', 'install']); // solo si el navegador lo ofrece
     if (typeof LANGS !== 'undefined') rows.splice(4, 0, ['toggle', 'IDIOMA', o.lang === 'en' ? 'ENGLISH' : 'ESPAÑOL', 'lang']);
     this.panel(x, y, w, rows.length * rh + 20);
     this.text(x + w / 2, y + 4, 'OPCIONES', C.dim, { align: 'center' });

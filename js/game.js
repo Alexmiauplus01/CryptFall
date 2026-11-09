@@ -1864,6 +1864,7 @@ function applyCfg() {
 }
 function optAction(id) {
   const o = G.cfg;
+  if (id === 'install' && G.installEvt) { const ev = G.installEvt; G.installEvt = null; ev.prompt(); return; }
   if (id === 'sens-') o.sens = Math.max(0.3, Math.round((o.sens - 0.1) * 10) / 10);
   if (id === 'sens+') o.sens = Math.min(3, Math.round((o.sens + 0.1) * 10) / 10);
   if (id === 'vol-') o.vol = Math.max(0, Math.round((o.vol - 0.1) * 10) / 10);
@@ -1932,6 +1933,9 @@ function boot() {
 requestAnimationFrame(() => setTimeout(boot, 30));
 
 // Juego sin conexión: el service worker solo existe en la web publicada (no al abrir el archivo en local)
+// instalar como app: el navegador avisa de que se puede y la opción aparece en el menú de opciones
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); G.installEvt = e; });
+window.addEventListener('appinstalled', () => { G.installEvt = null; });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && document.querySelector('meta[name=version]') && document.querySelector('meta[name=version]').content !== 'dev') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
