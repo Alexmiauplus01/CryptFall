@@ -120,7 +120,7 @@ function bladeAt(k, u, x0, y0, rest, mir = 1) {
   return { gx: x0 + q.x * mir, gy: y0 + q.y, ang: an, sv, s: q.s * f };
 }
 const COMBO = { sw: ['slash', 'rise', 'chop'], gs: ['slash', 'chop', 'rise'], dg: ['slash', 'rise', 'chop'], dual: ['slash', 'slash', 'chop', 'chop'], cl: ['swipe'] };
-const GS_X = 0.70, GS_REST = 0.34; // posición e inclinación del espadón en reposo
+const GS_X = 0.70, GS_REST = 17 * Math.PI / 180, GS_HAND_DOWN = 20; // espadón: posición, inclinación (17°) y cuánto bajan las manos por la empuñadura
 function moveFamily(w) { return w === 'greatsword' ? 'gs' : w === 'dagger' || w === 'daggers' ? 'dg' : w === 'claws' ? 'cl' : 'sw'; }
 function comboMove(w, n) { const c = COMBO[w === 'daggers' ? 'dual' : moveFamily(w)]; return c[n % c.length]; }
 // momento del golpe (mitad del tramo rápido): ahí se aplica el daño
@@ -675,9 +675,12 @@ class Renderer {
       this.hand(p, 1, x0, y0 + hide, rest, lm);
       return;
     }
-    if (big) { // la mano izquierda agarra más arriba de la empuñadura
-      const up = 22 * S2 * sc * sv, lx = gx + Math.sin(ang) * up, ly = gy - Math.cos(ang) * up;
-      this.armHand(p, -1, lx, ly, ang, rest, x0 + Math.sin(rest) * up, y0 - Math.cos(rest) * up, lm);
+    if (big) { // las manos bajan por la empuñadura (asoma el mango bajo la guarda); la izquierda agarra más arriba
+      const dn = GS_HAND_DOWN * sc * sv, hx = gx - Math.sin(ang) * dn, hy = gy + Math.cos(ang) * dn, rx = x0 - Math.sin(rest) * GS_HAND_DOWN, ry = y0 + Math.cos(rest) * GS_HAND_DOWN;
+      const up = 22 * S2 * sc * sv, lx = hx + Math.sin(ang) * up, ly = hy - Math.cos(ang) * up;
+      this.armHand(p, -1, lx, ly, ang, rest, rx + Math.sin(rest) * up, ry - Math.cos(rest) * up, lm);
+      this.armHand(p, 1, hx, hy, ang, rest, rx, ry, lm);
+      return;
     }
     this.armHand(p, 1, gx, gy, ang, rest, x0, y0, lm);
   }
