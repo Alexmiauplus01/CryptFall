@@ -120,6 +120,7 @@ function bladeAt(k, u, x0, y0, rest, mir = 1) {
   return { gx: x0 + q.x * mir, gy: y0 + q.y, ang: an, sv, s: q.s * f };
 }
 const COMBO = { sw: ['slash', 'rise', 'chop'], gs: ['slash', 'chop', 'rise'], dg: ['slash', 'rise', 'chop'], dual: ['slash', 'slash', 'chop', 'chop'], cl: ['swipe'] };
+const GS_X = 0.70, GS_REST = 0.34; // posición e inclinación del espadón en reposo
 function moveFamily(w) { return w === 'greatsword' ? 'gs' : w === 'dagger' || w === 'daggers' ? 'dg' : w === 'claws' ? 'cl' : 'sw'; }
 function comboMove(w, n) { const c = COMBO[w === 'daggers' ? 'dual' : moveFamily(w)]; return c[n % c.length]; }
 // momento del golpe (mitad del tramo rápido): ahí se aplica el daño
@@ -648,8 +649,9 @@ class Renderer {
     const big = W === 'greatsword', dag = W === 'dagger';
     const spr = weaponSprite(W, big ? SPR.greatsword : dag ? SPR.dagger : SPR.sword);
     const grip = big ? [39, 190] : dag ? [23, 80] : [31, 122]; // justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo
-    const rest = big ? -0.08 : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? 190 : dag ? 82 : 125) * S2;
-    const x0 = big ? VW * 0.60 : RGx, y0 = big ? VH - 22 - sideUp + by : RGy;
+    // espadón: a la derecha de la pantalla e inclinado hacia la esquina superior derecha
+    const rest = big ? GS_REST : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? 190 : dag ? 82 : 125) * S2;
+    const x0 = big ? VW * GS_X : RGx, y0 = big ? VH - 22 - sideUp + by : RGy;
     let ang = rest, gx = x0, gy = y0, sc = 1, sv = 1, hide = 0;
     if (p.swing && spin) { // torbellino: las manos se esconden abajo y solo gira el arma
       const k = Math.min(1, sw * 6, (1 - sw) * 6);
