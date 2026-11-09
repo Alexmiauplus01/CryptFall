@@ -111,7 +111,7 @@ class UI {
       else if (v === W_DOWN) c = rgb(210, 110, 255);
       else if (v === W_EXIT) c = rgb(110, 255, 110);
       else if (v === W_BARS) c = rgb(220, 60, 40);
-      else if (lv.at(x - 1, y) === 0 || lv.at(x + 1, y) === 0 || lv.at(x, y - 1) === 0 || lv.at(x, y + 1) === 0) c = v === 5 ? rgb(255, 160, 60) : rgb(150, 110, 60);
+      else if (lv.at(x - 1, y) === 0 || lv.at(x + 1, y) === 0 || lv.at(x, y - 1) === 0 || lv.at(x, y + 1) === 0) c = rgb(150, 110, 60); // las antorchas de pared no se marcan
       else continue;
       this.rect(b.x + i * cw, b.y + j * cw, cw, cw, c);
     }
@@ -438,14 +438,14 @@ class UI {
       else if (v === W_DOWN) cell(x, y, rgb(210, 110, 255));
       else if (v === W_EXIT) cell(x, y, rgb(110, 255, 110));
       else if (v === W_BARS) cell(x, y, rgb(220, 60, 40));
-      else if (lv.at(x - 1, y) === 0 || lv.at(x + 1, y) === 0 || lv.at(x, y - 1) === 0 || lv.at(x, y + 1) === 0) cell(x, y, v === 5 ? rgb(255, 160, 60) : rgb(52, 38, 28));
+      else if (lv.at(x - 1, y) === 0 || lv.at(x + 1, y) === 0 || lv.at(x, y - 1) === 0 || lv.at(x, y + 1) === 0) cell(x, y, rgb(52, 38, 28)); // las antorchas de pared no se marcan
     }
     const mark = (wx, wy, c, s) => { const sx = Math.round(ox + wx * cs - s / 2), sy = Math.round(oy + wy * cs - s / 2); this.rect(sx - 1, sy - 1, s + 2, s + 2, C.dark); this.rect(sx, sy, s, s, c); };
     const isSeen = (x, y) => seen[Math.floor(y) * MW + Math.floor(x)];
     const pk = cur ? G.pickups : lv.state.pickups;
     for (const k of pk) if (isSeen(k.x, k.y)) { if (k.type === 'chest' && !k.open) mark(k.x, k.y, C.gold, Math.max(3, cs - 1)); else if (k.type === 'key') mark(k.x, k.y, C.cyan, Math.max(3, cs - 1)); }
     for (const sh of lv.shrines) if (!sh.used && isSeen(sh.x, sh.y)) mark(sh.x, sh.y, C.blue, Math.max(3, cs - 1));
-    for (const n of lv.npcs) if (isSeen(n.x, n.y)) { const nc = n.type === 'merchant' ? C.green : n.type === 'mentor' ? C.cyan : C.orange; mark(n.x, n.y, nc, Math.max(4, cs)); this.text(Math.round(ox + n.x * cs) + 4, Math.round(oy + n.y * cs) - 3, n.type === 'merchant' ? 'M' : n.type === 'mentor' ? 'MT' : 'H', nc); }
+    for (const n of lv.npcs) if (isSeen(n.x, n.y)) { const nc = n.type === 'merchant' ? C.green : n.type === 'mentor' ? rgb(255, 120, 200) : C.orange; mark(n.x, n.y, nc, Math.max(4, cs)); this.text(Math.round(ox + n.x * cs) + 4, Math.round(oy + n.y * cs) - 3, n.type === 'merchant' ? 'M' : n.type === 'mentor' ? 'MT' : 'H', nc); }
     if (cur) { // jugador: punto y flecha
       const pcx = ox + p.x * cs, pcy = oy + p.y * cs;
       for (let t = 0; t < 7; t++) this.px(Math.round(pcx + Math.cos(p.a) * t), Math.round(pcy + Math.sin(p.a) * t), t < 3 ? rgb(255, 255, 255) : C.goldL);
@@ -455,7 +455,7 @@ class UI {
     this.text(12, 8, `MAPA · ${levelName(z).toUpperCase()}`, C.gold, { scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
     const lx = VW - 128;
     this.text(lx, 10, G.dg.name.toUpperCase().slice(0, 21), C.dim, { shadow: false });
-    const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO'], [C.cyan, 'MT MENTOR']];
+    const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO'], [rgb(255, 120, 200), 'MT MENTOR']];
     leg.forEach(([c, t], i) => { this.rect(lx, 30 + i * 12, 6, 6, c); this.text(lx + 10, 30 + i * 12, t, C.ink, { shadow: false }); });
     const vis = G.dg.zs.filter(q => G.dg.lv(q).visited);
     this.text(lx, 30 + leg.length * 12 + 8, 'NIVELES:', C.dim, { shadow: false });
