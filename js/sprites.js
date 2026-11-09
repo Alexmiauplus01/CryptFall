@@ -577,7 +577,8 @@ function loadAssets() {
     for (const id of Object.keys(ENEMY)) {
       const s = SPR['enemy_' + id], d = ENEMY[id];
       if (!s || d.boss || id === 'ghost') continue;
-      SPR[d.spr] = id === 'worm' && SPR.enemy_worm_open ? [s, SPR.enemy_worm_open] : [s, bobSprite(s, -1)];
+      const t = trimSprite(s); // sin márgenes vacíos: la altura h del enemigo es la del dibujo
+      SPR[d.spr] = id === 'worm' && SPR.enemy_worm_open ? [t, trimSprite(SPR.enemy_worm_open)] : [t, bobSprite(t, -1)];
     }
     // murciélago vampiro y espectro maligno: si no tienen sprite propio, se tiñen a partir del nuevo
     if (SPR.enemy_bat && !SPR.enemy_vampbat) SPR.vampbat = SPR.bat.map(s => tintSprite(s, [1.5, 0.45, 0.5], false));
@@ -1156,6 +1157,15 @@ function darkBeast(spr, bob, k) {
     const l = (r + g + b) / 3, m = k * 0.85;
     px[yy * w + x] = rgb((r * 0.8 + l * 0.2) * m + 4, (g * 0.8 + l * 0.2) * m + 2, (b * 0.8 + l * 0.2) * m + 4, a);
   }
+  return { w, h, px, flash: px };
+}
+function trimSprite(spr, pad = 1) {
+  let x0 = spr.w, y0 = spr.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) if (spr.px[y * spr.w + x] >>> 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return spr;
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(spr.w - 1, x1 + pad); y1 = Math.min(spr.h - 1, y1 + pad);
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, px = new Uint32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = spr.px[(y + y0) * spr.w + x + x0];
   return { w, h, px, flash: px };
 }
 function bobSprite(spr, dy) {
