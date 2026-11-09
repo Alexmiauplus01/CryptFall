@@ -46,6 +46,7 @@ function pollPad(dt) {
   const any = b.some(Boolean) || lx || ly || rx;
   if (any && !PAD.active) { PAD.active = true; G.padMode = true; Sfx.init(); applyBindings(); }
   if (!PAD.active) return;
+  if (G.state === 'splash') { if (b.some((v, k) => v && !was[k])) endSplash(); return; }
   const p = G.p;
   // reasignando un botón: el siguiente que se pulse queda asignado
   if (G.rebind && G.rebind.dev === 'pad') { const i = b.findIndex((v, k) => v && !was[k]); if (i >= 0) { rebind('pad', G.rebind.id, i); G.rebind = null; Sfx.play('gem'); } return; }

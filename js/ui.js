@@ -643,6 +643,21 @@ class UI {
     if (G.pactNight) this.text(cx, y + ch + 12, 'MODO PESADILLA', C.red, { align: 'center' });
   }
 
+  // Presentación: el gato del estudio abre y cierra la boca (cerrada, media, abierta) y debajo el autor
+  splash(G) {
+    const t = G.splashT || 0, cx = VX + VW / 2, s = 3;
+    const ph = (t % 1.2) / 1.2, o = ph < 0.25 ? 0 : ph < 0.33 ? 1 : ph < 0.75 ? 2 : ph < 0.83 ? 1 : 0;
+    const spr = SPR['studio_cat_' + o] || SPR.studio_cat_0;
+    if (spr) {
+      const w = spr.w * s, x0 = Math.round(cx - w / 2), y0 = 40;
+      for (let y = 0; y < spr.h * s; y++) for (let x = 0; x < w; x++) { const v = spr.px[Math.floor(y / s) * spr.w + Math.floor(x / s)]; if (v >>> 24) this.px(x0 + x, y0 + y, v | 0xFF000000); }
+    }
+    this.text(cx, 202, 'GAME MADE BY', C.dim, { align: 'center', shadow: false });
+    this.text(cx, 216, 'ALEXMIAUPLUS01', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    const a = Math.min(1, t / 0.5, (SPLASH_TIME - t) / 0.5); // aparece y se funde a negro
+    if (a < 1) this.darken(VX, VY, VW, VH, 1 - Math.max(0, a));
+  }
+
   dead(G) {
     this.darken(VX, VY, VW, VH, 0.35);
     this.flashTint(VX, VY, VW, VH);

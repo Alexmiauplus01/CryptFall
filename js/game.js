@@ -1662,6 +1662,7 @@ function dynLights() {
 
 function render() {
   const p = G.p;
+  if (G.state === 'splash') { R.buf.fill(0xFF000000); ui.begin(R.buf); ui.splash(G); ui.end(); return; }
   if (!G.lv) return;
   const sh = G.cfg && G.cfg.noShake ? 0 : G.shake * 3;
   const hasTorch = offhandOf(p) === 'torch', vis = classPassive(p.cls, 'vision', 0.4);
@@ -1713,6 +1714,7 @@ function render() {
 
 // ---------------------------------------------------------------- Entrada y bucle
 document.addEventListener('keydown', (ev) => {
+  if (G.state === 'splash') { ev.preventDefault(); endSplash(); return; }
   if (ev.code === 'Tab' || ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
   // reasignando un control: la siguiente tecla queda asignada (Escape cancela)
   if (G.rebind && G.rebind.dev === 'key') { if (ev.code !== 'Escape') rebind('key', G.rebind.id, ev.code); G.rebind = null; Sfx.play('gem'); return; }
@@ -1774,6 +1776,8 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mousedown', (e) => { const m = toCanvas(e); handleClick(m.x, m.y, e.button); });
 // un clic (o un toque en pantallas táctiles) en coordenadas del lienzo
 function handleClick(x, y, button = 0) {
+  if (G.state === 'splash') { endSplash(); return; }
+  if (G.splashSkip && G.time - G.splashSkip < 0.25) return; // el mismo toque que salta la presentación no pulsa el título
   ui.mouse.x = x; ui.mouse.y = y;
   const e = { button };
   switch (G.state) {
@@ -1905,12 +1909,16 @@ function frame(now) {
   for (const t of G.toasts) t.t -= dt;
   G.toasts = G.toasts.filter(t => t.t > 0);
   if (typeof pollPad === 'function') pollPad(dt);
+  if (G.state === 'splash') { G.splashT += dt; if (G.splashT >= SPLASH_TIME) endSplash(); }
   if (G.state === 'play') update(dt);
   else if (G.state === 'title' || G.state === 'options') G.p.a += dt * 0.2;
   render();
 }
 
 // ---------------------------------------------------------------- Inicio
+// pantalla de presentación: el gato del estudio rugiendo y el autor; cualquier tecla, clic, toque o botón la salta
+const SPLASH_TIME = 4;
+function endSplash() { if (G.state !== 'splash') return; G.state = 'title'; G.splashT = 0; G.splashSkip = G.time; }
 // arranque diferido: deja pintar el aviso de carga antes de generar texturas y mazmorra
 function boot() {
   G.meta = loadJSON('cryptfall_meta', { gold: 0, escapes: 0, deaths: 0, bestLoot: 0, bestDepth: 0 });
@@ -1924,6 +1932,7 @@ function boot() {
   newDungeon(1);
   loadAssets().then(() => {
     const ld = document.getElementById('loading'); if (ld) ld.remove();
+    if (SPR.studio_cat_0) { G.state = 'splash'; G.splashT = 0; }
     requestAnimationFrame(frame);
   }).catch((e) => {
     const ld = document.getElementById('loading'); if (ld) ld.textContent = 'No se pudo cargar el juego: ' + e.message;
