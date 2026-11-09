@@ -171,7 +171,7 @@ class UI {
   title(G) {
     this.darken(VX, VY, VW, VH, 0.55);
     const cx = VX + VW / 2;
-    this.text(cx, 30, 'CRYPTFALL', C.gold, { align: 'center', scale: 5, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 30, 'HEXCRYPT', C.gold, { align: 'center', scale: 5, grad: GOLD_GRAD, shadow: 'outline' });
     this.text(cx, 76, 'ENTRA. SAQUEA. SAL CON VIDA.', C.dim, { align: 'center' });
     const px = cx - 120, py = 80;
     this.panel(px, py, 240, 127);

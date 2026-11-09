@@ -1,6 +1,6 @@
 {
-  "name": "CRYPTFALL",
-  "short_name": "Cryptfall",
+  "name": "HEXCRYPT",
+  "short_name": "HexCrypt",
   "description": "Roguelike en primera persona estilo pixel art: entra en mazmorras de varios niveles, saquea y sal con vida.",
   "lang": "es",
   "start_url": "./",
