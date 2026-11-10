@@ -337,33 +337,6 @@ function drawScreenVfx(R) {
   }
 }
 
-// Media luna de un corte (receta "slash"): borde blanco, bandas de color hacia dentro y hacia la cola
-function drawSlash(R, gx, gy, angFrom, angTo, L, age, rampName = 'steel') {
-  // media luna más fina: el grosor máximo es un 38% de la hoja
-  const ramp = VR[rampName] || VR.steel, n = ramp.length;
-  const lo = Math.min(angFrom, angTo), hi = Math.max(angFrom, angTo), span = hi - lo;
-  if (span < 0.05) return;
-  const rOut = L * 1.04, rInMin = L * 0.66;
-  const buf = R.buf;
-  const x0 = Math.max(0, Math.floor(gx - rOut)), x1 = Math.min(VW - 1, Math.ceil(gx + rOut));
-  const y0 = Math.max(0, Math.floor(gy - rOut)), y1 = Math.min(VH - 1, Math.ceil(gy + rOut * 0.3));
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-    const dx = x + 0.5 - gx, dy = y + 0.5 - gy, r = Math.hypot(dx, dy);
-    if (r > rOut || r < rInMin) continue;
-    const th = Math.atan2(dx, -dy); // mismo convenio que el ángulo de la hoja
-    if (th < lo || th > hi) continue;
-    let v = (th - lo) / span; if (angTo < angFrom) v = 1 - v; // v: 0 cola, 1 cabeza
-    const rIn = rOut - (rOut - rInMin) * (0.2 + 0.8 * v);
-    if (r < rIn) continue;
-    const q = (rOut - r) / (rOut - rIn); // 0 borde exterior, 1 interior
-    if (age > 0.55 && hash2(x, y, (age * 30) | 0) < (age - 0.55) * 2.2) continue; // se disuelve
-    let c;
-    if (q < 0.22 && age < 0.5) c = ramp[0];
-    else c = ramp[clamp(Math.round(q * (n - 1) * 0.75 + age * 2.4 - v * 0.8 + 0.4), 0, n - 1)];
-    buf[y * VW + x] = c | 0xFF000000;
-  }
-}
-
 // Columna de luz sagrada (aditiva): núcleo blanco, bandas doradas, fibras y borde tramado
 function buildPillar() {
   const W = 26, H = 128, px = new Uint32Array(W * H), C = VR.holy;

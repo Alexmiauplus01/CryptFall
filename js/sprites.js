@@ -435,50 +435,6 @@ function drawPotion(g, ge) {
   ell(g, 5.4, 14.6, 1.2, 2.2, '#ffffff');
 }
 
-// ------------------------------------------------------------- garras abiertas (forma de lobo / oso)
-// Mano derecha vista por el dorso, dedos abiertos y garras extendidas listas para atacar
-function drawOpenClaw(pal) {
-  return (g, ge, w, h) => {
-    // antebrazo peludo con mechones en los bordes
-    poly(g, [[28, 112], [72, 112], [67, 72], [33, 70]], lin(g, 28, 0, 72, 0, [[0, pal.d], [0.45, pal.m], [1, pal.d]]));
-    for (let i = 0; i < 10; i++) {
-      const y = 74 + i * 4;
-      poly(g, [[33 - (i % 2) * 2, y], [26 - (i % 3), y + 3], [32, y + 6]], i % 2 ? pal.m : pal.d);
-      poly(g, [[67 + (i % 2) * 2, y], [74 + (i % 3), y + 3], [68, y + 6]], pal.d);
-    }
-    // dorso de la mano
-    ell(g, 49.5, 61, 22, 17, pal.d);
-    ell(g, 49, 59, 21, 16, rad(g, 49, 57, 22, pal.l, pal.m, pal.d));
-    // dedos abiertos en abanico con garras curvas
-    const fingers = [[32, 52, -0.62, 22], [42, 46, -0.22, 26], [54, 46, 0.18, 26], [64, 51, 0.56, 22]];
-    const claw = (tx, ty, ca, len) => {
-      const px = Math.cos(ca) * 3.2, py = Math.sin(ca) * 3.2;
-      const ex = tx + Math.sin(ca + 0.3) * len, ey = ty - Math.cos(ca + 0.3) * len;
-      poly(g, [[tx - px + 1, ty - py + 1], [ex + 1, ey + 1], [tx + px + 1, ty + py + 1]], pal.d);
-      poly(g, [[tx - px, ty - py], [ex, ey], [tx + px, ty + py]], lin(g, tx, ty, ex, ey, [[0, pal.cd], [0.5, pal.cl], [1, pal.ch]]));
-    };
-    for (const [x, y, a, len] of fingers) {
-      const mx = x + Math.sin(a) * len * 0.55, my = y - Math.cos(a) * len * 0.55;
-      const tx = x + Math.sin(a * 1.2) * len, ty = y - Math.cos(a * 1.2) * len;
-      line(g, [[x + 1, y + 1], [mx + 1, my + 1], [tx + 1, ty + 1]], 9.5, pal.d);
-      line(g, [[x, y], [mx, my], [tx, ty]], 8, pal.m);
-      line(g, [[x - 2, y], [mx - 2, my], [tx - 1.5, ty]], 2.4, pal.l);
-      ell(g, mx, my, 4.2, 2.2, pal.d, a); // nudillo
-      claw(tx, ty, a * 1.35, 17);
-    }
-    // pulgar
-    line(g, [[33, 66], [24, 58], [19, 49]], 8.5, pal.d);
-    line(g, [[32, 65], [23, 57], [18, 48]], 7, pal.m);
-    line(g, [[30, 64], [22, 56]], 2, pal.l);
-    claw(18, 47, -0.85, 13);
-    // trazos de pelo
-    for (let i = 0; i < 46; i++) {
-      const x = 30 + hash2(i, 1, 9) * 40, y = 48 + hash2(i, 2, 9) * 62;
-      line(g, [[x, y], [x + (hash2(i, 3, 9) - 0.5) * 2, y + 3]], 1, i % 3 ? pal.d : pal.l);
-    }
-  };
-}
-
 // ------------------------------------------------------------- efectos (aditivos)
 function buildOrb(size, stops) {
   const px = new Uint32Array(size * size);
@@ -526,14 +482,6 @@ function flipSprite(s) {
   for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) px[y * s.w + x] = s.px[y * s.w + (s.w - 1 - x)];
   return { w: s.w, h: s.h, px, flash: px };
 }
-// Centro del puño: media horizontal de las primeras filas opacas, algo por debajo del borde superior
-function gripOf(s) {
-  let y0 = -1;
-  for (let y = 0; y < s.h && y0 < 0; y++) for (let x = 0; x < s.w; x++) if (s.px[y * s.w + x] >>> 24) { y0 = y; break; }
-  let sx = 0, n = 0;
-  for (let y = y0; y < Math.min(s.h, y0 + 30); y++) for (let x = 0; x < s.w; x++) if (s.px[y * s.w + x] >>> 24) { sx += x; n++; }
-  return { x: n ? sx / n : s.w / 2, y: y0 + 12 };
-}
 // Agarre de una mano de perfil: centro de las primeras filas del puño, un poco por debajo de su borde
 function gripSide(s) {
   let y0 = -1;
@@ -559,8 +507,6 @@ function loadAssets() {
     im.src = ASSETS[n];
   }))).then(() => {
     SPR.daggerL = flipSprite(SPR.dagger);
-    SPR.claws_wolfL = flipSprite(SPR.claws_wolf);
-    SPR.claws_bearL = flipSprite(SPR.claws_bear);
     // aspectos de las clases principales (Pixellab): los fantasmas rencorosos los usan con un halo azulado
     // aspecto de cada clase (Pixellab): fantasmas con halo azul y doppelgänger con aura roja
     for (const k of Object.keys(CLASSES)) if (SPR['skin_' + k]) {
@@ -587,35 +533,24 @@ function loadAssets() {
     for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
     for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['mentor', 'npc_mentor'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
-    // manos por clase (generadas como mano derecha): punto de agarre = centro del puño
+    // mano de perfil de cada clase (Pixellab / Sprite Fusion): la empuñadura atraviesa el puño y el pomo asoma bajo él;
+    // si una clase no tuviera la suya, usa la de la clase de la que evoluciona
     for (const id of Object.keys(CLASSES)) {
-      // mano de perfil (Sprite Fusion) si existe: la empuñadura atraviesa el puño y el pomo asoma bajo él
-      // si la clase aún no tiene la suya, usa la de perfil de la clase de la que evoluciona (mejor que la antigua de frente)
       const side = SPR['hand_' + id + '_side'] || lineageOf(id).reverse().map(c => SPR['hand_' + c + '_side']).find(Boolean);
-      if (side) {
-        side.side = true; side.grip = side.grip || gripSide(side);
-        const R = HAND_SIDE_MIRROR ? flipSprite(side) : side;
-        R.side = true; R.grip = HAND_SIDE_MIRROR ? { x: side.w - 1 - side.grip.x, y: side.grip.y } : side.grip;
-        const Lh = flipSprite(R); Lh.side = true; Lh.grip = { x: R.w - 1 - R.grip.x, y: R.grip.y };
-        SPR['handR_' + id] = R; SPR['handL_' + id] = Lh;
-        continue;
-      }
-      const h = SPR['hand_' + id] || SPR.hand_ladron || SPR.hand_right;
-      h.grip = h.grip || gripOf(h);
-      SPR['handR_' + id] = h;
-      const l = flipSprite(h); l.grip = { x: h.w - 1 - h.grip.x, y: h.grip.y };
-      SPR['handL_' + id] = l;
+      side.side = true; side.grip = side.grip || gripSide(side);
+      const R = HAND_SIDE_MIRROR ? flipSprite(side) : side;
+      R.side = true; R.grip = HAND_SIDE_MIRROR ? { x: side.w - 1 - side.grip.x, y: side.grip.y } : side.grip;
+      const Lh = flipSprite(R); Lh.side = true; Lh.grip = { x: R.w - 1 - R.grip.x, y: R.grip.y };
+      SPR['handR_' + id] = R; SPR['handL_' + id] = Lh;
     }
     for (const k of ['wolf', 'bear']) {
       // garras pixel art dibujadas a mano (tools/draw-claws.py); agarre = muñeca
-      const px = SPR['claw_' + k], c = px || SPR['clawsopen_' + k] || SPR['claws_' + k];
-      c.grip = px ? { x: 29, y: 50 } : gripOf(c);
+      const c = SPR['claw_' + k];
+      c.grip = { x: 29, y: 50 };
       SPR['clawsR_' + k] = c;
       const l = flipSprite(c); l.grip = { x: c.w - 1 - c.grip.x, y: c.grip.y };
       SPR['clawsL_' + k] = l;
     }
-    SPR.handL = SPR.hand_right;            // sale de la esquina inferior izquierda
-    SPR.handR = flipSprite(SPR.hand_right); // reflejada: sale de la inferior derecha
     SPR.torchB = flipSprite(SPR.torch);     // segundo fotograma del parpadeo
   });
 }
@@ -1277,8 +1212,6 @@ function initSprites() {
     for (let i = 0; i < px.length; i++) { const c = f.px[i], a = c >>> 24; px[i] = a ? rgb(((c >> 16) & 255) * 0.8 + 40, (c & 255) * 0.45, ((c >> 8) & 255) * 0.35 + (c & 255) * 0.7, a) : 0; }
     return { w: f.w, h: f.h, px, flash: f.flash };
   });
-  SPR.clawsopen_wolf = paint(96, 112, drawOpenClaw({ l: '#d4d8e0', m: '#8c929e', d: '#40444e', cl: '#f4f0e2', ch: '#ffffff', cd: '#9c968a' }), { grain: 0.08, levels: 26 });
-  SPR.clawsopen_bear = paint(96, 112, drawOpenClaw({ l: '#c08a58', m: '#7a5030', d: '#3a2414', cl: '#3a3640', ch: '#8a8494', cd: '#141218' }), { grain: 0.08, levels: 26 });
   for (let i = 0; i < 3; i++) SPR['bolt' + i] = buildBolt(11 + i * 7);
   for (let i = 0; i < 4; i++) SPR['portal' + i] = buildPortal(i);
 }

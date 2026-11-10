@@ -844,7 +844,7 @@ function updateSpawner(dt) {
 
 // Oleadas: cada 2 minutos llega una horda desde un punto al azar del piso en el que estés, cada vez mayor y más dura.
 // Al cambiar de piso solo vuelve a empezar la cuenta atrás; el número de oleada solo vuelve a 0 en otra mazmorra.
-const WAVE_EVERY = 120, WAVE_WARN = 10;
+const WAVE_WARN = 10;
 function updateWaves(dt) {
   if (G.arena || (G.boss && !G.boss.dead && !G.boss.sleep)) return; // no interrumpe la pelea con el jefe
   const before = G.waveT || 0; G.waveT = before + dt;

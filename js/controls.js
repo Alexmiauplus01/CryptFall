@@ -26,8 +26,6 @@ function keyLabel(code) {
 function padLabel(i) { return i === null || i === undefined ? '-' : (PAD_NAME[i] || 'BOTÓN ' + i); }
 function bindKeys() { return Object.assign({}, DEFAULT_KEY, (G.cfg && G.cfg.keys) || {}); }
 function bindPad() { return Object.assign({}, DEFAULT_PAD, (G.cfg && G.cfg.pad) || {}); }
-function padBtn(id) { return bindPad()[id]; }
-
 // tecla física → tecla de fábrica (null = tecla de fábrica cuya acción se movió a otra: se ignora)
 function translateKey(code) {
   const kb = bindKeys();

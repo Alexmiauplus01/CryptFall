@@ -382,13 +382,6 @@ class Renderer {
       }
     }
   }
-  pdisc(cx, cy, r, c) {
-    cx = Math.round(cx); cy = Math.round(cy);
-    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
-      const X = cx + i, Y = cy + j;
-      if (i * i + j * j <= r * r + r * 0.6 && X >= 0 && Y >= 0 && X < VW && Y < VH) this.buf[Y * VW + X] = c;
-    }
-  }
   glow(cx, cy, r, col, str) {
     cx = Math.round(cx); cy = Math.round(cy); r = Math.round(r);
     const buf = this.buf;

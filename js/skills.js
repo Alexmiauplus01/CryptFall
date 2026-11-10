@@ -28,9 +28,6 @@ function ringFx(x, y, r, col, n = 40) {
   }
 }
 function smokeFx(x, y) { burst(x, y, 0.3, 26, rgb(125, 125, 140), 2.2, 0.9, false, 0.1); }
-function lineFx(x0, y0, x1, y1, col, n = 14) {
-  for (let i = 0; i < n; i++) { const t = i / n; G.parts.push({ x: lerp(x0, x1, t), y: lerp(y0, y1, t), z: 0.4, vx: 0, vy: 0, vz: 0.3, life: 0.3, col, add: true, size: 0.06 }); }
-}
 function healP(n) {
   const p = G.p; n *= healMul(); if (n <= 0) return;
   p.hp = Math.min(p.maxHp, p.hp + n);

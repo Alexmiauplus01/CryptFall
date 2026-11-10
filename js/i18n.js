@@ -456,4 +456,3 @@ function setLang(l) {
   const ro = document.getElementById('rotate'); if (ro) ro.innerHTML = LANG === 'en' ? 'TURN YOUR PHONE<br>TO PLAY IN LANDSCAPE' : 'GIRA EL MÓVIL<br>PARA JUGAR EN HORIZONTAL';
   if (typeof applyBindings === 'function') applyBindings();
 }
-function levelNameL(z) { return z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }

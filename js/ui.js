@@ -757,16 +757,6 @@ class UI {
     }
   }
 
-  win(G) {
-    this.darken(VX, VY, VW, VH, 0.4);
-    const cx = VX + VW / 2;
-    this.text(cx, 36, 'VICTORIA', C.gold, { align: 'center', scale: 4, grad: GOLD_GRAD, shadow: 'outline' });
-    this.panel(cx - 130, 84, 260, 46);
-    this.text(cx, 94, 'HAS DERROTADO AL GUARDIÁN DEL QUINTO PISO.', C.ink, { align: 'center' });
-    this.text(cx, 106, 'LA MAZMORRA NO TIENE FONDO...', C.dim, { align: 'center' });
-    this.text(cx, 116, '¿HASTA DÓNDE LLEGARÁS?', C.dim, { align: 'center' });
-    if (((G.time * 2) | 0) & 1) this.text(cx, 150, 'HAZ CLIC PARA SEGUIR DESCENDIENDO', C.goldL, { align: 'center', shadow: 'outline' });
-  }
 }
 
 function lerpCol(a, b, t) {
