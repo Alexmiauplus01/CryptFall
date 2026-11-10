@@ -6,7 +6,8 @@ const DG_SUF = ['de Ulmar', 'de Vel Kharn', 'del Rey Ciego', 'de Morhaven', 'de 
 const ROOM_NAME = { mercader: 'puesto del mercader', herrero: 'fragua del herrero', mentor: 'estudio del mentor', normal: '', tesoro: 'sala del tesoro', santuario: 'santuario', arena: 'arena', trampa: 'sala de trampas', secreta: 'cámara secreta', camara: 'cámara sellada', guarida: 'guarida del Guardián', entrada: 'entrada',
   biblioteca: 'biblioteca olvidada', osario: 'osario', fuente: 'fuente antigua', almacen: 'almacén', jardin: 'jardín de hongos', ritual: 'círculo ritual' };
 
-function levelName(z) { return z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }
+const SECRET_Z = 99; // nivel de la mazmorra secreta (no forma parte de los pisos de la mazmorra)
+function levelName(z) { return z === SECRET_Z ? 'Nivel secreto' : z === 0 ? 'Nivel 0' : z > 0 ? `Nivel +${z}` : `Nivel ${z}`; }
 // orientación de una celda dentro del nivel, para el diario ("ala norte")
 function wingOf(x, y) {
   const dx = x - MW / 2, dy = y - MH / 2;
@@ -28,13 +29,32 @@ class Dungeon {
     throw new Error('No se pudo generar la mazmorra');
   }
   lv(z) { return this.levels[z]; }
-  diff(z) { return this.n + Math.abs(z); }
+  diff(z) { return z === SECRET_Z ? this.n + 2 : this.n + Math.abs(z); }
+  // mazmorra secreta: un solo nivel con el tema del prado, sin llaves ni escaleras; la guarida es la sala más grande
+  buildSecret() {
+    for (let t = 0; t < 12; t++) {
+      const lv = new Level(SECRET_Z, SECRET_THEME);
+      if (!lv.layout(8, randi(0, 99999))) continue;
+      lv.paint(4242 + t);
+      lv.rooms.forEach(r => { r.type = 'normal'; });
+      const start = lv.rooms[0], lair = lv.rooms.slice(1).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+      if (!lair) continue;
+      start.type = 'entrada'; lair.type = 'guarida';
+      for (const r of lv.rooms) this.furnish(lv, r);
+      lv.decorate(THEMES[SECRET_THEME]);
+      lv.finalize();
+      this.levels[SECRET_Z] = lv;
+      this.secretStart = { x: start.cx + 0.5, y: start.cy + 0.5, a: 0 };
+      return lv;
+    }
+    throw new Error('No se pudo generar la mazmorra secreta');
+  }
 
   build() {
     this.levels = {}; this.links = [];
     // 1. trazado de cada nivel (tema según profundidad)
     for (const z of this.zs) {
-      const th = ((this.n - 1) + Math.abs(z) + (z > 0 ? 2 : 0)) % THEMES.length;
+      const th = ((this.n - 1) + Math.abs(z) + (z > 0 ? 2 : 0)) % THEME_COUNT;
       const lv = new Level(z, th);
       const nRooms = 9 + Math.min(5, this.n + Math.abs(z));
       if (!lv.layout(nRooms, this.n * 977 + z * 131 + randi(0, 9999))) return false;

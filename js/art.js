@@ -59,7 +59,17 @@ const THEMES = [
     wood: [[110, 74, 40], [78, 50, 26]], ceil: 'stone', wallStyle: 'stone', altStyle: 'brick', corner: 'urn',
     boss: 'cthulhu', fauna: [['deepwarrior', 7, 0.5], ['deepmage', 4, 0.6, 15], ['harpy', 3], ['cultist', 2], ['skeleton', 3], ['necromancer', 1, 0.4, 30]],
   },
+  { // SECRETO: solo se llega por el portal (la combinación tras vencer al Guardián); no entra en la rotación de temas
+    name: 'El Prado Maldito', secret: true, fog: [6, 9, 4], ambient: [0.06, 0.07, 0.04], glow: [190, 255, 140],
+    stones: [[118, 100, 74], [102, 88, 64], [130, 112, 82], [92, 80, 60], [112, 96, 70], [124, 108, 86]],
+    mortar: [40, 34, 24], moss: [86, 150, 54], mossAmt: 0.7, banner: [170, 30, 30], accent: [230, 220, 200],
+    floor: [[70, 112, 50], [60, 98, 44], [82, 124, 58]], tiles: [[88, 120, 60], [70, 100, 48]],
+    wood: [[110, 76, 44], [80, 54, 30]], ceil: 'wood', wallStyle: 'stone', altStyle: 'brick',
+    boss: 'cowking', fauna: [['cowwarrior', 8, 0.5], ['cowmage', 4, 0.4]],
+  },
 ];
+const THEME_COUNT = THEMES.filter(t => !t.secret).length; // temas que rotan en las mazmorras normales
+const SECRET_THEME = THEMES.findIndex(t => t.secret);
 
 // ------------------------------------------------------------- utilidades
 function texNew() { return { r: new Float32Array(TS * TS), g: new Float32Array(TS * TS), b: new Float32Array(TS * TS), e: new Uint8Array(TS * TS) }; }

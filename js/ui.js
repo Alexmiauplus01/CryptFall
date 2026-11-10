@@ -91,7 +91,7 @@ class UI {
     this.darken(BOX_STAT.x, BOX_STAT.y, BOX_STAT.w, BOX_STAT.h, 0.5);
     if (G.pact !== 'ciego') this.minimap(G);
     this.log(G); this.stats(G); this.skills(G);
-    const pl = 'P' + G.z, pw = textWidth(pl) + 6, px0 = BOX_MAP.x - pw - 2, py0 = BOX_MAP.y + BOX_MAP.h - 13;
+    const pl = G.z === SECRET_Z ? '?' : 'P' + G.z, pw = textWidth(pl) + 6, px0 = BOX_MAP.x - pw - 2, py0 = BOX_MAP.y + BOX_MAP.h - 13;
     this.darken(px0, py0, pw, 13, 0.45); this.text(px0 + 3, py0 + 3, pl, C.goldL, { shadow: false });
   }
 

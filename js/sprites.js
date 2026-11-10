@@ -530,7 +530,7 @@ function loadAssets() {
     if (SPR.enemy_bat && !SPR.enemy_vampbat) SPR.vampbat = SPR.bat.map(s => tintSprite(s, [1.5, 0.45, 0.5], false));
     if (SPR.enemy_wraith && !SPR.enemy_malevolent) SPR.malevolent = SPR.wraith.map(s => tintSprite(s, [1.6, 0.35, 0.45], true));
     // jefes de Pixellab (si existen) en lugar de los dibujados por código
-    for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
+    for (const id of ['lich', 'queen', 'voidlord', 'boss', 'lilith', 'cthulhu', 'dragon', 'cowking']) if (SPR['boss_' + id]) SPR[id] = [SPR['boss_' + id], SPR['boss_' + id]];
     // PNJ de Pixellab (si existen) en lugar de los provisionales dibujados por código
     for (const [k, n] of [['merchant', 'npc_merchant'], ['smith', 'npc_smith'], ['mentor', 'npc_mentor'], ['anvil', 'npc_anvil']]) if (SPR[n]) SPR[k] = k === 'anvil' ? [SPR[n]] : [SPR[n], SPR[n], SPR[n], SPR[n]];
     // mano de perfil de cada clase (Pixellab / Sprite Fusion): la empuñadura atraviesa el puño y el pomo asoma bajo él;
@@ -1192,6 +1192,7 @@ function initSprites() {
   SPR.wolfE = SPR.hound; SPR.bearE = SPR.yeti; // provisionales hasta que carguen los de Pixellab
   SPR.deepwarrior = [0, 1].map(f => drawDeepOne(f, false)); SPR.deepmage = [0, 1].map(f => drawDeepOne(f, true));
   for (const k in HUMANOIDS) SPR[k] = [0, 1].map(f => drawHumanoid(HUMANOIDS[k], f));
+  SPR.cowwarrior = SPR.orc; SPR.cowmage = SPR.deepmage; SPR.cowking = SPR.boss; // provisionales de las vacas hasta que carguen las de Pixellab
   SPR.worm = [drawWorm(false), drawWorm(true)];
   SPR.lilith = [0, 1].map(drawLilith); SPR.cthulhu = [0, 1].map(drawCthulhu); SPR.dragon = [0, 1].map(drawDragon);
   // variantes teñidas de sprites existentes

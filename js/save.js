@@ -41,6 +41,7 @@ function unpackLevel(o) {
 
 // ---------------------------------------------------------------- guardar / continuar
 function saveRun() {
+  if (G.z === SECRET_Z) return; // en la mazmorra secreta no se guarda: al continuar vuelves al último punto
   if (!G.dg || !G.p || !['play', 'paused', 'inventory', 'journal', 'shop', 'forge', 'mentor', 'levelup', 'evolve', 'exitask'].includes(G.state)) return;
   const p = G.p;
   const data = {

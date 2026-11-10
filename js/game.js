@@ -18,6 +18,9 @@ const ENEMY = {
   wolfE:    { name: 'Lobo hambriento', hp: 28, spd: 3.7, dmg: 9, r: 0.3, h: 0.62, z: 0, spr: 'wolfE', xp: 2, pack: [2, 3] },
   bearE:    { name: 'Oso de las cavernas', hp: 140, spd: 1.5, dmg: 21, r: 0.5, h: 1.15, z: 0, spr: 'bearE', xp: 8, charge: { cd: 7, mul: 2.5, dur: 0.9, min: 2.5, max: 7 } },
   shaman:   { name: 'Chamán', hp: 34, spd: 1.5, dmg: 0, r: 0.28, h: 0.82, z: 0, spr: 'shaman', xp: 5, ranged: { cd: 3, dmg: 7, spd: 5.5, proj: 'orbGreen', keep: 7.5 }, support: { cd: 4, r: 6.5, heal: 0.2, ward: 3 } },
+  // secretos: solo en El Prado Maldito
+  cowwarrior: { name: 'Vaca guerrera', hp: 70, spd: 2.5, dmg: 15, r: 0.34, h: 1.2, z: 0, spr: 'cowwarrior', xp: 6, pack: [2, 4] },
+  cowmage:  { name: 'Vaca maga', hp: 42, spd: 1.6, dmg: 0, r: 0.32, h: 1.15, z: 0, spr: 'cowmage', xp: 6, ranged: { cd: 2.4, dmg: 12, spd: 6, proj: 'orbGreen', keep: 6, spread: 3 } },
   hound:    { name: 'Can infernal', hp: 34, spd: 3.5, dmg: 11, r: 0.32, h: 0.62, z: 0, spr: 'hound', xp: 3 },
   eye:      { name: 'Ojo del vacío', hp: 40, spd: 1.2, dmg: 0, r: 0.3, h: 0.55, z: 0.35, spr: 'eye', xp: 4, fly: true, ranged: { cd: 1.9, dmg: 12, spd: 7, proj: 'orbPurple', keep: 6 } },
   // temáticas nuevas: Cuevas Heladas, Cloacas, Templo Hundido
@@ -44,6 +47,7 @@ const ENEMY = {
   lilith:   { name: 'LILITH', hp: 520, spd: 2.0, dmg: 18, r: 0.45, h: 1.5, z: 0.05, spr: 'lilith', xp: 60, boss: true, ai: 'lilith', drain: 1 },
   cthulhu:  { name: 'CTHULHU', hp: 650, spd: 0.9, dmg: 24, r: 0.7, h: 1.8, z: 0, spr: 'cthulhu', xp: 60, boss: true, ai: 'cthulhu' },
   dragon:   { name: 'EL DRAGÓN ROJO', hp: 600, spd: 1.5, dmg: 22, r: 0.7, h: 1.9, z: 0, spr: 'dragon', xp: 60, boss: true, ai: 'dragon', charge: { cd: 8, mul: 2.4, dur: 0.9, min: 3, max: 9 } },
+  cowking:  { name: 'EL REY VACA', hp: 760, spd: 1.6, dmg: 26, r: 0.6, h: 2.0, z: 0, spr: 'cowking', xp: 90, boss: true, charge: { cd: 7, mul: 2.4, dur: 0.9, min: 3, max: 9 } },
   boss:     { name: 'EL GUARDIÁN', hp: 520, spd: 1.5, dmg: 22, r: 0.55, h: 1.75, z: 0, spr: 'boss', xp: 60, boss: true },
 };
 const DECOR = {
@@ -185,7 +189,7 @@ function newRun(cls) {
 function newDungeon(n) {
   G.dg = new Dungeon(n);
   G.lv = null; G.loot = 0; G.keys = []; G.journal = []; G.jpage = -1; G.arena = null; G.boss = null; G.t = 0;
-  G.waveT = 0; G.waveN = 0; G.fountUsed = false; // las oleadas solo vuelven a cero al cambiar de mazmorra
+  G.waveT = 0; G.waveN = 0; G.fountUsed = false; G.guardianDown = false; G.secretOpen = false; G.cowDown = false; G.secretBack = null; G.combo = ''; // las oleadas solo vuelven a cero al cambiar de mazmorra
   scaleToPlayer(); // los enemigos de esta mazmorra se ajustan a tus estadísticas actuales
   for (const z of G.dg.zs) populateLevel(G.dg.lv(z));
   placeGhost(G.dg); G.elite = null; G.phoenixUsed = false; G.phylUsed = false; G.raiseT = undefined; G.unbreakT = 0;
@@ -210,7 +214,7 @@ function roomSpot(lv, r, used) {
 // contenido de cada sala: enemigos dormidos, cofres, oro, llaves y el Guardián
 function populateLevel(lv) {
   const saveE = G.enemies, saveF = G.floor, saveT = G.t;
-  G.enemies = lv.state.enemies; G.floor = G.dg.diff(lv.z); G.t = 0;
+  G.enemies = lv.state.enemies; G.floor = G.dg.diff(lv.z); G.t = 0; G.popTheme = lv.theme;
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
@@ -256,7 +260,7 @@ function populateLevel(lv) {
     }
   });
   placeWorm(lv);
-  G.enemies = saveE; G.floor = saveF; G.t = saveT;
+  G.popTheme = undefined; G.enemies = saveE; G.floor = saveF; G.t = saveT;
 }
 // gusano gigante: en un túnel largo de una casilla de ancho, tapando el paso
 function placeWorm(lv) {
@@ -767,7 +771,8 @@ function pickType() {
   if (t > 28 || f > 1) pool.push(['wraith', 1 + f * 0.8]);
   if (t > 42 || f > 2) pool.push(['imp', 1 + f * 0.6]);
   // fauna propia de cada temática: [tipo, peso, +peso por piso, aparece tras N s (o desde el piso 2)]
-  const th = THEMES[(G.lv ? G.lv.theme : 0) % THEMES.length];
+  const th = THEMES[(G.popTheme ?? (G.lv ? G.lv.theme : 0)) % THEMES.length];
+  if (th.secret) pool.length = 0; // en el prado solo hay vacas
   for (const [type, w, perF = 0, minT = 0] of th.fauna) if (!minT || t > minT || f > 1) pool.push([type, w + perF * f]);
   let tot = 0; for (const [, w] of pool) tot += w;
   let r = Math.random() * tot;
@@ -868,6 +873,47 @@ function updateWaves(dt) {
   Sfx.play('boss'); G.shake = Math.max(G.shake, 0.4);
 }
 
+// ---------------------------------------------------------------- Mazmorra secreta
+// Tras vencer al Guardián, la combinación arriba, arriba, abajo, abajo, izquierda, derecha, izquierda, derecha y atacar
+// (con las teclas de moverse, el stick o el joystick táctil) abre delante de ti un portal a El Prado Maldito.
+const SECRET_CODE = 'UUDDLRLR';
+function comboTick() {
+  const [f, s] = moveInput(), tl = keys.ArrowLeft || keys.KeyQ, tr = keys.ArrowRight || keys.KeyE;
+  let dir = null;
+  if (Math.abs(f) > 0.6 && Math.abs(f) >= Math.abs(s)) dir = f > 0 ? 'U' : 'D';
+  else if (Math.abs(s) > 0.6) dir = s < 0 ? 'L' : 'R';
+  else if (tl) dir = 'L'; else if (tr) dir = 'R';
+  if (dir && dir !== G.comboDir) { G.combo = ((G.combo || '') + dir).slice(-SECRET_CODE.length); G.comboT = G.time; }
+  G.comboDir = dir;
+  if (G.time - (G.comboT || 0) > 2.5) G.combo = ''; // si te paras, la combinación vuelve a empezar
+  const fire = mouse.fire || !!keys.Space;
+  if (fire && !G.comboFire) { if (G.combo === SECRET_CODE) openSecretPortal(); G.combo = ''; }
+  G.comboFire = fire;
+}
+function openSecretPortal() {
+  if (!G.guardianDown || G.secretOpen || G.z === SECRET_Z) return;
+  const a = aimPos(2.2);
+  G.secretOpen = true;
+  G.pickups.push({ type: 'portal', x: a.x, y: a.y, t: 0 });
+  toast('¡UN PORTAL SE ABRE!', true); logMsg('Huele a hierba... y a algo más', C.green);
+  Sfx.play('portal'); G.flashFx = 0.8; G.shake = Math.max(G.shake, 0.4);
+}
+function enterSecret(k) {
+  const p = G.p;
+  G.secretBack = { z: G.z, x: k.x - Math.cos(p.a) * 1.3, y: k.y - Math.sin(p.a) * 1.3, a: p.a + Math.PI };
+  if (G.lv.blocked(G.secretBack.x, G.secretBack.y, 0.25)) Object.assign(G.secretBack, { x: p.x, y: p.y });
+  let lv = G.dg.levels[SECRET_Z];
+  if (!lv) {
+    lv = G.dg.buildSecret(); populateLevel(lv);
+    const st = G.dg.secretStart, back = roomSpot(lv, lv.rooms[0], new Set());
+    lv.state.pickups.push({ type: 'portal', back: true, x: back[0], y: back[1], t: 0 });
+    st.a = Math.atan2(st.y - back[1], st.x - back[0]);
+  }
+  enterLevel(SECRET_Z, G.dg.secretStart, false);
+  jot('secret' + G.dg.n, 'Hice unos pasos extraños y se abrió un portal. Al otro lado, un prado bajo tierra... y vacas. Vacas con armas.');
+}
+function leaveSecret() { const b = G.secretBack; if (!b) return; enterLevel(b.z, b, false); }
+
 function wakeEnemy(e) {
   e.sleep = false;
   if (e.ghost && G.elite !== e) { G.elite = e; toast(e.ghost.doppel ? '¡TU DOPPELGÄNGER!' : `¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(e.ghost.doppel ? 'Una copia exacta de ti sale de las sombras...' : `Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, e.ghost.doppel ? C.red : C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
@@ -940,6 +986,8 @@ function killEnemy(e) {
 
 function onBossDead(e) {
   G.boss = null;
+  if (G.z !== SECRET_Z) G.guardianDown = true; // ya se puede abrir el portal secreto
+  else { G.cowDown = true; dropItem('boss', e.x - 0.4, e.y, {}); G.pickups.push({ type: 'gold', x: e.x, y: e.y + 0.5, v: 120 * G.floor, t: 0 }); jot('cow' + G.dg.n, 'Encontré un prado bajo la mazmorra, lleno de vacas armadas. Derroté a su rey. Nadie me va a creer.'); }
   dropItem('boss', e.x + 0.4, e.y, { boss: e.type });
   G.flashFx = 1; G.shake = 0.7;
   Sfx.play('portal');
@@ -1309,6 +1357,10 @@ function updatePickups(dt) {
     } else if (k.type === 'item') {
       if (k.declined) { if (d > 1.2) k.declined = false; } // lo dejaste: vuelve a preguntar si te alejas y regresas
       else if (d < 0.7) { k.dead = true; takeItem(k.item); }
+    } else if (k.type === 'portal') {
+      k.t += dt;
+      if (Math.random() < dt * 30) burst(k.x + rand(-0.4, 0.4), k.y + rand(-0.4, 0.4), rand(0.1, 1.1), 1, k.back ? rgb(180, 140, 255) : rgb(150, 255, 120), 0.6, 0.8);
+      if (d < 0.7) { if (k.back) leaveSecret(); else enterSecret(k); return; }
     } else if (k.type === 'torch') {
       if (d < 0.7) { k.dead = true; G.inv.torch++; Sfx.play('gem'); toast('+1 ANTORCHA', false); logMsg(`Recoges una antorcha (${G.inv.torch})`, C.orange); }
     } else if (k.type === 'key') {
@@ -1552,7 +1604,7 @@ function update(dt) {
   updateSpawner(dt); updateWaves(dt);
   updateEnemies(dt);
   updateProjs(dt);
-  updatePassives(dt); updatePassives2(dt); updateElites(dt); updateTeles(dt);
+  updatePassives(dt); updatePassives2(dt); updateElites(dt); updateTeles(dt); comboTick();
   updateAllies(dt); updateTraps(dt); updateZones(dt); updateTimers(dt);
   updatePickups(dt);
   updateParts(dt);
@@ -1599,6 +1651,7 @@ function buildItems() {
     else if (k.type === 'potion') items.push({ x: k.x, y: k.y, spr: SPR.potion, h: 0.3, w: 0.2, z: 0.02 + Math.sin(k.t * 3) * 0.02 });
     else if (k.type === 'chest') { const s = k.open ? SPR.chestOpen : SPR.chest; items.push({ x: k.x, y: k.y, spr: s, h: 0.42, w: 0.42 * s.w / s.h, z: 0 }); }
     else if (k.type === 'item') { const s = itemIcon(k.item); items.push({ x: k.x, y: k.y, spr: s, h: 0.24, w: 0.24, z: 0.18 + Math.sin(k.t * 3) * 0.04, bright: true }); }
+    else if (k.type === 'portal') { const s = k.back ? SPR.orbPurple : SPR.orbGreen, pu = 1 + Math.sin(k.t * 5) * 0.08; items.push({ x: k.x, y: k.y, spr: s, w: 1.1 * pu, h: 1.5 * pu, z: 0.05, bright: true, add: true }); }
     else if (k.type === 'torch') items.push({ x: k.x, y: k.y, spr: SPR.torchItem, h: 0.36, w: 0.36 * SPR.torchItem.w / SPR.torchItem.h, z: 0 });
     else if (k.type === 'gold') items.push({ x: k.x, y: k.y, spr: SPR.coins, h: 0.13, w: 0.13 * SPR.coins.w / SPR.coins.h, z: 0.01 });
     else if (k.type === 'key') { const s = SPR.keys[k.key]; items.push({ x: k.x, y: k.y, spr: s, h: 0.3, w: 0.3 * s.w / s.h, z: 0.25 + Math.sin(k.t * 3) * 0.05, bright: true }); }
@@ -1635,6 +1688,7 @@ function dynLights() {
   for (const pr of G.projs) out.push({ x: pr.x, y: pr.y, c: PROJ_LIGHT[pr.spr] || PROJ_LIGHT.orbBlue, rad: pr.friendly ? 2.6 : 2.4 });
   for (const f of G.fx) if (f.type === 'bolt') out.push({ x: f.x, y: f.y, c: [1.4, 1.7, 2.2], rad: 6 });
   for (const k of G.pickups) if (k.type === 'item') { const c = RARITY[k.item.rar].col; out.push({ x: k.x, y: k.y, c: c.map(v => v / 255 * 0.6), rad: 2.2 }); }
+  for (const k of G.pickups) if (k.type === 'portal') out.push({ x: k.x, y: k.y, c: k.back ? [0.8, 0.5, 1.4] : [0.6, 1.4, 0.5], rad: 5 });
   for (const k of G.pickups) if (k.type === 'key') out.push({ x: k.x, y: k.y, c: KEYS[k.key].col.map(v => v / 255 * 0.7), rad: 2.5 });
   vfxLights(out);
   let tr = 0;

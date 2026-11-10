@@ -74,7 +74,7 @@ function eliteReflect(e, pr) {
 
 // ---------------------------------------------------------------- Ataques anunciados
 // Los grandes (orco, yeti, oso, guerrero abisal, Guardián) marcan el suelo donde estás y golpean un instante después.
-const SLAM = { orc: 1, yeti: 1, bearE: 1, deepwarrior: 1, boss: 1 };
+const SLAM = { orc: 1, yeti: 1, bearE: 1, deepwarrior: 1, boss: 1, cowking: 1 };
 function addTele(x, y, r, t, fn) { (G.teles || (G.teles = [])).push({ x, y, r, t, max: t, fn }); }
 function updateTeles(dt) {
   if (!G.teles || !G.teles.length) return;
