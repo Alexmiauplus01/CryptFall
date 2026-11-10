@@ -307,6 +307,7 @@ const SKILLS = {
     addBuff('warcry', 'Grito', 8, { dmg: 1.25 }, C.orange); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.35);
   } },
   shieldbash: { name: 'Golpe de escudo', cd: 8, use(p) {
+    if (offhandOf(p) !== 'shield') { toast('NECESITAS UN ESCUDO EN LA MANO', false); return false; }
     const n = aoe(p.x, p.y, 2.5, 26 * p.dmgMul, { kb: 11, stun: 1.3, cone: { a: p.a, arc: 1.8 } });
     vfxImpact(p.x + Math.cos(p.a) * 1.2, p.y + Math.sin(p.a) * 1.2, 0.45, 'impact', 1.4);
     p.bash = { t: 0, dur: 0.42, hit: n > 0 }; G.shake = Math.max(G.shake, n ? 0.3 : 0.1); Sfx.play('hit'); // el escudo sale hacia delante y vuelve
@@ -602,7 +603,7 @@ const SKILL_DESC = {
   knives: 'Lanza tres cuchillos en abanico que atraviesan a un enemigo.',
   smoke: 'Bomba de humo: te vuelves invisible 3,5 s; el siguiente golpe desde las sombras hace más daño.',
   warcry: 'Empuja a los enemigos cercanos y te da +25% de daño durante 8 s.',
-  shieldbash: 'El escudo sale hacia delante: daña, empuja y aturde a los enemigos de delante.',
+  shieldbash: 'Con el escudo en la mano: el escudo sale hacia delante, daña, empuja y aturde a los enemigos de delante.',
   whirlwind: 'Giras con el arma cinco veces dañando y empujando todo a tu alrededor.',
   rally: 'Estandarte: +20% de daño, -25% de daño recibido durante 10 s y te cura un 10%.',
   rage: 'Furia: +40% de daño, +25% de velocidad, +20% de cadencia y 12% de robo de vida durante 10 s.',

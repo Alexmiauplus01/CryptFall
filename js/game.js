@@ -1351,8 +1351,8 @@ function updatePickups(dt) {
     } else if (k.type === 'potion') {
       if (d < p.magnet * 0.5 + 0.4) { k.x += dx / d * 5 * dt; k.y += dy / d * 5 * dt; }
       if (d < 0.55) {
-        k.dead = true; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3 * healMul());
-        Sfx.play('potion'); logMsg('Bebes una poción: +vida', C.green);
+        k.dead = true; G.inv.potion = (G.inv.potion || 0) + 1;
+        Sfx.play('gem'); toast('+1 POCIÓN', false); logMsg(`Recoges una poción (${G.inv.potion})`, C.green);
       }
     } else if (k.type === 'gold') {
       if (d < p.magnet * 0.6 || k.mag) { k.mag = true; k.x += dx / d * 6 * dt; k.y += dy / d * 6 * dt; }
@@ -1551,8 +1551,8 @@ function updatePlayer(dt) {
     if (p.swing === s && s.t >= s.dur) p.swing = null;
   }
   const autoFire = autoAttack(dt, turn, blocking);
-  if ((mouse.fire || keys.Space || autoFire) && p.shootCd <= 0 && !blocking) {
-    playerAttack();
+  if ((mouse.fire || keys.Space || autoFire) && p.shootCd <= 0) {
+    if (blocking) shieldBashAttack(); else playerAttack(); // con el escudo alzado, el ataque es un golpe de escudo
   }
 }
 
@@ -1580,6 +1580,17 @@ function moveInput() {
   if (G.stick) { f += G.stick.f; s += G.stick.s; }
   if (G.padMove) { f += G.padMove.f; s += G.padMove.s; }
   return [clamp(f, -1, 1), clamp(s, -1, 1)];
+}
+
+// Golpe de escudo como ataque normal: cualquiera con escudo alzado; daña y empuja en cono (sin aturdir) y el escudo sigue alzado
+function shieldBashAttack() {
+  const p = G.p, w = WEAPONS[p.weapon];
+  p.shootCd = 0.8 * ATK_SLOW / p.rate;
+  const crit = Math.random() < p.crit, dmg = w.dmg * 0.75 * p.dmgMul * (crit ? critMul() : 1) * rand(0.9, 1.1);
+  const n = aoe(p.x, p.y, 2.3, dmg, { kb: 9, cone: { a: p.a, arc: 1.8 } });
+  p.bash = { t: 0, dur: 0.42, hit: n > 0 };
+  if (n) { vfxImpact(p.x + Math.cos(p.a) * 1.1, p.y + Math.sin(p.a) * 1.1, 0.45, 'impact', 1.1); G.shake = Math.max(G.shake, 0.18); Sfx.play('hit'); }
+  else Sfx.play('swing');
 }
 
 function tryDash() {
