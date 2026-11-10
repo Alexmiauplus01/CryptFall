@@ -545,7 +545,7 @@ function loadAssets() {
     }
     for (const k of ['wolf', 'bear']) {
       // garras pixel art dibujadas a mano (tools/draw-claws.py); agarre = muñeca
-      const c = SPR['claw_' + k];
+      const c = SPR['claw_pixellab_' + k] || SPR['claw_' + k]; // las de Pixellab (misma pose) o las pixel art a mano
       c.grip = { x: 29, y: 50 };
       SPR['clawsR_' + k] = c;
       const l = flipSprite(c); l.grip = { x: c.w - 1 - c.grip.x, y: c.grip.y };
