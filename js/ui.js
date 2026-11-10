@@ -150,9 +150,14 @@ class UI {
     const xp = Math.round(w * clamp(p.xp / xpNeed(p.lvl), 0, 1));
     this.rect(x, b.y + 26, w, 3, rgb(10, 16, 40));
     for (let j = 0; j < 3; j++) this.rect(x, b.y + 26 + j, xp, 1, [rgb(150, 210, 255), rgb(70, 140, 250), rgb(30, 70, 170)][j]);
-    const dsh = Math.round(w * (p.dashCd > 0 ? 1 - p.dashCd / p.dashMax : 1));
-    this.rect(x, b.y + 31, w, 2, rgb(16, 30, 34));
-    this.rect(x, b.y + 31, dsh, 2, p.dashCd > 0 ? rgb(60, 120, 140) : C.cyan);
+    // esquivas: un tramo por carga; las listas en cian y la que se está recargando, llenándose
+    const dn = p.dashN || 1, sw = Math.floor((w - (dn - 1) * 2) / dn);
+    for (let k = 0; k < dn; k++) {
+      const sx = x + k * (sw + 2), full = k < p.dashC, cur = k === p.dashC && p.dashCd > 0;
+      this.rect(sx, b.y + 31, sw, 2, rgb(16, 30, 34));
+      if (full) this.rect(sx, b.y + 31, sw, 2, C.cyan);
+      else if (cur) this.rect(sx, b.y + 31, Math.round(sw * (1 - p.dashCd / p.dashMax)), 2, rgb(60, 120, 140));
+    }
     // arma equipada
     const W = WEAPONS[p.weapon], hk = W.hands, slots = CLASSES[p.cls].slots;
     let wn = W.name.toUpperCase(), on;

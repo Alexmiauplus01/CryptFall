@@ -94,7 +94,7 @@ const UPG = [
   { id: 'wis',    name: 'Sabiduría',           max: 5, desc: () => '+15% experiencia ganada' },
   { id: 'crit',   name: 'Golpe Crítico',       max: 6, desc: () => '+8% prob. de crítico (x2 daño)' },
   { id: 'light',  name: 'Luz Eterna',          max: 4, desc: () => '+25% alcance de tu antorcha' },
-  { id: 'dash',   name: 'Paso Sombrío',        max: 4, desc: () => 'La esquiva recarga un 20% más rápido' },
+  { id: 'dash',   name: 'Paso Sombrío',        max: 4, desc: (l) => l === 0 ? 'Guardas 2 esquivas para encadenar' : l === 2 ? 'Guardas 3 esquivas (el máximo)' : 'La esquiva recarga un 20% más rápido' },
   { id: 'blades', name: 'Cuchillas Orbitales', max: 6, passive: true, desc: (l) => l === 0 ? 'Cuchillas giran a tu alrededor y cortan' : '+1 cuchilla y más daño' },
   { id: 'nova',   name: 'Nova Gélida',         max: 5, passive: true, desc: (l) => l === 0 ? 'Onda helada periódica que daña y frena' : 'Más daño, radio y frecuencia' },
   { id: 'bolt',   name: 'Tormenta',            max: 5, passive: true, desc: (l) => l === 0 ? 'Rayos caen sobre enemigos cercanos' : '+1 rayo, más daño y frecuencia' },
@@ -150,7 +150,10 @@ function recalc() {
   p.magnet = 2.2 * (1 + 0.5 * L('magnet'));
   p.xpMul = (1 + 0.15 * L('wis')) * (1 + eqStat('xp'));
   p.light = (1 + 0.25 * L('light')) * (1 + eqStat('light'));
-  p.dashMax = 2.4 * Math.pow(0.8, L('dash')) * (1 - eqStat('dash'));
+  p.dashMax = 2.4 * Math.pow(0.8, L('dash') - (L('dash') >= 1) - (L('dash') >= 3)) * (1 - eqStat('dash')); // los niveles 1 y 3 dan cargas, el 2 y el 4 recarga
+  // cargas de esquiva: 1, 2 con el primer nivel de Paso Sombrío y 3 (el máximo) con el tercero; se recargan de una en una
+  const dn = 1 + (L('dash') >= 1) + (L('dash') >= 3);
+  p.dashC = p.dashC === undefined ? dn : Math.min(dn, p.dashC + Math.max(0, dn - (p.dashN || dn))); p.dashN = dn;
   p.hp = Math.min(p.hp, p.maxHp);
   applyStats();
 }
@@ -1522,7 +1525,9 @@ function updatePlayer(dt) {
   }
   if (len > 0) { const ob = p.bob; p.bob += dt * 9 * (p.spd / 3.6); if (Math.floor(ob / Math.PI) !== Math.floor(p.bob / Math.PI)) Sfx.play('step'); }
   if (offhandOf(p) === 'torch' && Math.random() < dt * 2.5) Sfx.play('crackle');
-  p.inv -= dt; p.dashCd -= dt; p.shootCd -= dt; p.anim = Math.max(0, p.anim - dt * 5);
+  p.inv -= dt; p.shootCd -= dt;
+  if (p.dashC < p.dashN) { p.dashCd -= dt; if (p.dashCd <= 0) { p.dashC++; p.dashCd = p.dashC < p.dashN ? p.dashMax : 0; } } else p.dashCd = 0;
+ p.anim = Math.max(0, p.anim - dt * 5);
   if (p.chill > 0) p.chill -= dt;
   if (p.poisT > 0) { p.poisT -= dt; p.hp -= (p.poisDps || 2) * dt; if (Math.random() < dt * 5) burst(p.x, p.y, 0.6, 1, rgb(120, 220, 70), 0.8, 0.5); if (p.hp <= 0) { p.hp = 0; die(); } }
   for (let i = 0; i < 3; i++) p.skillCd[i] -= dt;
@@ -1579,12 +1584,12 @@ function moveInput() {
 
 function tryDash() {
   const p = G.p;
-  if (G.state !== 'play' || p.dashCd > 0) return;
+  if (G.state !== 'play' || p.dashC <= 0 || p.dashT > 0) return;
   let [f, s] = moveInput();
   if (!f && !s) f = 1;
   const dX = Math.cos(p.a), dY = Math.sin(p.a), rX = -dY, rY = dX;
   let mx = dX * f + rX * s, my = dY * f + rY * s; const l = Math.hypot(mx, my) || 1;
-  p.dashDx = mx / l; p.dashDy = my / l; p.dashT = 0.2; p.dashCd = p.dashMax; p.inv = Math.max(p.inv, 0.3);
+  p.dashDx = mx / l; p.dashDy = my / l; p.dashT = 0.2; if (p.dashC >= p.dashN) p.dashCd = p.dashMax; p.dashC--; p.inv = Math.max(p.inv, 0.3);
   equipOnDash();
   const ds = classPassive(p.cls, 'dashStealth', 0);
   if (ds) { p.stealth = Math.max(p.stealth, ds); smokeFx(p.x, p.y); }

@@ -206,9 +206,10 @@ function drawTouchUI(u) {
     }
     let prog, ready = true;
     if (b.i !== undefined) { const cd = Math.max(0, p.skillCd[b.i]); ready = cd <= 0; prog = ready ? 1 : 1 - cd / p.skillMax[b.i]; }
-    if (b.id === 'dash' && p.dashCd > 0) { ready = false; prog = 1 - p.dashCd / p.dashMax; }
+    if (b.id === 'dash' && p.dashC <= 0) { ready = false; prog = 1 - p.dashCd / p.dashMax; }
     tCircle(u, b.x, b.y, b.r, on ? [90, 60, 20] : dark, on ? 0.6 : 0.4, ready ? gold : [150, 120, 80], ready ? 0.85 : 0.6, prog);
     if (b.id === 'attack') { u.text(Math.round(b.x) - b.r + 4, Math.round(b.y) - 3, '<', C.dim, { shadow: false }); u.text(Math.round(b.x) + b.r - 8, Math.round(b.y) - 3, '>', C.dim, { shadow: false }); }
     u.text(Math.round(b.x) + 1, Math.round(b.y) - 3, b.label, ready ? C.goldL : C.dim, { align: 'center', shadow: false });
+    if (b.id === 'dash' && p.dashN > 1) u.text(Math.round(b.x + b.r) - 1, Math.round(b.y + b.r) - 6, String(p.dashC), p.dashC ? C.cyan : C.dim, { align: 'center', shadow: false }); // cargas
   }
 }

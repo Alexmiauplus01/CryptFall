@@ -137,7 +137,7 @@ const EN_DATA = {
     might: ['Arcane Power', '+20% spell damage'], haste: ['Haste', '+15% casting speed'], multi: ['Multishot', '+1 projectile per cast'],
     pierce: ['Piercing', 'Spells pierce +1 more enemy'], speed: ['Light Feet', '+10% movement speed'], vit: ['Vitality', '+30 max health and healing'],
     regen: ['Regeneration', '+0.6 health per second'], magnet: ['Soul Magnet', '+50% pickup radius'], wis: ['Wisdom', '+15% experience gained'],
-    crit: ['Critical Strike', '+8% crit chance (x2 damage)'], light: ['Eternal Light', '+25% torch range'], dash: ['Shadow Step', 'Dodge recharges 20% faster'],
+    crit: ['Critical Strike', '+8% crit chance (x2 damage)'], light: ['Eternal Light', '+25% torch range'], dash: ['Shadow Step', (l) => l === 0 ? 'Store 2 dodges to chain them' : l === 2 ? 'Store 3 dodges (the maximum)' : 'Dodge recharges 20% faster'],
     blades: ['Orbiting Blades', ['Blades spin around you and cut', '+1 blade and more damage']], nova: ['Frost Nova', ['Periodic icy wave that damages and slows', 'More damage, radius and frequency']],
     bolt: ['Storm', ['Lightning strikes nearby enemies', '+1 bolt, more damage and frequency']],
     wisp: ['Mage Light', (l) => l === 0 ? 'A sphere of light floats ahead of you and lights the way' : l < 2 ? 'More light; at level 3 it scorches whatever it touches' : 'More light and it scorches harder'],
