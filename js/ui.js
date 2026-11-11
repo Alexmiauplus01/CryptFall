@@ -376,19 +376,20 @@ class UI {
       this.text(x + 34, y + 35, RARITY[o.rar].name.toUpperCase(), itemCol(o), { shadow: false });
       wrapText(itemLines(o).join(' · ').toUpperCase(), Math.floor((w - 12) / 6)).slice(0, 3).forEach((l, k) => this.text(x + 6, y + 46 + k * 8, l, C.ink, { shadow: false }));
     };
-    card(cx - 230, 36, 220, 'HAS ENCONTRADO', it, C.goldL);
-    if (it.legend && LEGEND[it.legend].set) this.setPanel(LEGEND[it.legend].set, cx - 230, 110, 220);
-    S.slots.forEach((s, i) => { const o = G.equip[s]; if (o) card(cx + 10, 36 + i * 76, 220, `LLEVAS (${SLOT_LABEL[s].toUpperCase()})`, o); });
-    const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO']]);
-    const by = 36 + Math.max(1, S.slots.length) * 76 + 8;
+    const top = S.slots.length > 1 ? 30 : 36; // con dos huecos (anillos) todo sube un poco para que quepan las opciones
+    card(cx - 230, top, 220, 'HAS ENCONTRADO', it, C.goldL);
+    if (it.legend && LEGEND[it.legend].set) this.setPanel(LEGEND[it.legend].set, cx - 230, top + 74, 220);
+    S.slots.forEach((s, i) => { const o = G.equip[s]; if (o) card(cx + 10, top + i * 72, 220, `LLEVAS (${SLOT_LABEL[s].toUpperCase()})`, o); });
+    const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO'], ['recycle', `RECICLARLO (+${recycleValue(it)} DE ORO)`]]);
+    const by = top + Math.max(1, S.slots.length) * 72 + 6;
     opts.forEach(([id, t], i) => {
-      const w = 260, x = cx - w / 2, yy = by + i * 20, hot = this.hit(x, yy, w, 16);
+      const w = 260, x = cx - w / 2, yy = by + i * 18, hot = this.hit(x, yy, w, 16);
       this.hot.push({ x, y: yy, w, h: 16, id });
       this.panel(x, yy, w, 16, hot);
       this.text(x + 6, yy + 5, `[${i + 1}]`, C.dim);
       this.text(cx + 10, yy + 5, t, hot ? C.goldL : C.gold, { align: 'center' });
     });
-    this.text(cx, by + opts.length * 20 + 4, 'LO QUE NO TE QUEDES SE QUEDA EN EL SUELO', C.red, { align: 'center', shadow: false });
+    this.text(cx, by + opts.length * 18 + 3, 'LO QUE NO TE QUEDES SE QUEDA EN EL SUELO', C.red, { align: 'center', shadow: false });
   }
   // Mercader: lista de útiles con precio (se paga con el botín que llevas encima)
   shop(G) {

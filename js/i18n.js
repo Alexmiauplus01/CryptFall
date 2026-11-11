@@ -339,6 +339,7 @@ const EN_UI = {
 };
 // patrones para textos con números o nombres dentro (los grupos se traducen también)
 const EN_RX = [
+  [/^RECICLARLO \(\+(\d+) DE ORO\)$/, 'RECYCLE IT (+$1 GOLD)'], [/^RECICLAS (.+): \+(\d+) DE ORO$/, (m, a, n) => `YOU RECYCLE ${tr(a)}: +${n} GOLD`],
   [/^MEJORAR (.+)$/, (m, a) => `UPGRADE ${tr(a)}`], [/^(.+) SUBE A NIVEL (\d+)$/, (m, a, n) => `${tr(a)} RISES TO LEVEL ${n}`],
   [/^HICE UNOS PASOS EXTRAÑOS Y SE ABRIÓ UN PORTAL\. AL OTRO LADO, UN PRADO BAJO TIERRA\.\.\. Y VACAS\. VACAS CON ARMAS\.$/, 'I MADE SOME STRANGE MOVES AND A PORTAL OPENED. ON THE OTHER SIDE, A MEADOW UNDERGROUND... AND COWS. COWS WITH WEAPONS.'],
   [/^ENCONTRÉ UN PRADO BAJO LA MAZMORRA, LLENO DE VACAS ARMADAS\. DERROTÉ A SU REY\. NADIE ME VA A CREER\.$/, 'I FOUND A MEADOW UNDER THE DUNGEON, FULL OF ARMED COWS. I DEFEATED THEIR KING. NOBODY WILL BELIEVE ME.'],

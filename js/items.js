@@ -227,8 +227,15 @@ function equipItem(slot, it) {
   if (it.rar === 'legendario' || it.rar === 'epico') { G.flashFx = 0.6; jot('item' + (it.legend || it.special) + G.dg.n, `Encontré ${name.toLowerCase()} en el ${levelName(G.z)}. Siento su poder.`); }
 }
 // decisión del cuadro de cambio: slot = hueco a sustituir o null = quedarte con lo que llevas
+// reciclar: el objeto del suelo desaparece a cambio de algo de oro (según rareza y mazmorra)
+function recycleValue(it) { return Math.round(({ comun: 12, raro: 30, epico: 70, legendario: 160 }[it.rar] || 12) * (1 + 0.3 * ((G.dg ? G.dg.n : 1) - 1)) * lootMul()); }
 function resolveSwap(slot) {
   const S = G.swap; if (!S) return;
+  if (slot === 'recycle') {
+    const v = recycleValue(S.item); G.loot += v; Sfx.play('coin'); toast(`+${v} DE ORO`, false);
+    logMsg(`Reciclas ${itemName(S.item).toLowerCase()}: +${v} de oro`, C.gold);
+    G.swap = null; G.state = 'play'; lockMouse(); return;
+  }
   // lo que no te quedas (el viejo o el nuevo) se queda en el suelo; al salir de la mazmorra se pierde
   const left = slot ? G.equip[slot] : S.item;
   if (slot) equipItem(slot, S.item);

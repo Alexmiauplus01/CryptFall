@@ -1841,7 +1841,7 @@ document.addEventListener('keydown', (ev) => {
     return;
   }
   if (G.state === 'inventory') { if (e.code === 'KeyI' || e.code === 'Escape') closeInventory(); if (e.code === 'KeyT' || dig === 0) equipTorch(); return; }
-  if (G.state === 'swap') { const n = G.swap ? G.swap.slots.length : 0, d2 = { Digit4: 3, Numpad4: 3 }[e.code]; const i = dig !== undefined ? dig : d2; if (i !== undefined) { if (i < n) resolveSwap(G.swap.slots[i]); else if (i === n) resolveSwap(null); } return; }
+  if (G.state === 'swap') { const n = G.swap ? G.swap.slots.length : 0, d2 = { Digit4: 3, Numpad4: 3 }[e.code]; const i = dig !== undefined ? dig : d2; if (i !== undefined) { if (i < n) resolveSwap(G.swap.slots[i]); else if (i === n) resolveSwap(null); else if (i === n + 1) resolveSwap('recycle'); } return; }
   if (G.state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') closeMap(); if (e.code === 'KeyA' || e.code === 'ArrowLeft') mapStep(1); if (e.code === 'KeyD' || e.code === 'ArrowRight') mapStep(-1); return; }
   if (G.state === 'shop') { if (dig !== undefined) buyItem(SHOP_ITEMS[dig].id); else if (e.code === 'Digit4' || e.code === 'Numpad4') buyItem(SHOP_ITEMS[3].id); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
   if (G.state === 'forge') { if (dig !== undefined) forgeBuy(dig); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
