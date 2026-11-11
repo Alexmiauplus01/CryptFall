@@ -120,6 +120,7 @@ function bladeAt(k, u, x0, y0, rest, mir = 1) {
   return { gx: x0 + q.x * mir, gy: y0 + q.y, ang: an, sv, s: q.s * f };
 }
 const COMBO = { sw: ['slash', 'rise', 'chop'], gs: ['slash', 'chop', 'rise'], dg: ['slash', 'rise', 'chop'], dual: ['slash', 'slash', 'chop', 'chop'], cl: ['swipe'] };
+const BOW_DROP = 30; // el arco va por debajo del centro de la pantalla
 const GS_X = 0.70, GS_REST = 17 * Math.PI / 180, GS_HAND_DOWN = 20; // espadón: posición, inclinación (17°) y cuánto bajan las manos por la empuñadura
 function moveFamily(w) { return w === 'greatsword' ? 'gs' : w === 'dagger' || w === 'daggers' ? 'dg' : w === 'claws' ? 'cl' : 'sw'; }
 function comboMove(w, n) { const c = COMBO[w === 'daggers' ? 'dual' : moveFamily(w)]; return c[n % c.length]; }
@@ -617,9 +618,9 @@ class Renderer {
       const n = a < 0.3 ? 0 : a > 0.85 ? 1 : a > 0.6 ? 2 : 3;
       const base = SPR['bowfp_' + n] || SPR.bowfp_0, spr = weaponSprite('bow', base, 'fp' + n);
       const ox = 2 * Math.round(bx * 0.35 / 2), oy = 2 * Math.round(by2 * 0.35 / 2);
-      const X = VW / 2 - 130 + ox, Y = VH / 2 - 80 + oy; // TIP del sprite (65, 40) → centro de la pantalla
+      const X = VW / 2 - 200 + ox, Y = VH / 2 - 80 + BOW_DROP + oy; // TIP del sprite (100, 40) → centro, algo más abajo
       this.blitRot(spr, 0, 0, X, Y, 0, lm, false, S2);
-      const cx = VW / 2 + ox, cy = VH / 2 + oy;
+      const cx = VW / 2 + ox, cy = VH / 2 + BOW_DROP + oy;
       if (n === 0 && p.element) this.glow(cx, cy, 18, glowCol, 0.35 + 0.15 * Math.sin(time * 8));
       if (a > 0.4) this.glow(cx, cy, 14, p.element ? glowCol : [255, 235, 160], 0.35 * a);
       return;
