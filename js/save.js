@@ -126,7 +126,7 @@ function spawnGhost(g, x, y) {
   return e;
 }
 
-// Doppelgänger: copia exacta del jugador actual (aura roja). Mismas estadísticas, arma, habilidades de su rama,
+// Doppelganger: copia exacta del jugador actual (aura roja). Mismas estadísticas, arma, habilidades de su rama,
 // mejoras pasivas y equipo (armadura, críticos, robo de vida). Usa el aspecto de la clase del jugador.
 function spawnDoppel(x, y) {
   const p = G.p, cls = p.cls, base = lineageOf(cls)[0], w = WEAPONS[p.weapon] || WEAPONS.sword;
@@ -134,7 +134,7 @@ function spawnDoppel(x, y) {
   const hit = (w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].dmg : (w.dmg || 20)) * (p.dmgMul || 1);
   const cd = (w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].cd : (w.cd || 0.6)) / (p.rate || 1);
   const def = Object.assign({}, ENEMY.ghost, {
-    name: `Doppelgänger (${CLASSES[cls].name})`, spr: sprK, doppel: true,
+    name: `Doppelganger (${CLASSES[cls].name})`, spr: sprK, doppel: true,
     hp: p.maxHp * 2.5, spd: (p.spd || 3) * 0.8,
     dmg: w.kind === 'melee' ? Math.max(8, Math.round(hit * 0.3)) : 0, atkCd: Math.max(0.5, cd * 1.3),
     ranged: w.kind !== 'melee' ? { cd: Math.max(0.6, cd * 1.6), dmg: Math.max(7, Math.round(hit * 0.3)), spd: w.kind === 'cast' ? 8 : 12, proj: w.kind === 'cast' ? SPELLS[p.spell || 'arcane'].proj : 'orbArrow', keep: 4.5 } : null,

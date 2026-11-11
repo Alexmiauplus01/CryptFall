@@ -222,7 +222,7 @@ function populateLevel(lv) {
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
-    const chest = (g, item) => { if (item === 'potion' && Math.random() < 0.375) item = null; const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' };
+    const chest = (g, item) => { if (item === 'potion' && Math.random() < (potionsFull() ? 0.9 : 0.375)) item = null; const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' };
       if (c.eq) { c.eqItem = makeItem(c.eqSrc); if ((c.eqItem.rar === 'epico' || c.eqItem.rar === 'legendario') && Math.random() < 0.5) c.doppel = true; } // tesoro valioso: tu doble lo vigila
       P.push(c); return c; };
     const foes = (n, type) => { for (let k = 0; k < n; k++) { const [x, y] = roomSpot(lv, r, used); const e = spawnEnemy(type || pickType(), x, y); e.sleep = true; } };
@@ -803,13 +803,31 @@ function classBasePower(cls) {
   const cm = classMods(lineageOf(cls)[0]);
   return { off: cm.dmg * cm.rate * (1.05 + cm.crit) * (1 + cm.leech), def: 100 * cm.hp / Math.max(0.2, cm.armor) };
 }
+// con 5 pociones o más encima vuelven a ser escasas (cofres y enemigos casi no sueltan)
+function potionsFull() { return ((G.inv && G.inv.potion) || 0) >= 5; }
+// cada minuto se vuelven a medir tus estadísticas y los enemigos (también los que ya están vivos) se ajustan
+function rescaleEnemies(dt) {
+  G.scaleT = (G.scaleT ?? 60) - dt;
+  if (G.scaleT > 0) return;
+  G.scaleT = 60;
+  const old = G.dgScale || { hp: DG_EDGE, dmg: DG_EDGE };
+  scaleToPlayer();
+  const nw = G.dgScale, rh = nw.hp / old.hp, rd = nw.dmg / old.dmg;
+  if (rh <= 1.001 && rd <= 1.001) return;
+  for (const e of G.enemies) if (!e.dead && e.type !== 'ghost') { e.hp *= rh; e.maxHp *= rh; e.dmgM *= rd; }
+  if (rh > 1.05) logMsg('Los enemigos se hacen más fuertes', C.red);
+}
 function scaleToPlayer() {
   const p = G.p; if (!p || !p.base) return;
   const buffs = p.buffs; p.buffs = []; applyStats(); // sin mejoras temporales (Furia, Piel de hierro...)
   const now = playerPower(p); p.buffs = buffs; applyStats();
   const b = classBasePower(p.cls), prev = G.dgScale || { hp: 0, dmg: 0 };
   const n = G.dg ? G.dg.n : 1; // cada mazmorra superada: +10% de vida (se suma al 25%)
-  G.dgScale = { hp: Math.max(prev.hp, (DG_EDGE + 0.1 * (n - 1)) * Math.max(1, now.off / b.off)), dmg: Math.max(prev.dmg, DG_EDGE * Math.max(1, now.def / b.def)) };
+  // lo que no recogen las estadísticas (pasivas, niveles de habilidad, perforación) y un mínimo según tu nivel
+  const pas = (G.pasOn || []).reduce((a, id) => a + L(id), 0), skl = Object.values(p.skLv || {}).reduce((a, v) => a + v, 0);
+  const off = now.off / b.off * (1 + 0.06 * pas) * (1 + 0.04 * skl) * (1 + 0.1 * ((p.pierce || 1) - 1));
+  const lvH = 1 + 0.06 * (p.lvl - 1), lvD = 1 + 0.01 * (p.lvl - 1);
+  G.dgScale = { hp: Math.max(prev.hp, (DG_EDGE + 0.1 * (n - 1)) * Math.max(1, off, lvH)), dmg: Math.max(prev.dmg, DG_EDGE * Math.max(1, now.def / b.def, lvD)) };
 }
 function spawnEnemy(type, x, y) {
   const d = ENEMY[type], diff = (G.floor - 1) + Math.min(3, G.t / 120), sc = type === 'ghost' ? { hp: 1, dmg: 1 } : (G.dgScale || { hp: DG_EDGE, dmg: DG_EDGE });
@@ -926,7 +944,7 @@ function leaveSecret() { const b = G.secretBack; if (!b) return; enterLevel(b.z,
 
 function wakeEnemy(e) {
   e.sleep = false;
-  if (e.ghost && G.elite !== e) { G.elite = e; toast(e.ghost.doppel ? '¡TU DOPPELGÄNGER!' : `¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(e.ghost.doppel ? 'Una copia exacta de ti sale de las sombras...' : `Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, e.ghost.doppel ? C.red : C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
+  if (e.ghost && G.elite !== e) { G.elite = e; toast(e.ghost.doppel ? '¡TU DOPPELGANGER!' : `¡${e.def.name.toUpperCase()} DESPIERTA!`, true); logMsg(e.ghost.doppel ? 'Una copia exacta de ti sale de las sombras...' : `Un fantasma rencoroso de nivel ${e.ghost.lvlNow} te reconoce...`, e.ghost.doppel ? C.red : C.cyan); Sfx.play('roar'); G.shake = Math.max(G.shake, 0.4); }
   if (e.def.boss && !G.boss) {
     G.boss = e;
     toast(`¡${e.def.name} DESPIERTA!`, true); logMsg('Un rugido sacude la mazmorra...', C.red);
@@ -991,7 +1009,7 @@ function killEnemy(e) {
     return;
   }
   dropGem(e.x, e.y, d.xp * (1 + 0.5 * (G.floor - 1)));
-  if (Math.random() < 0.0375) G.pickups.push({ type: 'potion', x: e.x, y: e.y, t: 0 });
+  if (Math.random() < (potionsFull() ? 0.006 : 0.0375)) G.pickups.push({ type: 'potion', x: e.x, y: e.y, t: 0 });
 }
 
 function onBossDead(e) {
@@ -1636,7 +1654,7 @@ function update(dt) {
   updatePlayer(dt);
   if (G.state !== 'play') return; // una escalera o la salida pueden cambiar de estado
   updateRooms(dt);
-  updateSpawner(dt); updateWaves(dt);
+  updateSpawner(dt); updateWaves(dt); rescaleEnemies(dt);
   updateEnemies(dt);
   updateProjs(dt);
   updatePassives(dt); updatePassives2(dt); updateElites(dt); updateTeles(dt); comboTick();
