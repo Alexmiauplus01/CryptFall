@@ -84,7 +84,7 @@ const PROJ_LIGHT = {
 };
 
 const UPG = [
-  { id: 'might',  name: 'Poder Arcano',        max: 8, desc: () => '+20% daño de hechizos' },
+  { id: 'might',  name: 'Poder Arcano',        max: 8, desc: () => '+20% de daño (ataques, habilidades e invocaciones)' },
   { id: 'haste',  name: 'Prisa',               max: 8, desc: () => '+15% cadencia de lanzamiento' },
   { id: 'multi',  name: 'Descarga Múltiple',   max: 4, desc: () => '+1 proyectil por lanzamiento' },
   { id: 'pierce', name: 'Perforación',         max: 4, desc: () => 'Los hechizos atraviesan +1 enemigo más' },
