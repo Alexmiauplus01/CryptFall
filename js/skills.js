@@ -235,7 +235,8 @@ function updateZones(dt) {
       z.tick = 0.5;
       for (const e of enemiesIn(z.x, z.y, z.r)) {
         if (z.dmg) damageEnemy(e, z.dmg, { silent: true });
-        applyFx(e, z.fx);
+        // en el suelo la ralentización es más suave: los enemigos la cruzan y siguen recibiendo daño
+        if (z.fx && z.fx.slow) { e.slowZ = Math.max(e.slowZ || 0, z.fx.slow); applyFx(e, Object.assign({}, z.fx, { slow: 0 })); } else applyFx(e, z.fx);
       }
     }
   }

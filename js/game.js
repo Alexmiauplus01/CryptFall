@@ -1,4 +1,5 @@
 // Lógica principal: jugador, enemigos, proyectiles, mejoras, oleadas, jefe
+const PLAYER_R = 0.3; // radio con el que los enemigos se plantan delante del jugador
 const canvas = document.getElementById('view');
 const R = new Renderer();
 const ui = new UI(canvas);
@@ -221,7 +222,7 @@ function populateLevel(lv) {
   const P = lv.state.pickups, gold = 9 * G.floor;
   lv.rooms.forEach((r) => {
     const used = new Set(), area = r.w * r.h;
-    const chest = (g, item) => { if (item === 'potion' && Math.random() < 0.5) item = null; const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' };
+    const chest = (g, item) => { if (item === 'potion' && Math.random() < 0.375) item = null; const [x, y] = roomSpot(lv, r, used); const c = { type: 'chest', x, y, t: 0, gold: Math.round(g), item: item || null, torch: Math.random() < 0.35, eq: Math.random() < (r.type === 'camara' ? 0.35 : r.type === 'secreta' ? 0.3 : 0.12), eqSrc: r.type === 'camara' || r.type === 'guarida' ? 'vault' : 'chest' };
       if (c.eq) { c.eqItem = makeItem(c.eqSrc); if ((c.eqItem.rar === 'epico' || c.eqItem.rar === 'legendario') && Math.random() < 0.5) c.doppel = true; } // tesoro valioso: tu doble lo vigila
       P.push(c); return c; };
     const foes = (n, type) => { for (let k = 0; k < n; k++) { const [x, y] = roomSpot(lv, r, used); const e = spawnEnemy(type || pickType(), x, y); e.sleep = true; } };
@@ -984,7 +985,7 @@ function killEnemy(e) {
     return;
   }
   dropGem(e.x, e.y, d.xp * (1 + 0.5 * (G.floor - 1)));
-  if (Math.random() < 0.03) G.pickups.push({ type: 'potion', x: e.x, y: e.y, t: 0 });
+  if (Math.random() < 0.0375) G.pickups.push({ type: 'potion', x: e.x, y: e.y, t: 0 });
 }
 
 function onBossDead(e) {
@@ -1006,7 +1007,7 @@ function updateEnemies(dt) {
   for (const e of en) {
     if (e.dead) continue;
     const d = e.def;
-    e.flash -= dt; e.slow -= dt; e.atk -= dt; e.bladeCd -= dt; e.wob += dt * 6; if (e.mark > 0) e.mark -= dt; if (e.ward > 0) e.ward -= dt;
+    e.flash -= dt; e.slow -= dt; if (e.slowZ > 0) e.slowZ -= dt; e.atk -= dt; e.bladeCd -= dt; e.wob += dt * 6; if (e.mark > 0) e.mark -= dt; if (e.ward > 0) e.ward -= dt;
     e.losT -= dt;
     if (e.burn > 0) { e.burn -= dt; dot(e, (e.burnDps || 6) * dt); if (Math.random() < dt * 16) vfxBurn(e); }
     if (e.poison > 0) { e.poison -= dt; dot(e, (e.poisDps || 4) * dt); if (Math.random() < dt * 6) vfxPoisoned(e); }
@@ -1041,7 +1042,7 @@ function updateEnemies(dt) {
     if (!ally && e.los) { const f = flankTarget(e, d, dist); if (f) { tx = f.x; ty = f.y; } }
     let ax = tx - e.x, ay = ty - e.y;
     const al = Math.hypot(ax, ay) || 0.001; ax /= al; ay /= al;
-    let spd = e.spd * (e.slow > 0 ? 0.4 : 1);
+    let spd = e.spd * (e.slow > 0 ? 0.4 : e.slowZ > 0 ? 0.7 : 1); // las zonas de suelo frenan menos: se cruzan
     if (e.slamT > 0) spd = 0; // preparando un golpe anunciado
     if (d.charge) { // embestida: cada pocos segundos, si te ve a media distancia, carga a toda velocidad
       e.chargeCd = (e.chargeCd ?? rand(1, d.charge.cd)) - dt; e.chargeT = (e.chargeT || 0) - dt;
@@ -1059,8 +1060,13 @@ function updateEnemies(dt) {
       const w = Math.sin(e.wob) * 0.7;
       const nax = ax - ay * w, nay = ay + ax * w; ax = nax; ay = nay;
     }
+    // los de cuerpo a cuerpo se plantan delante del jugador en vez de meterse en él
+    const stop = d.r + PLAYER_R;
+    if (!ally && !e.fleeT && dist < stop + 0.08 && ax * dx + ay * dy > 0) spd = 0;
     const ox = e.x, oy = e.y;
     lv.move(e, ax * spd * dt + e.kx * dt, ay * spd * dt + e.ky * dt, Math.min(d.r, 0.3));
+    { const qx = e.x - p.x, qy = e.y - p.y, q = Math.hypot(qx, qy);
+      if (q < stop) { const k = q > 1e-4 ? (stop - q) / q : 0; if (k) lv.move(e, qx * k, qy * k, Math.min(d.r, 0.3)); else lv.move(e, -Math.cos(p.a) * stop, -Math.sin(p.a) * stop, Math.min(d.r, 0.3)); } }
     e.walk += Math.hypot(e.x - ox, e.y - oy);
     e.kx *= Math.max(0, 1 - dt * 7); e.ky *= Math.max(0, 1 - dt * 7);
 

@@ -140,7 +140,7 @@ const PACTS = {
   prisa:    { name: 'Enemigos frenéticos', desc: 'Los enemigos son un 20% más rápidos', bonus: 0.3 },
   ciego:    { name: 'A ciegas', desc: 'Sin minimapa ni mapa', bonus: 0.25 },
   antorcha: { name: 'Mecha corta', desc: 'Las antorchas duran la mitad', bonus: 0.25 },
-  sangre:   { name: 'Sangre fría', desc: 'Curas, pociones y regeneración a la mitad', bonus: 0.35 },
+  sangre:   { name: 'Sangre fría', desc: 'Curas y regeneración a la mitad', bonus: 0.35 },
   horda:    { name: 'La horda', desc: 'Una oleada cada 80 segundos', bonus: 0.35 },
   elites:   { name: 'Campeones', desc: 'El triple de enemigos élite', bonus: 0.3 },
   cristal:  { name: 'Cristal', desc: 'Recibes un 20% más de daño', bonus: 0.4 },

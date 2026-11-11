@@ -22,7 +22,7 @@ function drinkPotion() {
   const p = G.p;
   if (!G.inv.potion) { toast('NO TIENES POCIONES', false); return; }
   if (p.hp >= p.maxHp) { toast('YA TIENES LA VIDA AL MÁXIMO', false); return; }
-  G.inv.potion--; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.5 * healMul());
+  G.inv.potion--; p.hp = p.maxHp; // siempre cura entera, también con pactos
   Sfx.play('potion'); logMsg('Bebes una poción de vida', C.green);
 }
 function readMap() {

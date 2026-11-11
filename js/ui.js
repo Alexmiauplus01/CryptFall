@@ -303,7 +303,7 @@ class UI {
     const rows = [];
     const tLabel = off === 'torch' ? 'GUARDAR' : p.torchFuel > 0 ? 'EMPUÑAR' : 'ENCENDER';
     rows.push({ id: 'torch', spr: SPR.torchItem, label: `ANTORCHAS x${inv.torch}${p.torchFuel > 0 && off !== 'torch' ? ' (+1)' : ''}`, sub: one ? `${tLabel} · ${TORCH_FUEL / 60} MIN` : 'ARMA DE UNA MANO', on: one && (inv.torch > 0 || p.torchFuel > 0) });
-    if (inv.potion) rows.push({ id: 'potion', spr: SPR.potion, label: `POCIONES x${inv.potion}`, sub: 'BEBER: MITAD DE LA VIDA', on: true });
+    if (inv.potion) rows.push({ id: 'potion', spr: SPR.potion, label: `POCIONES x${inv.potion}`, sub: 'BEBER: VIDA ENTERA', on: true });
     if (inv.map) rows.push({ id: 'map', label: `PERGAMINOS x${inv.map}`, sub: 'LEER: REVELA EL NIVEL', on: true });
     if (inv.rune) rows.push({ id: 'rune', label: `RUNAS x${inv.rune}`, sub: 'USAR: VOLVER A LA SALIDA', on: true });
     rows.push({ id: 'shield', label: 'ESCUDO', sub: one ? (off === 'shield' ? 'BAJAR' : 'ALZAR') : 'ARMA DE UNA MANO', on: one });
