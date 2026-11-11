@@ -49,7 +49,7 @@ function saveRun() {
     player: { cls: p.cls, lvl: p.lvl, xp: p.xp, hp: p.hp, slot: p.slot, off: p.off, torchFuel: p.torchFuel, form: p.form, x: p.x, y: p.y, a: p.a, known: p.known, active: p.active, skLv: p.skLv || {} },
     pasOn: G.pasOn,
     upg: G.upg, forge: G.forge, inv: G.inv, equip: G.equip, phoenixUsed: !!G.phoenixUsed, phylUsed: !!G.phylUsed, keys: G.keys, loot: G.loot, bank: G.bank, kills: G.kills, totalTime: G.totalTime, t: G.t,
-    journal: G.journal, met: G.met, dgScale: G.dgScale, pact: G.pact || null, nightmare: !!G.nightmare, fountUsed: !!G.fountUsed, waveT: G.waveT || 0, waveN: G.waveN || 0, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
+    journal: G.journal, met: G.met, dgScale: G.dgScale, dgScaleV: 2, pact: G.pact || null, nightmare: !!G.nightmare, fountUsed: !!G.fountUsed, waveT: G.waveT || 0, waveN: G.waveN || 0, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
     dg: { n: G.dg.n, name: G.dg.name, zs: G.dg.zs, start: G.dg.start, lockRooms: G.dg.lockRooms.map(c => ({ z: c.z, ri: c.ri })) },
     z: G.z, levels: G.dg.zs.map(z => packLevel(G.dg.lv(z), G.dg.lv(z) === G.lv)),
   };
@@ -88,6 +88,11 @@ function loadRun() {
   G.state = 'play';
   enterLevel(d.z, { x: s.x, y: s.y, a: s.a }, true);
   G.waveT = d.waveT || 0; G.waveN = d.waveN || 0;
+  if (d.dgScaleV !== 2) { // partidas de antes del ajuste: se vuelve a medir desde cero y se rebajan los enemigos guardados
+    const old = G.dgScale; G.dgScale = null; scaleToPlayer();
+    const rh = G.dgScale.hp / old.hp, rd = G.dgScale.dmg / old.dmg;
+    for (const z of dg.zs) for (const e of (z === G.z ? G.enemies : (dg.lv(z).state || { enemies: [] }).enemies)) if (e.type !== 'ghost') { e.hp *= rh; e.maxHp *= rh; e.dmgM *= rd; }
+  }
   // si el Guardián estaba despierto, lo vuelve a estar
   if (d.bossSeen) for (const z of dg.zs) for (const e of dg.lv(z).state.enemies.concat(G.enemies)) if (e.def.boss && !e.sleep) G.boss = e;
   toast('CONTINÚAS LA PARTIDA', true); logMsg(`${dg.name}: ${levelName(d.z)}`, C.gold);

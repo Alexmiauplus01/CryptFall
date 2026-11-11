@@ -823,10 +823,12 @@ function scaleToPlayer() {
   const now = playerPower(p); p.buffs = buffs; applyStats();
   const b = classBasePower(p.cls), prev = G.dgScale || { hp: 0, dmg: 0 };
   const n = G.dg ? G.dg.n : 1; // cada mazmorra superada: +10% de vida (se suma al 25%)
-  // lo que no recogen las estadísticas (pasivas, niveles de habilidad, perforación) y un mínimo según tu nivel
-  const pas = (G.pasOn || []).reduce((a, id) => a + L(id), 0), skl = Object.values(p.skLv || {}).reduce((a, v) => a + v, 0);
-  const off = now.off / b.off * (1 + 0.06 * pas) * (1 + 0.04 * skl) * (1 + 0.1 * ((p.pierce || 1) - 1));
-  const lvH = 1 + 0.06 * (p.lvl - 1), lvD = 1 + 0.01 * (p.lvl - 1);
+  // vida: solo tu daño contra UN enemigo (daño, cadencia y críticos; los proyectiles extra, la perforación y las
+  // pasivas reparten por el grupo y no cuentan), algo amortiguado, con un mínimo suave según tu nivel
+  const cm = classMods(lineageOf(p.cls)[0]);
+  const st = (p.dmgMul * p.rate * (1 + p.crit)) / (cm.dmg * cm.rate * (1.05 + cm.crit));
+  const off = Math.pow(Math.max(1, st), 0.85);
+  const lvH = 1 + 0.04 * (p.lvl - 1), lvD = 1 + 0.01 * (p.lvl - 1);
   G.dgScale = { hp: Math.max(prev.hp, (DG_EDGE + 0.1 * (n - 1)) * Math.max(1, off, lvH)), dmg: Math.max(prev.dmg, DG_EDGE * Math.max(1, now.def / b.def, lvD)) };
 }
 function spawnEnemy(type, x, y) {
