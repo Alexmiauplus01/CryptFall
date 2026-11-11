@@ -213,14 +213,34 @@ class UI {
     this.darken(VX, VY, VW, VH, 0.45);
     const cx = VX + VW / 2;
     this.text(cx, 22, 'PAUSA', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
-    const ups = UPG.filter(u => L(u.id) > 0);
-    const h = 20 + Math.max(1, ups.length) * 10;
-    this.panel(cx - 200, 50, 196, h);
-    this.text(cx - 105, 60, 'MEJORAS', C.dim, { align: 'center' });
-    if (!ups.length) this.text(cx - 105, 74, 'SIN MEJORAS AÚN', C.dim, { align: 'center' });
-    ups.forEach((u, i) => { this.text(cx - 192, 74 + i * 10, u.name, u.passive ? C.orange : C.ink); this.text(cx - 18, 74 + i * 10, `NV ${L(u.id)}`, C.gold, { align: 'right' }); });
+    // habilidades de tu clase: las que aún no conoces salen como ??? (y las que piden almas, con el aviso)
+    const p = G.p, C0 = CLASSES[p.cls], sx = cx - 234, sw = 230, souls = soulsHave();
+    const rowsK = C0.skills.filter(id => SKILLS[id]).map(id => {
+      if (p.known.includes(id)) { const lv = skLv(id); return { t: SKILLS[id].name.toUpperCase() + (lv ? ' ' + ['', 'II', 'III', 'IV'][lv] : ''), col: p.active.includes(id) ? C.goldL : C.ink }; }
+      const req = skillSoulReq(id);
+      return { t: req > souls ? (req > 1 ? `??? (${req} ALMAS DE GUARDIÁN)` : '??? (DESBLOQUEO CON ALMA DE GUARDIÁN)') : '???', col: req > souls ? C.dim : C.ink };
+    });
+    if (C0.next) { const r = evolveSoulReq(p.cls); rowsK.push({ t: `EVOLUCIÓN: NV ${C0.next} + ${r > 1 ? r + ' ALMAS' : '1 ALMA'}`, col: canEvolve() ? C.goldL : C.dim }); }
+    const sh = 20 + rowsK.length * 9;
+    this.panel(sx, 50, sw, sh);
+    this.text(sx + 6, 56, `HABILIDADES · ${C0.name.toUpperCase()}`, C.dim, { shadow: false });
+    this.text(sx + sw - 6, 56, `ALMAS ${souls}`, C.cyan, { align: 'right', shadow: false });
+    rowsK.forEach((r, i) => this.text(sx + 6, 68 + i * 9, r.t, r.col, { shadow: false }));
+    // mejoras: en dos columnas si son muchas
+    const ups = UPG.filter(u => L(u.id) > 0), my = 50 + sh + 4, two = ups.length > 6, per = two ? Math.ceil(ups.length / 2) : ups.length;
+    const h = 20 + Math.max(1, per) * 9;
+    this.panel(sx, my, sw, h);
+    this.text(sx + 6, my + 6, 'MEJORAS', C.dim, { shadow: false });
+    if (!ups.length) this.text(sx + 6, my + 17, 'SIN MEJORAS AÚN', C.dim, { shadow: false });
+    ups.forEach((u, i) => {
+      const col = two ? (i >= per ? 1 : 0) : 0, row = two ? i % per : i, x0 = sx + 6 + col * (sw / 2), cw = two ? sw / 2 - 8 : sw - 12;
+      const nv = String(L(u.id)), maxCh = Math.floor((cw - textWidth(nv) - 6) / 6);
+      this.text(x0, my + 17 + row * 9, u.name.toUpperCase().slice(0, maxCh), u.passive ? C.orange : C.ink, { shadow: false });
+      this.text(x0 + cw, my + 17 + row * 9, nv, C.gold, { align: 'right', shadow: false });
+    });
     const oh = this.optionsPanel(G, cx + 6, 50);
-    this.text(cx, 50 + Math.max(h, oh) + 8, G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
+    const h0 = sh + 4 + h;
+    this.text(cx, Math.min(VH - 10, 50 + Math.max(h0, oh) + 8), G.touchMode ? 'TOCA FUERA PARA CONTINUAR' : 'HAZ CLIC FUERA O PULSA P PARA CONTINUAR', C.goldL, { align: 'center', shadow: 'outline' });
   }
 
   // Opciones (se guardan en el navegador): sensibilidad, volumen, sonido, límite de FPS y filtro CRT

@@ -387,6 +387,12 @@ const EN_RX = [
   [/^EL HERRERO TEMPLÓ MI ARMA: (.+), NIVEL (\d+)\.$/, (m, a, l) => `THE BLACKSMITH TEMPERED MY WEAPON: ${tr(a)}, LEVEL ${l}.`],
   [/^ENCONTRÉ (.+) EN EL (.+)\. SIENTO SU PODER\.$/, (m, a, l) => `I FOUND ${tr(a)} ON ${tr(l)}. I FEEL ITS POWER.`],
   [/^EL FANTASMA RENCOROSO DE UN (.+) \(NIVEL (\d+)\) GUARDABA UN TESORO(?:; CAYÓ EN (.+))?\. YA DESCANSA\.$/, (m, c, l, w) => `THE VENGEFUL GHOST OF A ${tr(c)} (LEVEL ${l}) GUARDED A TREASURE${w ? `; IT FELL IN ${tr(w)}` : ''}. IT RESTS NOW.`],
+  [/^HABILIDADES · (.+)$/, (m, a) => `SKILLS · ${tr(a)}`], [/^ALMAS (\d+)$/, 'SOULS $1'],
+  [/^\?\?\? \(DESBLOQUEO CON ALMA DE GUARDIÁN\)$/, '??? (UNLOCK WITH A GUARDIAN SOUL)'], [/^\?\?\? \((\d+) ALMAS DE GUARDIÁN\)$/, '??? ($1 GUARDIAN SOULS)'],
+  [/^EVOLUCIÓN: NV (\d+) \+ 1 ALMA$/, 'EVOLUTION: LV $1 + 1 SOUL'], [/^EVOLUCIÓN: NV (\d+) \+ (\d+) ALMAS$/, 'EVOLUTION: LV $1 + $2 SOULS'],
+  [/^¡ALMA DE GUARDIÁN!$/, 'GUARDIAN SOUL!'], [/^ABSORBES UN ALMA DE GUARDIÁN \((\d+)\)$/, 'YOU ABSORB A GUARDIAN SOUL ($1)'],
+  [/^ABSORBÍ EL ALMA DEL GUARDIÁN\. SIENTO QUE PUEDO LLEGAR MÁS LEJOS \(ALMAS: (\d+)\)\.$/, 'I ABSORBED THE GUARDIAN\'S SOUL. I FEEL I CAN GO FURTHER (SOULS: $1).'],
+  [/^(.+) (II|III|IV)$/, (m, a, b) => `${tr(a)} ${b}`],
 ];
 // fragmentos sueltos (nombres compuestos que no están en ningún diccionario)
 const EN_FRAG = [[/\bNIVEL ([+-]?\d+)/g, 'LEVEL $1'], [/\bALA NORESTE\b/g, 'NORTHEAST WING'], [/\bALA NOROESTE\b/g, 'NORTHWEST WING'], [/\bALA SURESTE\b/g, 'SOUTHEAST WING'], [/\bALA SUROESTE\b/g, 'SOUTHWEST WING'],

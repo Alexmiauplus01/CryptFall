@@ -175,7 +175,7 @@ function setClass(id, evolving) {
 
 function newRun(cls) {
   G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
-  G.upg = {}; G.pasOn = []; G.learn = null; G.dgScale = null; G.pact = null; G.nightmare = false; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
+  G.souls = 0; G.upg = {}; G.pasOn = []; G.learn = null; G.dgScale = null; G.pact = null; G.nightmare = false; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
   G.inv = { torch: 3, potion: 1, map: 0, rune: 0 }; // kit inicial G.forge = {}; G.forgeOpts = null; G.met = {};
   G.p.hp = G.p.maxHp;
@@ -1016,7 +1016,7 @@ function killEnemy(e) {
 
 function onBossDead(e) {
   G.boss = null;
-  if (G.z !== SECRET_Z) G.guardianDown = true; // ya se puede abrir el portal secreto
+  if (G.z !== SECRET_Z) { G.guardianDown = true; G.pickups.push({ type: 'soul', x: e.x, y: e.y - 0.6, t: 0 }); } // portal secreto y Alma de Guardián
   else { G.cowDown = true; dropItem('boss', e.x - 0.4, e.y, {}); G.pickups.push({ type: 'gold', x: e.x, y: e.y + 0.5, v: 120 * G.floor, t: 0 }); jot('cow' + G.dg.n, 'Encontré un prado bajo la mazmorra, lleno de vacas armadas. Derroté a su rey. Nadie me va a creer.'); }
   dropItem('boss', e.x + 0.4, e.y, { boss: e.type });
   G.flashFx = 1; G.shake = 0.7;
@@ -1312,9 +1312,24 @@ function updatePassives2(dt) {
 
 // ---------------------------------------------------------------- Habilidades aprendidas (3 activas) y pasivas (3 activas)
 // Las que no caben se guardan: el Mentor deja reorganizarlas por oro.
+// ---------------------------------------------------------------- Almas de Guardián
+// Cada Guardián suelta un alma. No se gastan: cuentan las conseguidas en la partida.
+// · Evolucionar pide 1 alma (primera) y 2 (segunda).
+// · Habilidades: las 4 de la clase inicial son libres; en cada evolución las 3 primeras también,
+//   la 4.ª pide 1 alma, la 5.ª 2, la 6.ª 3.
+// · Mejorar una habilidad activa: la 1.ª mejora es libre, la 2.ª pide 1 alma y la 3.ª 2.
+function soulsHave() { return G.souls || 0; }
+function skillSoulReq(id) {
+  let req = Infinity;
+  lineageOf(G.p.cls).forEach((c, step) => { const i = CLASSES[c].skills.indexOf(id); if (i >= 0) req = Math.min(req, step ? Math.max(0, i - 2) : 0); }); // step 0 = clase inicial
+  return req === Infinity ? 0 : req;
+}
+function evolveSoulReq(cls) { return lineageOf(cls).length; } // de la clase inicial: 1 alma; de la primera evolución: 2
+function upgradeSoulReq(nextLv) { return Math.max(0, nextLv - 1); }
+function canEvolve() { const p = G.p, nx = CLASSES[p.cls].next; return !!nx && p.lvl >= nx && soulsHave() >= evolveSoulReq(p.cls); }
 function learnableSkills() {
   const p = G.p, out = [];
-  for (const c of lineageOf(p.cls)) for (const s of CLASSES[c].skills) if (SKILLS[s] && !p.known.includes(s) && !out.includes(s)) out.push(s);
+  for (const c of lineageOf(p.cls)) for (const s of CLASSES[c].skills) if (SKILLS[s] && !p.known.includes(s) && !out.includes(s) && skillSoulReq(s) <= soulsHave()) out.push(s);
   return out;
 }
 function skillDescShort(id) { const s = SKILLS[id], d = s.desc || ''; return d.toUpperCase().startsWith(s.name.toUpperCase() + ':') ? d.slice(s.name.length + 1).trim().replace(/^./, c => c.toUpperCase()) : d; }
@@ -1366,8 +1381,7 @@ function addXp(v) {
   const p = G.p;
   p.xp += v * p.xpMul * dgXpMul();
   while (p.xp >= xpNeed(p.lvl)) { p.xp -= xpNeed(p.lvl); p.lvl++; G.pending++; }
-  const nx = CLASSES[p.cls].next;
-  if (nx && p.lvl >= nx) G.evolveReady = true;
+  if (canEvolve()) G.evolveReady = true;
   if (G.pending > 0 && G.state === 'play') openLevelUp();
 }
 
@@ -1399,6 +1413,15 @@ function updatePickups(dt) {
     } else if (k.type === 'item') {
       if (k.declined) { if (d > 1.2) k.declined = false; } // lo dejaste: vuelve a preguntar si te alejas y regresas
       else if (d < 0.7) { k.dead = true; takeItem(k.item); }
+    } else if (k.type === 'soul') {
+      k.t += dt;
+      if (Math.random() < dt * 20) burst(k.x + rand(-0.25, 0.25), k.y + rand(-0.25, 0.25), rand(0.2, 0.9), 1, rgb(140, 220, 255), 0.5, 0.9);
+      if (d < 0.8) {
+        k.dead = true; G.souls = soulsHave() + 1; G.flashFx = 0.8; Sfx.play('level'); vfxPowerUp('cyan');
+        toast('¡ALMA DE GUARDIÁN!', true); logMsg(`Absorbes un Alma de Guardián (${G.souls})`, C.cyan);
+        jot('soul' + G.dg.n, `Absorbí el alma del Guardián. Siento que puedo llegar más lejos (almas: ${G.souls}).`);
+        if (canEvolve()) { G.evolveReady = true; if (G.state === 'play') openEvolve(); }
+      }
     } else if (k.type === 'portal') {
       k.t += dt;
       if (Math.random() < dt * 30) burst(k.x + rand(-0.4, 0.4), k.y + rand(-0.4, 0.4), rand(0.1, 1.1), 1, k.back ? rgb(180, 140, 255) : rgb(150, 255, 120), 0.6, 0.8);
@@ -1474,7 +1497,7 @@ function openLevelUp() {
   const ls = learnableSkills();
   if (ls.length && Math.random() < (G.p.active.includes(null) ? 0.6 : 0.35)) opts.push(skillOpt(pick(ls)));
   // mejorar una de tus habilidades activas (hasta nivel 3)
-  for (const id of G.p.active) if (id && skLv(id) < SKILL_MAX_LV) pool.push(skillUpOpt(id));
+  for (const id of G.p.active) if (id && skLv(id) < SKILL_MAX_LV && upgradeSoulReq(skLv(id) + 1) <= soulsHave()) pool.push(skillUpOpt(id));
   while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   if (opts[0] && opts[0].skill && opts.length > 1) { const j = randi(0, opts.length - 1); [opts[0], opts[j]] = [opts[j], opts[0]]; }
   G.opts = opts;
@@ -1712,6 +1735,7 @@ function buildItems() {
     else if (k.type === 'potion') items.push({ x: k.x, y: k.y, spr: SPR.potion, h: 0.3, w: 0.2, z: 0.02 + Math.sin(k.t * 3) * 0.02 });
     else if (k.type === 'chest') { const s = k.open ? SPR.chestOpen : SPR.chest; items.push({ x: k.x, y: k.y, spr: s, h: 0.42, w: 0.42 * s.w / s.h, z: 0 }); }
     else if (k.type === 'item') { const s = itemIcon(k.item); items.push({ x: k.x, y: k.y, spr: s, h: 0.24, w: 0.24, z: 0.18 + Math.sin(k.t * 3) * 0.04, bright: true }); }
+    else if (k.type === 'soul') { const pu = 1 + Math.sin(k.t * 4) * 0.1; items.push({ x: k.x, y: k.y, spr: SPR.orbIce || SPR.orbBlue, w: 0.45 * pu, h: 0.45 * pu, z: 0.35 + Math.sin(k.t * 2) * 0.05, bright: true, add: true }); }
     else if (k.type === 'portal') { const s = k.back ? SPR.orbPurple : SPR.orbGreen, pu = 1 + Math.sin(k.t * 5) * 0.08; items.push({ x: k.x, y: k.y, spr: s, w: 1.1 * pu, h: 1.5 * pu, z: 0.05, bright: true, add: true }); }
     else if (k.type === 'torch') items.push({ x: k.x, y: k.y, spr: SPR.torchItem, h: 0.36, w: 0.36 * SPR.torchItem.w / SPR.torchItem.h, z: 0 });
     else if (k.type === 'gold') items.push({ x: k.x, y: k.y, spr: SPR.coins, h: 0.13, w: 0.13 * SPR.coins.w / SPR.coins.h, z: 0.01 });
@@ -1749,6 +1773,7 @@ function dynLights() {
   for (const pr of G.projs) out.push({ x: pr.x, y: pr.y, c: PROJ_LIGHT[pr.spr] || PROJ_LIGHT.orbBlue, rad: pr.friendly ? 2.6 : 2.4 });
   for (const f of G.fx) if (f.type === 'bolt') out.push({ x: f.x, y: f.y, c: [1.4, 1.7, 2.2], rad: 6 });
   for (const k of G.pickups) if (k.type === 'item') { const c = RARITY[k.item.rar].col; out.push({ x: k.x, y: k.y, c: c.map(v => v / 255 * 0.6), rad: 2.2 }); }
+  for (const k of G.pickups) if (k.type === 'soul') out.push({ x: k.x, y: k.y, c: [0.5, 0.9, 1.4], rad: 4 });
   for (const k of G.pickups) if (k.type === 'portal') out.push({ x: k.x, y: k.y, c: k.back ? [0.8, 0.5, 1.4] : [0.6, 1.4, 0.5], rad: 5 });
   for (const k of G.pickups) if (k.type === 'key') out.push({ x: k.x, y: k.y, c: KEYS[k.key].col.map(v => v / 255 * 0.7), rad: 2.5 });
   vfxLights(out);
