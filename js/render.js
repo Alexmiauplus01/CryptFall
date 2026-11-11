@@ -520,11 +520,13 @@ class Renderer {
   }
   drawHandsFrame(p, time, glowCol) {
     const mv = Math.min(1, p.moveAmt || 0);
-    // balanceo al andar: senoide suave (dos subidas por paso, sin el rebote seco de abs()) y una respiración leve en reposo.
-    // La mano izquierda va desfasada para que no se muevan en bloque; las armas a dos manos usan solo el de la derecha.
-    const walkY = ph => (0.5 + 0.5 * Math.cos(p.bob * 2 + ph)) * 5 * mv, idleY = ph => Math.sin(time * 1.7 + ph) * 1.2;
-    const bx = Math.sin(p.bob) * 7 * mv, by = walkY(0) + idleY(0);
-    const bxL = Math.sin(p.bob - 0.5) * 7 * mv, byL = walkY(-1.1) + idleY(-1.3);
+    // balanceo al andar: cada brazo sube y baja una vez por zancada, en contrafase (cuando una mano sube la otra baja,
+    // con un pequeño retraso), más un leve rebote común en cada paso y una respiración suave en reposo.
+    // Las armas a dos manos (mandoble, arco) usan solo el rebote común: se mueven en bloque.
+    const step = (0.5 - 0.5 * Math.cos(p.bob * 2)) * 3 * mv, idleY = ph => Math.sin(time * 1.7 + ph) * 1.2;
+    const bx = Math.sin(p.bob) * 5 * mv, by = step + Math.sin(p.bob) * 10 * mv + idleY(0);
+    const bxL = Math.sin(p.bob - 0.35) * 5 * mv, byL = step - Math.sin(p.bob - 0.35) * 10 * mv + idleY(-1.3);
+    const by2 = (0.5 - 0.5 * Math.cos(p.bob * 2)) * 6 * mv + idleY(0);
     const a = p.anim, rc = a * a;
     const flick = 0.92 + 0.08 * Math.sin(time * 13) + 0.04 * Math.sin(time * 31);
     const lm = (0.86 + 0.14 * flick) * (p.handLight === undefined ? 1 : p.handLight);
@@ -535,7 +537,7 @@ class Renderer {
     // puntos de agarre en reposo (centro del puño)
     const sideUp = (SPR['handR_' + p.cls] || {}).side ? 40 : 0; // las manos de perfil se ven enteras: subir el agarre
     const RGx = Math.round(VW * 0.70 + bx), RGy = Math.round(VH - 60 - sideUp + by);
-    const LGx = Math.round(VW * 0.25 - bxL * 0.7), LGy = Math.round(VH - 60 - sideUp + byL * 0.85);
+    const LGx = Math.round(VW * 0.25 + bxL * 0.7), LGy = Math.round(VH - 60 - sideUp + byL);
     const S2 = HS;
 
     // ---------- forma animal: garras abiertas, sin armas ni antorcha
@@ -544,7 +546,7 @@ class Renderer {
       for (const side of [1, -1]) {
         const s = SPR[(side > 0 ? 'clawsR_' : 'clawsL_') + k];
         const active = p.swing && swDir === side;
-        const x0 = (side > 0 ? VW * 0.76 : VW * 0.24) + (side > 0 ? bx : bxL) * side * 0.6, y0 = VH - 40 + (side > 0 ? by : byL) + Math.sin(time * 3 + side) * 2;
+        const x0 = (side > 0 ? VW * 0.76 : VW * 0.24) + (side > 0 ? bx : bxL) * 0.6, y0 = VH - 40 + (side > 0 ? by : byL) + Math.sin(time * 3 + side) * 2;
         let ang = side * -0.08 + Math.sin(time * 2.2 + side) * 0.04, x = x0, y = y0; // zarpas alzadas, algo giradas hacia el centro
         if (active) {
           const mv = MOVES.cl.swipe, q = poseAt(mv, sw);
@@ -574,7 +576,7 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      let sx = lerp(VW * 0.17, VW * 0.38, k) - bxL * 0.5, sy = lerp(VH + 12, VH / 2 + SHIELD_TOP, k) + byL * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      let sx = lerp(VW * 0.17, VW * 0.38, k) + bxL * 0.5, sy = lerp(VH + 12, VH / 2 + SHIELD_TOP, k) + byL * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
       // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
       const u = p.bashU;
       if (u !== undefined) {
@@ -614,7 +616,7 @@ class Renderer {
       // 0 tensado con flecha · 1 suelta · 2 vibra · 3 reposo
       const n = a < 0.3 ? 0 : a > 0.85 ? 1 : a > 0.6 ? 2 : 3;
       const base = SPR['bowfp_' + n] || SPR.bowfp_0, spr = weaponSprite('bow', base, 'fp' + n);
-      const ox = 2 * Math.round(bx * 0.35 / 2), oy = 2 * Math.round(by * 0.35 / 2);
+      const ox = 2 * Math.round(bx * 0.35 / 2), oy = 2 * Math.round(by2 * 0.35 / 2);
       const X = VW / 2 - 130 + ox, Y = VH / 2 - 80 + oy; // TIP del sprite (65, 40) → centro de la pantalla
       this.blitRot(spr, 0, 0, X, Y, 0, lm, false, S2);
       const cx = VW / 2 + ox, cy = VH / 2 + oy;
@@ -648,7 +650,7 @@ class Renderer {
     const grip = big ? [39, 190] : dag ? [23, 80] : [31, 122]; // justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo
     // espadón: a la derecha de la pantalla e inclinado hacia la esquina superior derecha
     const rest = big ? GS_REST : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? 190 : dag ? 82 : 125) * S2;
-    const x0 = big ? VW * GS_X : RGx, y0 = big ? VH - 22 - sideUp + by : RGy;
+    const x0 = big ? VW * GS_X : RGx, y0 = big ? VH - 22 - sideUp + by2 : RGy;
     let ang = rest, gx = x0, gy = y0, sc = 1, sv = 1, hide = 0;
     if (p.swing && spin) { // torbellino: las manos se esconden abajo y solo gira el arma
       const k = Math.min(1, sw * 6, (1 - sw) * 6);
