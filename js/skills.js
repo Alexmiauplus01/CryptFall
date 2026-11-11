@@ -158,7 +158,7 @@ function hitFx(e, fx, pr) {
 function stealthBonus() {
   const p = G.p;
   if (p.stealth > 0) {
-    p.stealth = 0;
+    if (!(G.time < (p.stealthKeepUntil || 0))) p.stealth = 0; // Sigilo al nivel máximo: atacar no lo rompe
     const m = classPassive(p.cls, 'backstab', 0);
     return m > 0 ? m : 1;
   }
@@ -758,6 +758,7 @@ function useSkill(i) {
   if (!sk || p.skillCd[i] > 0) return;
   const id = p.active[i], lv = skLv(id), cdr = classPassive(p.cls, 'cdr', 1) * (1 - SKB.cd * lv);
   if (withSk(lv ? { id, lv, extra: lv } : null, () => sk.use(p)) === false) return;
+  if (id === 'vanish' && lv >= SKILL_MAX_LV) p.stealthKeepUntil = G.time + p.stealth; // hasta que termina la habilidad
   p.skillCd[i] = sk.cd * cdr; p.skillMax[i] = sk.cd * cdr;
 }
 
@@ -781,5 +782,6 @@ function skillUpgradeDesc(id) {
   const T = en
     ? { proj: '+1 projectile', zone: 'bigger, longer zone that slows more', chain: '+1 jump', ally: 'stronger summons', shield: 'bigger shield', cc: 'longer stun and slow', area: 'bigger area', time: 'lasts longer', heal: 'heals more', dmg: '+15% damage', cd: '-10% cooldown' }
     : { proj: '+1 proyectil', zone: 'zona más grande, duradera y que frena más', chain: '+1 salto', ally: 'invocaciones más fuertes', shield: 'escudo mayor', cc: 'aturde y frena más tiempo', area: 'más radio', time: 'dura más', heal: 'cura más', dmg: '+15% de daño', cd: '-10% de recarga' };
+  if (id === 'vanish' && skLv(id) === SKILL_MAX_LV - 1) return en ? 'Final level: attacks do not break stealth until it ends, lasts longer, -10% cooldown' : 'Nivel final: atacar ya no rompe el sigilo hasta que termina, dura más, -10% de recarga';
   return skillUpgradeTags(id).slice(0, 2).concat('cd').map(k => T[k]).join(', ');
 }

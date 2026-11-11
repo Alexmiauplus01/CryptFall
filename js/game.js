@@ -163,7 +163,7 @@ function recalc() {
 function setClass(id, evolving) {
   const p = G.p;
   p.cls = id; p.slot = 0; p.form = 'human'; p.buffs = []; p.skillCd = [0, 0, 0]; p.skillMax = [1, 1, 1];
-  p.stealth = 0; p.riposte = 0; p.absorb = 0; p.swing = null;
+  p.stealth = 0; p.stealthKeepUntil = 0; p.riposte = 0; p.absorb = 0; p.swing = null;
   p.element = classPassive(id, 'element', null);
   if (classPassive(id, 'arcana', false)) { for (const k of ['blades', 'nova', 'bolt']) { G.upg[k] = Math.max(G.upg[k] || 0, 2); if (!G.pasOn.includes(k) && G.pasOn.length < MAX_PAS) G.pasOn.push(k); } G.novaT = 1; }
   if (!evolving) { const sk = CLASSES[id].skills; p.known = sk.slice(0, 2); p.active = [sk[0], sk[1] || null, null]; } // empiezas con dos; el resto se aprende al subir de nivel
