@@ -515,6 +515,12 @@ function hurtPlayer(d, sx, sy) {
 }
 
 function die() {
+  if (G.inv && G.inv.potion > 0) { // si llevas pociones, bebes una en el último momento y vuelves a la vida entera
+    const p = G.p; G.inv.potion--; p.hp = p.maxHp; p.poisT = 0; p.inv = 1.2; G.flashFx = 0.6; G.shake = 0.4;
+    Sfx.play('potion'); toast('¡BEBES UNA POCIÓN A TIEMPO!', true); logMsg(`Una poción te salva de la muerte (quedan ${G.inv.potion})`, C.green);
+    burst(p.x, p.y, 0.6, 18, rgb(255, 80, 90), 2, 0.6);
+    return;
+  }
   if (phylactery()) return;
   if (eqSpecial('fenix') && !G.phoenixUsed) { // el amuleto del fénix te devuelve a la vida una vez por mazmorra
     const p = G.p; G.phoenixUsed = true; p.hp = p.maxHp * 0.4; p.inv = 2.5; G.flashFx = 1; G.shake = 0.5;
