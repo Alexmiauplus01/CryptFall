@@ -216,7 +216,7 @@ class UI {
 
   // Opciones (se guardan en el navegador): sensibilidad, volumen, sonido, límite de FPS y filtro CRT
   optionsPanel(G, x, y) {
-    const o = G.cfg, w = 196, rh = 12;
+    const o = G.cfg, w = 196;
     const rows = [
       ['arrows', 'SENSIBILIDAD', o.sens.toFixed(1), 'sens'],
       ['toggle', 'ATAQUE AUTOMÁTICO', o.autoAtk ? 'SÍ' : 'NO', 'autoatk'],
@@ -234,7 +234,9 @@ class UI {
       ['toggle', 'CONTROLES', '>', 'controls'],
     ];
     if (G.installEvt) rows.push(['toggle', 'INSTALAR COMO APP', '>', 'install']); // solo si el navegador lo ofrece
+    if (G.state === 'paused') rows.push(['toggle', 'NUEVA PARTIDA', G.newAsk && G.time - G.newAsk < 3 ? '¿SEGURO?' : '>', 'newrun']);
     if (typeof LANGS !== 'undefined') rows.splice(4, 0, ['toggle', 'IDIOMA', o.lang === 'en' ? 'ENGLISH' : 'ESPAÑOL', 'lang']);
+    const rh = rows.length > 15 ? 11 : 12; // con muchas filas (pausa), un poco más juntas para que quepa todo
     this.panel(x, y, w, rows.length * rh + 20);
     this.text(x + w / 2, y + 4, 'OPCIONES', C.dim, { align: 'center' });
     rows.forEach(([kind, label, val, id], i) => {

@@ -176,7 +176,7 @@ function newRun(cls) {
   G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
   G.upg = {}; G.pasOn = []; G.learn = null; G.dgScale = null; G.pact = null; G.nightmare = false; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
-  G.inv = { torch: 2, potion: 0, map: 0, rune: 0 }; G.forge = {}; G.forgeOpts = null; G.met = {};
+  G.inv = { torch: 3, potion: 1, map: 0, rune: 0 }; // kit inicial G.forge = {}; G.forgeOpts = null; G.met = {};
   G.p.hp = G.p.maxHp;
   G.bladeAng = 0; G.novaT = 4; G.boltT = 2;
   G.state = 'play';
@@ -1760,7 +1760,7 @@ function render() {
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
   else {
-    if (G.state !== 'learn' && G.state !== 'mentor' && G.state !== 'pact') ui.hud(G);
+    if (!['learn', 'mentor', 'pact', 'paused'].includes(G.state)) ui.hud(G);
     if (G.state === 'paused') ui.pause(G);
     else if (G.state === 'levelup') ui.levelUp(G);
     else if (G.state === 'learn') ui.learn(G);
@@ -1938,6 +1938,8 @@ function applyCfg() {
 }
 function optAction(id) {
   const o = G.cfg;
+  // nueva partida desde la pausa: el primer toque pide confirmación y el segundo (antes de 3 s) empieza de cero
+  if (id === 'newrun') { if (G.newAsk && G.time - G.newAsk < 3) { G.newAsk = 0; clearSave(); startRun(); } else { G.newAsk = G.time; Sfx.play('locked'); } return; }
   if (id === 'install' && G.installEvt) { const ev = G.installEvt; G.installEvt = null; ev.prompt(); return; }
   if (id === 'sens-') o.sens = Math.max(0.3, Math.round((o.sens - 0.1) * 10) / 10);
   if (id === 'sens+') o.sens = Math.min(3, Math.round((o.sens + 0.1) * 10) / 10);
