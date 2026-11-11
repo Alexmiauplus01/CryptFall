@@ -46,7 +46,7 @@ function saveRun() {
   const p = G.p;
   const data = {
     v: SAVE_VER, time: Date.now(),
-    player: { cls: p.cls, lvl: p.lvl, xp: p.xp, hp: p.hp, slot: p.slot, off: p.off, torchFuel: p.torchFuel, form: p.form, x: p.x, y: p.y, a: p.a, known: p.known, active: p.active },
+    player: { cls: p.cls, lvl: p.lvl, xp: p.xp, hp: p.hp, slot: p.slot, off: p.off, torchFuel: p.torchFuel, form: p.form, x: p.x, y: p.y, a: p.a, known: p.known, active: p.active, skLv: p.skLv || {} },
     pasOn: G.pasOn,
     upg: G.upg, forge: G.forge, inv: G.inv, equip: G.equip, phoenixUsed: !!G.phoenixUsed, phylUsed: !!G.phylUsed, keys: G.keys, loot: G.loot, bank: G.bank, kills: G.kills, totalTime: G.totalTime, t: G.t,
     journal: G.journal, met: G.met, dgScale: G.dgScale, pact: G.pact || null, nightmare: !!G.nightmare, fountUsed: !!G.fountUsed, waveT: G.waveT || 0, waveN: G.waveN || 0, pending: G.pending, evolveReady: G.evolveReady, bossSeen: !!(G.boss && !G.boss.dead),
@@ -73,6 +73,7 @@ function loadRun() {
   const s = d.player;
   G.p = makePlayer(s.cls); setClass(s.cls, false);
   Object.assign(G.p, { lvl: s.lvl, xp: s.xp, slot: s.slot, off: s.off, torchFuel: s.torchFuel, form: s.form || 'human' });
+  G.p.skLv = {}; if (s.skLv) for (const k in s.skLv) if (SKILLS[k]) G.p.skLv[k] = Math.min(SKILL_MAX_LV, s.skLv[k] | 0);
   if (Array.isArray(s.known)) { G.p.known = s.known.filter(k => SKILLS[k]); G.p.active = [0, 1, 2].map(i => (s.active && SKILLS[s.active[i]]) ? s.active[i] : null); }
   else { const sk = CLASSES[s.cls].skills; G.p.known = sk.slice(0, 3); G.p.active = [sk[0], sk[1] || null, sk[2] || null]; } // partidas de antes
   recalc(); G.p.hp = Math.min(G.p.maxHp, s.hp);

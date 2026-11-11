@@ -28,16 +28,63 @@ function ringFx(x, y, r, col, n = 40) {
   }
 }
 function smokeFx(x, y) { burst(x, y, 0.3, 26, rgb(125, 125, 140), 2.2, 0.9, false, 0.1); }
+// ---------------------------------------------------------------- Niveles de habilidad
+// Cada habilidad activa sube hasta 3 niveles (cartas "Mejorar ..."). Mientras se lanza (y en sus efectos
+// retardados) hay un contexto SKCTX y los ayudantes escalan según lo que haga la habilidad:
+// daño, proyectiles extra, zonas más grandes/largas/frenan más, mejoras y sigilo más largos, aturdimientos
+// más largos, más radio, curas, escudos e invocaciones más fuertes y más saltos en las cadenas.
+const SKILL_MAX_LV = 3;
+let SKCTX = null;
+function skLv(id) { return (G.p.skLv && G.p.skLv[id]) || 0; }
+const SKB = { dmg: 0.15, cd: 0.1, area: 0.15, time: 0.25, fx: 0.25, heal: 0.2, ally: 0.25 };
+function skMul(k) { return SKCTX ? 1 + SKB[k] * SKCTX.lv : 1; }
+function withSk(ctx, fn) {
+  if (!ctx || !ctx.lv) return fn();
+  const p = G.p, prev = SKCTX, dm = p.dmgMul, st = p.stealth, ab = p.absorb;
+  const np = G.projs.length, nz = G.zones.length, na = G.allies.length;
+  const boosted = dm * (1 + SKB.dmg * ctx.lv);
+  SKCTX = ctx; p.dmgMul = boosted;
+  let r;
+  try { r = fn(); } finally {
+    // si el lanzamiento recalculó las estadísticas (applyStats), ese valor ya no lleva el extra
+    if (p.dmgMul === boosted) p.dmgMul = dm;
+    if (p.stealth > st) p.stealth = st + (p.stealth - st) * skMul('time');
+    if (p.absorb > ab) { p.absorb = ab + (p.absorb - ab) * skMul('ally'); p.absorbT *= skMul('time'); }
+    for (let i = nz; i < G.zones.length; i++) { const z = G.zones[i]; z.r *= skMul('area'); z.t *= skMul('time'); if (z.fx) { z.fx = Object.assign({}, z.fx); if (z.fx.slow) z.fx.slow *= skMul('fx'); if (z.fx.stun) z.fx.stun *= skMul('fx'); } }
+    for (let i = na; i < G.allies.length; i++) { const a = G.allies[i], m = skMul('ally'); a.hp *= m; a.maxHp *= m; if (a.life) a.life *= skMul('time'); }
+    skExtraProjs(np);
+    SKCTX = prev;
+  }
+  return r;
+}
+// +1 proyectil por nivel en cada lanzamiento: si salió uno, a los lados; si salió un abanico, se ensancha
+function skExtraProjs(from) {
+  const c = SKCTX; if (!c || c.extra <= 0) return;
+  const made = G.projs.slice(from).filter(q => q.friendly && !q.basic);
+  if (!made.length) return;
+  const ang = q => Math.atan2(q.vy, q.vx);
+  made.sort((a, b) => ang(a) - ang(b));
+  const lo = made[0], hi = made[made.length - 1];
+  const step = made.length > 1 ? Math.max(0.06, (ang(hi) - ang(lo)) / (made.length - 1)) : 0.2;
+  for (let k = 0; k < c.extra; k++) {
+    const side = k % 2 ? -1 : 1, src = side > 0 ? hi : lo, n = (k >> 1) + 1;
+    const a = ang(src) + side * step * n;
+    const spd = Math.hypot(src.vx, src.vy);
+    G.projs.push(Object.assign({}, src, { vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, hit: new Set() }));
+  }
+  c.extra = 0;
+}
 function healP(n) {
-  const p = G.p; n *= healMul(); if (n <= 0) return;
+  const p = G.p; n *= healMul() * skMul('heal'); if (n <= 0) return;
   p.hp = Math.min(p.maxHp, p.hp + n);
   if (n >= 4 && G.time - (G.healFxT || 0) > 0.4) { G.healFxT = G.time; vfxHeal(Math.min(14, 4 + Math.round(n / 4))); }
   if (n >= p.maxHp * 0.2 && typeof Ambient !== 'undefined') Ambient.healBurst(n >= p.maxHp * 0.5);
 }
-function later(t, fn) { G.timers.push({ t, fn }); }
+function later(t, fn) { const c = SKCTX; G.timers.push({ t, fn: c ? () => withSk(c, fn) : fn }); }
 
 function applyFx(e, o) {
   if (!o || e.dead) return;
+  if (SKCTX && (o.stun || o.slow)) { o = Object.assign({}, o); if (o.stun) o.stun *= skMul('fx'); if (o.slow) o.slow *= skMul('fx'); }
   const dm = G.p.dmgMul || 1;
   if (o.slow) e.slow = Math.max(e.slow, o.slow);
   if (o.stun) e.stun = Math.max(e.stun || 0, o.stun * (e.def.boss ? 0.3 : 1));
@@ -47,7 +94,7 @@ function applyFx(e, o) {
 }
 
 function aoe(x, y, r, dmg, o = {}) {
-  let n = 0;
+  let n = 0; r *= skMul('area');
   for (const e of G.enemies) {
     if (e.dead) continue;
     const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy);
@@ -121,7 +168,7 @@ function stealthBonus() {
 // ---------------------------------------------------------------- Mejoras temporales
 function addBuff(id, name, t, mods, col) {
   const p = G.p;
-  const ex = p.buffs.find(b => b.id === id);
+  const ex = p.buffs.find(b => b.id === id); t *= skMul('time');
   vfxPowerUp(BUFF_RAMP[id] || 'cyan');
   if (ex) { ex.t = t; ex.max = t; return; }
   p.buffs.push({ id, name, t, max: t, mods: mods || {}, col: col || C.gold });
@@ -279,6 +326,7 @@ function blinkBehind(t) {
   vfxBlink(p.x, p.y);
 }
 function chainFrom(start, n, dmg) {
+  if (SKCTX) n += SKCTX.lv;
   const done = new Set(); let cur = start, prev = { x: G.p.x + Math.cos(G.p.a) * 0.6, y: G.p.y + Math.sin(G.p.a) * 0.6 };
   for (let i = 0; i < n && cur; i++) {
     const tgt = cur, d = dmg, from = prev;
@@ -513,7 +561,7 @@ function dashStrike(dist, dmg, o = {}) {
   return hit.size;
 }
 function zoneAt(x, y, r, t, dmg, fx, kind, col) { G.zones.push({ kind, x, y, r, t, tick: 0, dmg, fx, col }); vRing(x, y, 0.03, r, 0.3, (kind === 'fire' ? VR.fire : kind === 'ice' ? VR.ice : kind === 'holy' ? VR.gold : VR.poison).slice(1, 5), 30); }
-function enemiesNear(r) { const p = G.p; return G.enemies.filter(e => !e.dead && Math.hypot(e.x - p.x, e.y - p.y) <= r + e.def.r && canHit(e)); }
+function enemiesNear(r) { const p = G.p; r *= skMul('area'); return G.enemies.filter(e => !e.dead && Math.hypot(e.x - p.x, e.y - p.y) <= r + e.def.r && canHit(e)); }
 function buffOn(id) { return G.p.buffs.some(b => b.id === id); }
 // golpes con efectos de buff (llamado desde los golpes básicos)
 function buffHit(e) {
@@ -708,7 +756,30 @@ function useSkill(i) {
   if (G.state !== 'play') return;
   const sk = skillOf(i);
   if (!sk || p.skillCd[i] > 0) return;
-  const cdr = classPassive(p.cls, 'cdr', 1);
-  if (sk.use(p) === false) return;
+  const id = p.active[i], lv = skLv(id), cdr = classPassive(p.cls, 'cdr', 1) * (1 - SKB.cd * lv);
+  if (withSk(lv ? { id, lv, extra: lv } : null, () => sk.use(p)) === false) return;
   p.skillCd[i] = sk.cd * cdr; p.skillMax[i] = sk.cd * cdr;
+}
+
+// texto de la carta "Mejorar ...": qué gana según en qué se basa la habilidad
+function skillUpgradeTags(id) {
+  const src = String(SKILLS[id].use), t = [];
+  if (/fireProj|fanOfArrows/.test(src)) t.push('proj');
+  if (/zoneAt|G\.zones\.push/.test(src)) t.push('zone');
+  if (/chainFrom/.test(src)) t.push('chain');
+  if (/spawnAlly/.test(src)) t.push('ally');
+  if (/absorb/.test(src)) t.push('shield');
+  if (/stun|slow/.test(src) && !t.includes('zone')) t.push('cc');
+  if (/aoe\(|enemiesNear/.test(src) && !t.includes('zone')) t.push('area');
+  if (/addBuff|stealth/.test(src)) t.push('time');
+  if (/healP/.test(src)) t.push('heal');
+  if (/dmgMul/.test(src) && t.length < 2) t.push('dmg');
+  return t;
+}
+function skillUpgradeDesc(id) {
+  const en = G.cfg && G.cfg.lang === 'en';
+  const T = en
+    ? { proj: '+1 projectile', zone: 'bigger, longer zone that slows more', chain: '+1 jump', ally: 'stronger summons', shield: 'bigger shield', cc: 'longer stun and slow', area: 'bigger area', time: 'lasts longer', heal: 'heals more', dmg: '+15% damage', cd: '-10% cooldown' }
+    : { proj: '+1 proyectil', zone: 'zona más grande, duradera y que frena más', chain: '+1 salto', ally: 'invocaciones más fuertes', shield: 'escudo mayor', cc: 'aturde y frena más tiempo', area: 'más radio', time: 'dura más', heal: 'cura más', dmg: '+15% de daño', cd: '-10% de recarga' };
+  return skillUpgradeTags(id).slice(0, 2).concat('cd').map(k => T[k]).join(', ');
 }

@@ -130,7 +130,7 @@ const L = (id) => (PASSIVE_IDS.has(id) && !(G.pasOn || []).includes(id)) ? 0 : (
 function makePlayer(cls = 'mago') {
   return { x: 0, y: 0, a: 0, hp: 100, maxHp: 100, xp: 0, lvl: 1, shootCd: 0, dashCd: 0, dashT: 0, dashDx: 0, dashDy: 0, inv: 0, bob: 0, moveAmt: 0, anim: 0, vx: 0, vy: 0,
     cls, slot: 0, weapon: 'staff', spell: 'arcane', off: 'none', torchFuel: 0, wantBlock: false, block: 0, swing: null, swingDir: 1,
-    form: 'human', element: null, buffs: [], skillCd: [0, 0, 0], skillMax: [1, 1, 1], known: [], active: [null, null, null], stealth: 0, riposte: 0, absorb: 0, absorbT: 0 };
+    form: 'human', element: null, buffs: [], skillCd: [0, 0, 0], skillMax: [1, 1, 1], known: [], active: [null, null, null], skLv: {}, stealth: 0, riposte: 0, absorb: 0, absorbT: 0 };
 }
 
 function recalc() {
@@ -1298,6 +1298,7 @@ function learnableSkills() {
   return out;
 }
 function skillDescShort(id) { const s = SKILLS[id], d = s.desc || ''; return d.toUpperCase().startsWith(s.name.toUpperCase() + ':') ? d.slice(s.name.length + 1).trim().replace(/^./, c => c.toUpperCase()) : d; }
+function skillUpOpt(id) { const s = SKILLS[id]; return { id: 'up:' + id, skup: id, name: 'Mejorar ' + s.name, max: SKILL_MAX_LV, desc: () => skillUpgradeDesc(id) }; }
 function skillOpt(id) { const s = SKILLS[id]; return { id: 'sk:' + id, skill: id, name: s.name, max: 1, desc: () => skillDescShort(id) }; }
 function afterLevelUp() { if (G.pending > 0) openLevelUp(); else closeLevelUp(); }
 // aprende una habilidad: hueco libre si lo hay; si no, pregunta cuál sustituye (o la guarda para el Mentor)
@@ -1446,6 +1447,8 @@ function openLevelUp() {
   // a veces (más si te queda un hueco libre) puedes aprender una habilidad de tu clase
   const ls = learnableSkills();
   if (ls.length && Math.random() < (G.p.active.includes(null) ? 0.6 : 0.35)) opts.push(skillOpt(pick(ls)));
+  // mejorar una de tus habilidades activas (hasta nivel 3)
+  for (const id of G.p.active) if (id && skLv(id) < SKILL_MAX_LV) pool.push(skillUpOpt(id));
   while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   if (opts[0] && opts[0].skill && opts.length > 1) { const j = randi(0, opts.length - 1); [opts[0], opts[j]] = [opts[j], opts[0]]; }
   G.opts = opts;
@@ -1458,6 +1461,10 @@ function chooseUpgrade(i) {
   const u = G.opts[i]; if (!u) return;
   G.pending--;
   if (u.skill) { learnSkill(u.skill, afterLevelUp); return; }
+  if (u.skup) {
+    const p = G.p; p.skLv = p.skLv || {}; p.skLv[u.skup] = skLv(u.skup) + 1;
+    logMsg(`${SKILLS[u.skup].name} sube a nivel ${p.skLv[u.skup] + 1}`, C.cyan); afterLevelUp(); return;
+  }
   G.upg[u.id] = LR(u.id) + 1;
   if (u.id === 'vit') G.p.hp += 30;
   if (u.id === 'nova') G.novaT = Math.min(G.novaT, 1);

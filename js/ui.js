@@ -496,7 +496,9 @@ class UI {
     p.active.forEach((id, i) => {
       const sk = id && SKILLS[id], y = y0 + 3 + i * 12, cd = Math.max(0, p.skillCd[i]), rdy = cd <= 0;
       this.text(x + 3, y, SKILL_LABEL[i], sk && rdy ? C.goldL : C.dim, { shadow: false });
-      this.text(x + 15, y, sk ? sk.name.toUpperCase().slice(0, Math.floor((w - 18) / 6)) : '-', sk && rdy ? C.ink : C.dim, { shadow: false });
+      const sl = sk ? skLv(id) : 0, rom = sl ? ['', 'II', 'III', 'IV'][sl] : '';
+      this.text(x + 15, y, sk ? sk.name.toUpperCase().slice(0, Math.floor((w - 18 - (rom ? textWidth(rom) + 4 : 0)) / 6)) : '-', sk && rdy ? C.ink : C.dim, { shadow: false });
+      if (rom) this.text(x + w - 3, y, rom, rdy ? C.cyan : C.dim, { align: 'right', shadow: false }); // nivel de la habilidad
       if (!sk) return;
       if (!rdy) { const fw = Math.round((w - 6) * (1 - cd / p.skillMax[i])); this.rect(x + 3, y + 8, w - 6, 1, rgb(40, 30, 20)); this.rect(x + 3, y + 8, fw, 1, C.gold); }
       else this.rect(x + 3, y + 8, w - 6, 1, rgb(70, 52, 20));
@@ -561,8 +563,9 @@ class UI {
       this.panel(x, y, cw, ch, hot);
       this.text(x + 8, y + 8, `[${i + 1}]`, C.dim);
       if (u.skill) this.text(x + cw - 8, y + 8, 'HABILIDAD', C.cyan, { align: 'right' });
+      else if (u.skup) this.text(x + cw - 8, y + 8, 'MEJORA', C.cyan, { align: 'right' });
       else if (u.passive) this.text(x + cw - 8, y + 8, 'PASIVA', C.orange, { align: 'right' });
-      const lvl = u.skill ? 0 : LR(u.id), col = u.skill ? C.cyan : u.passive ? C.orange : C.gold;
+      const lvl = u.skill ? 0 : u.skup ? skLv(u.skup) : LR(u.id), col = u.skill || u.skup ? C.cyan : u.passive ? C.orange : C.gold;
       wrapText(u.name, 20).forEach((ln, k) => this.text(x + cw / 2, y + 22 + k * 10, ln, col, { align: 'center' }));
       wrapText(u.desc(lvl), 21).forEach((ln, k) => this.text(x + cw / 2, y + 48 + k * 9, ln, C.ink, { align: 'center' }));
       if (u.skill) { this.text(x + cw / 2, y + ch - 14, 'NUEVA', C.cyan, { align: 'center' }); return; }
