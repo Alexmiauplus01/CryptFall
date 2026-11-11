@@ -1354,11 +1354,17 @@ function resolveLearn(i) {
 }
 
 // ---------------------------------------------------------------- Recogidos y partículas
-function xpNeed(l) { return Math.round(4 + 2.4 * l + 0.16 * l * l); }
+// Tramos de experiencia: cada 20 niveles (los mismos de los cambios de clase) hace falta XP_TIER veces más,
+// y cada mazmorra superada da XP_TIER veces más experiencia. En la primera se sube normal hasta el nivel 20;
+// pasado ese nivel se puede seguir subiendo, pero lento, hasta llegar a la segunda, que lo compensa.
+const XP_TIER = 6;
+function xpNeed(l) { return Math.round((4 + 2.4 * l + 0.16 * l * l) * Math.pow(XP_TIER, Math.floor(l / 20))); }
+// la mazmorra solo compensa hasta tu tramo: con nivel bajo en la segunda subes normal, no de golpe
+function dgXpMul() { return Math.pow(XP_TIER, Math.max(0, Math.min(((G.dg && G.dg.n) || 1) - 1, Math.floor(G.p.lvl / 20)))); }
 
 function addXp(v) {
   const p = G.p;
-  p.xp += v * p.xpMul;
+  p.xp += v * p.xpMul * dgXpMul();
   while (p.xp >= xpNeed(p.lvl)) { p.xp -= xpNeed(p.lvl); p.lvl++; G.pending++; }
   const nx = CLASSES[p.cls].next;
   if (nx && p.lvl >= nx) G.evolveReady = true;
