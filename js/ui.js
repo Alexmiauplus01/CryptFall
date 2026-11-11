@@ -728,7 +728,9 @@ class UI {
     const ink = rgb(58, 34, 18), faded = rgb(120, 92, 62), red = rgb(130, 34, 22);
     const cols = Math.floor((pw - 20) / 6), lines = [];
     for (const e of G.journal) {
-      wrapText(e.text.toUpperCase(), cols).forEach((t, i) => lines.push({ t, done: e.done, first: i === 0 }));
+      // llaves y puertas: la marca del párrafo va del color de su llave, como en el mapa
+      const km = /^(?:lock|key)(\d+)$/.exec(e.id), kc = km && KEYS[+km[1]] ? rgb(...KEYS[+km[1]].col) : null;
+      wrapText(e.text.toUpperCase(), cols).forEach((t, i) => lines.push({ t, done: e.done, first: i === 0, mark: kc }));
       lines.push({ gap: true });
     }
     const perPage = Math.floor((bh - 40) / 9) - 1, pages = [];
@@ -744,7 +746,8 @@ class UI {
       for (const l of pg) {
         if (l.gap) { y += 4; continue; }
         const x = x0 + 10;
-        if (l.first) this.text(x - 7, y, '*', l.done ? faded : red, { shadow: false });
+        if (l.first && l.mark) this.text(x - 7, y, '*', l.done ? lerpCol(l.mark, faded, 0.5) : l.mark, { shadow: 'outline' });
+        else if (l.first) this.text(x - 7, y, '*', l.done ? faded : red, { shadow: false });
         this.text(x, y, l.t, l.done ? faded : ink, { shadow: false });
         if (l.done) { const w = textWidth(l.t); for (let k = 0; k < w; k++) this.px(x + k, y + 3 + (((k + y) >> 3) & 1), red); }
         y += 9;
