@@ -464,7 +464,7 @@ function toast(text, big) {
   while (G.toasts.length > 4) G.toasts.shift();
 }
 function logMsg(text, col = C.ink) {
-  wrapText(String(text).toUpperCase(), 34).forEach((t, i) => G.log.push({ text: t, col, cont: i > 0 }));
+  wrapText(String(text).toUpperCase(), 34).forEach((t, i) => G.log.push({ text: t, col, cont: i > 0, t: G.time }));
   if (G.log.length > 30) G.log.shift();
 }
 

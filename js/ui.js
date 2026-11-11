@@ -2,6 +2,14 @@
 const SW = VW, SH = VH, VX = 0, VY = 0;
 const BOX_MAP = { x: SW - 70, y: 6, w: 64, h: 64 };
 const BOX_LOG = { x: (SW - 216) >> 1, y: SH - 40, w: 216, h: 34 };
+// el registro de abajo se va ocultando: cada mensaje dura LOG_LIFE segundos y se funde en el último
+const LOG_LIFE = 6, LOG_FADE = 1.2;
+function logAlpha(G, m) { const age = G.time - (m.t ?? G.time); return clamp((LOG_LIFE - age) / LOG_FADE, 0, 1); }
+function logShown(G) {
+  const list = []; let vis = 0;
+  for (let i = G.log.length - 1; i >= 0 && list.length < 4; i--) { const a = logAlpha(G, G.log[i]); if (a <= 0) break; list.unshift(G.log[i]); vis = Math.max(vis, a); }
+  return { list, vis };
+}
 const BOX_STAT = { x: 6, y: 6, w: 132, h: 34 };
 
 const C = {
@@ -87,7 +95,7 @@ class UI {
       else { this.text(cx, ty, t.text, C.ink, { align: 'center', shadow: 'outline' }); ty += 11; }
     }
     this.darken(BOX_MAP.x, BOX_MAP.y, BOX_MAP.w, BOX_MAP.h, 0.45);
-    this.darken(BOX_LOG.x, BOX_LOG.y, BOX_LOG.w, BOX_LOG.h, 0.5);
+    const logA = logShown(G); if (logA.vis > 0) this.darken(BOX_LOG.x, BOX_LOG.y, BOX_LOG.w, BOX_LOG.h, 0.5 * logA.vis);
     this.darken(BOX_STAT.x, BOX_STAT.y, BOX_STAT.w, BOX_STAT.h, 0.5);
     if (G.pact !== 'ciego') this.minimap(G);
     this.log(G); this.stats(G); this.skills(G);
@@ -129,11 +137,12 @@ class UI {
   }
 
   log(G) {
-    const b = BOX_LOG, n = Math.min(4, G.log.length);
+    const b = BOX_LOG, { list } = logShown(G), n = list.length;
     for (let i = 0; i < n; i++) {
-      const m = G.log[G.log.length - n + i];
-      const old = n - 1 - i;
-      const col = old === 0 ? m.col : old === 1 ? lerpCol(m.col, rgb(8, 5, 4), 0.2) : lerpCol(m.col, rgb(8, 5, 4), 0.45);
+      const m = list[i];
+      const old = n - 1 - i, fade = 1 - logAlpha(G, m);
+      let col = old === 0 ? m.col : old === 1 ? lerpCol(m.col, rgb(8, 5, 4), 0.2) : lerpCol(m.col, rgb(8, 5, 4), 0.45);
+      if (fade > 0) col = lerpCol(col, rgb(8, 5, 4), fade);
       this.text(b.x + 4, b.y + 2 + i * 8, (m.cont ? '  ' : '* ') + m.text, col, { shadow: false });
     }
   }
