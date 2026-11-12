@@ -4,7 +4,8 @@ const BOX_MAP = { x: SW - 70, y: 6, w: 64, h: 64 };
 const BOX_LOG = { x: (SW - 216) >> 1, y: SH - 40, w: 216, h: 34 };
 // el registro de abajo se va ocultando: cada mensaje dura LOG_LIFE segundos y se funde en el último
 const LOG_LIFE = 6, LOG_FADE = 1.2;
-function logAlpha(G, m) { const age = G.time - (m.t ?? G.time); return clamp((LOG_LIFE - age) / LOG_FADE, 0, 1); }
+// tiempo de juego (G.totalTime solo avanza jugando): en pausa y en los menús los mensajes no se borran
+function logAlpha(G, m) { const now = G.totalTime || 0, age = now - (m.t ?? now); return clamp((LOG_LIFE - age) / LOG_FADE, 0, 1); }
 function logShown(G) {
   const list = []; let vis = 0;
   for (let i = G.log.length - 1; i >= 0 && list.length < 4; i--) { const a = logAlpha(G, G.log[i]); if (a <= 0) break; list.unshift(G.log[i]); vis = Math.max(vis, a); }
