@@ -391,3 +391,51 @@ function shieldSprite() {
   G.wskin = G.wskin || {};
   return G.wskin['shield' + it.rar] || (G.wskin['shield' + it.rar] = tintSprite(SPR.shield, RAR_TINT[it.rar][0], RAR_TINT[it.rar][1]));
 }
+
+// ---------------------------------------------------------------- Antorcha, cofres y pociones
+// con 5 pociones o más encima vuelven a ser escasas (cofres y enemigos casi no sueltan)
+function potionsFull() { return ((G.inv && G.inv.potion) || 0) >= 5; }
+
+// encender (o volver a empuñar) una antorcha desde el inventario
+function equipTorch() {
+  const p = G.p;
+  if (WEAPONS[p.weapon].hands !== 1) { toast('NECESITAS UNA MANO LIBRE', false); logMsg('Cambia a un arma de una mano para llevar antorcha', C.dim); return false; }
+  if (p.off === 'torch') { p.off = 'none'; logMsg('Guardas la antorcha', C.dim); return true; }
+  if (p.torchFuel <= 0) {
+    if (!G.inv.torch) { toast('NO TE QUEDAN ANTORCHAS', false); return false; }
+    G.inv.torch--; p.torchFuel = TORCH_FUEL;
+    logMsg('Enciendes una antorcha', C.orange);
+  } else logMsg('Vuelves a empuñar la antorcha', C.orange);
+  p.off = 'torch'; p.wantBlock = false; Sfx.play('torch');
+  return true;
+}
+function updateTorch(dt) {
+  const p = G.p;
+  if (offhandOf(p) !== 'torch') return;
+  p.torchFuel -= dt * (G.pact === 'antorcha' ? 2 : 1);
+  if (p.torchFuel <= 0) {
+    p.torchFuel = 0; p.off = 'none'; Sfx.play('torchOut');
+    toast('TU ANTORCHA SE APAGA', false);
+    logMsg(G.inv.torch ? `Se consume la antorcha. Te quedan ${G.inv.torch} (I)` : 'Se consume tu última antorcha...', C.orange);
+  }
+}
+
+function openChest(c) {
+  c.open = true; Sfx.play('chest');
+  let left = c.gold;
+  const n = Math.min(6, Math.max(2, Math.round(c.gold / 40)));
+  for (let i = 0; i < n; i++) {
+    const v = i === n - 1 ? left : Math.round(c.gold / n); left -= v;
+    const a = rand(0, TAU), r = rand(0.35, 0.7);
+    let x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r;
+    if (G.lv.solid(x, y)) { x = c.x; y = c.y; }
+    G.pickups.push({ type: 'gold', x, y, v, t: rand(0, 6) });
+  }
+  if (c.item === 'potion') G.pickups.push({ type: 'potion', x: c.x, y: c.y + 0.3, t: 0 });
+  if (c.torch) G.pickups.push({ type: 'torch', x: c.x - 0.3, y: c.y + 0.2, t: 0 });
+  if (c.eqItem) G.pickups.push({ type: 'item', item: c.eqItem, x: c.x + 0.3, y: c.y + 0.2, t: 0 });
+  else if (c.eq) dropItem(c.eqSrc || 'chest', c.x + 0.3, c.y + 0.2);
+  else if (c.item && c.item.key !== undefined) takeKey(c.item.key);
+  burst(c.x, c.y, 0.3, 14, rgb(255, 220, 110), 2, 0.7, true, 0.05);
+  logMsg(`Abres un cofre: ${c.gold} de oro`, C.gold);
+}
