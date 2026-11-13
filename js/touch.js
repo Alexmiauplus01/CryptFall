@@ -108,6 +108,10 @@ canvas.addEventListener('touchstart', (e) => {
     const b = touchButtons().find(b => hitButton(b, c));
     // tocar el minimapa abre el mapa completo
     if (!b && c.x >= BOX_MAP.x && c.y >= BOX_MAP.y && c.x < BOX_MAP.x + BOX_MAP.w && c.y < BOX_MAP.y + BOX_MAP.h) { openMap(); continue; }
+    if (b && b.id === 'block' && !G.stick) { // escudo: mantener = bloquear; arrastrar desde él = caminar con el escudo alzado
+      TOUCH.roles.set(t.identifier, { kind: 'btn', b, lx: c.x, stick: true }); pressButton(b);
+      G.stick = { f: 0, s: 0, bx: c.x, by: c.y, x: c.x, y: c.y, shield: true }; continue;
+    }
     if (b) { TOUCH.roles.set(t.identifier, { kind: 'btn', b, lx: c.x }); pressButton(b); continue; }
     if (c.x < VW * 0.45 && !G.stick) {
       TOUCH.roles.set(t.identifier, { kind: 'stick' });
@@ -121,7 +125,7 @@ canvas.addEventListener('touchmove', (e) => {
   for (const t of e.changedTouches) {
     const r = TOUCH.roles.get(t.identifier); if (!r) continue;
     const c = touchPoint(t);
-    if (r.kind === 'stick' && G.stick) {
+    if ((r.kind === 'stick' || r.stick) && G.stick) {
       const st = G.stick;
       let dx = c.x - st.bx, dy = c.y - st.by;
       const len = Math.hypot(dx, dy);
@@ -147,7 +151,7 @@ function touchEnd(e) {
   for (const t of e.changedTouches) {
     const r = TOUCH.roles.get(t.identifier); if (!r) continue;
     if (r.kind === 'btn') releaseButton(r.b);
-    if (r.kind === 'stick') G.stick = null;
+    if (r.kind === 'stick' || r.stick) G.stick = null;
     TOUCH.roles.delete(t.identifier);
   }
 }
@@ -210,7 +214,30 @@ function drawTouchUI(u) {
     if (b.id === 'dash' && p.dashC <= 0) { ready = false; prog = 1 - p.dashCd / p.dashMax; }
     tCircle(u, b.x, b.y, b.r, on ? [90, 60, 20] : dark, on ? 0.6 : 0.4, ready ? gold : [150, 120, 80], ready ? 0.85 : 0.6, prog);
     if (b.id === 'attack') { u.text(Math.round(b.x) - b.r + 4, Math.round(b.y) - 3, '<', C.dim, { shadow: false }); u.text(Math.round(b.x) + b.r - 8, Math.round(b.y) - 3, '>', C.dim, { shadow: false }); }
+    if (b.id === 'block') { shieldIcon(u, Math.round(b.x), Math.round(b.y), on); continue; }
     u.text(Math.round(b.x) + 1, Math.round(b.y) - 3, b.label, ready ? C.goldL : C.dim, { align: 'center', shadow: false });
     if (b.id === 'dash' && p.dashN > 1) u.text(Math.round(b.x + b.r) - 1, Math.round(b.y + b.r) - 6, String(p.dashC), p.dashC ? C.cyan : C.dim, { align: 'center', shadow: false }); // cargas
   }
+}
+
+// icono de escudo (heráldico, pixel art) para el botón de bloquear: más claro que un texto
+const SHIELD_ICON = [
+  '..#########..',
+  '.#ooooooooo#.',
+  '#ooooo#ooooo#',
+  '#ooooo#ooooo#',
+  '#oo#######oo#',
+  '#ooooo#ooooo#',
+  '#ooooo#ooooo#',
+  '.#oooo#oooo#.',
+  '.#oooo#oooo#.',
+  '..#ooo#ooo#..',
+  '...#oo#oo#...',
+  '....#ooo#....',
+  '.....###.....',
+];
+function shieldIcon(u, cx, cy, on) {
+  const edge = rgb(255, 236, 170), fill = on ? rgb(232, 184, 80) : rgb(150, 110, 50), cross = rgb(255, 236, 170);
+  const w = SHIELD_ICON[0].length, h = SHIELD_ICON.length, x0 = cx - (w >> 1), y0 = cy - (h >> 1);
+  SHIELD_ICON.forEach((row, y) => { for (let x = 0; x < w; x++) { const ch = row[x]; if (ch === '.') continue; u.px(x0 + x, y0 + y, ch === '#' ? (x === 6 || y === 4 ? cross : edge) : fill); } });
 }
