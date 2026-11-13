@@ -1521,6 +1521,7 @@ function boot() {
   newDungeon(1);
   loadAssets().then(() => {
     const ld = document.getElementById('loading'); if (ld) ld.remove();
+    window.__booted = true; // el vigilante del arranque (index.html) ya no hace falta
     if (SPR.studio_cat_0) { G.state = 'splash'; G.splashT = 0; }
     requestAnimationFrame(frame);
   }).catch((e) => {

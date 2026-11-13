@@ -6,42 +6,61 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="description" content="Roguelike en primera persona estilo pixel art: entra en mazmorras de varios niveles, saquea y sal con vida.">
 <meta name="theme-color" content="#000000">
-<meta name="version" content="b282983-202611130911">
+<meta name="version" content="57ffff1-202611131244">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/style.css?v=b282983-202611130911">
+<link rel="stylesheet" href="css/style.css?v=57ffff1-202611131244">
+<script>
+// Vigilante del arranque: si el juego no empieza en 10 s o falla al cargar, en vez de quedarse la pantalla en negro
+// se explica qué pasa y se ofrece borrar solo la caché del juego (las partidas guardadas no se tocan) y recargar.
+window.__bootErr = [];
+window.addEventListener('error', function (e) { if (!window.__booted) { window.__bootErr.push((e.message || 'error') + (e.filename ? ' (' + e.filename.split('/').pop().split('?')[0] + ')' : '')); bootProblem(); } });
+window.addEventListener('unhandledrejection', function (e) { if (!window.__booted) { window.__bootErr.push(String((e.reason && e.reason.message) || e.reason || 'error')); bootProblem(); } });
+setTimeout(function () { if (!window.__booted) bootProblem(); }, 10000);
+function bootProblem() {
+  var ld = document.getElementById('loading'); if (!ld || ld.dataset.problem) return; ld.dataset.problem = '1';
+  ld.innerHTML = 'EL JUEGO NO HA PODIDO ARRANCAR<br><small style="font-size:12px;color:#c8a070;letter-spacing:1px">' + (window.__bootErr.slice(0, 3).join('<br>') || 'Tarda demasiado en cargar') + '</small><br><button id="bootfix" style="margin-top:14px;font:bold 15px monospace;padding:10px 16px;background:#3a1a0c;color:#e8b850;border:1px solid #e8b850">BORRAR CACHÉ Y RECARGAR</button><br><small style="font-size:11px;color:#8a7050">Tus partidas no se borran</small>';
+  ld.style.flexDirection = 'column'; ld.style.zIndex = 9;
+  document.getElementById('bootfix').onclick = function () {
+    var p = [];
+    if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+    if (window.caches) p.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+    Promise.all(p).catch(function () {}).then(function () { location.replace(location.pathname + '?r=' + Date.now()); });
+  };
+}
+</script>
 </head>
 <body>
 <div id="screen"><canvas id="view" width="480" height="270"></canvas><div id="crt"></div><button id="fs" type="button" aria-label="Pantalla completa" title="Pantalla completa"><svg viewBox="0 0 16 16" width="100%" height="100%" shape-rendering="crispEdges"><path id="fs-ico" fill="#e8b850" d="M1 1h5v2H3v3H1zM10 1h5v5h-2V3h-3zM1 10h2v3h3v2H1zM13 10h2v5h-5v-2h3z"/></svg></button></div>
 <div id="loading">CARGANDO LA MAZMORRA…</div>
 <div id="rotate">GIRA EL MÓVIL<br>PARA JUGAR EN HORIZONTAL</div>
-<script src="js/util.js?v=b282983-202611130911"></script>
-<script src="js/font.js?v=b282983-202611130911"></script>
-<script src="js/art.js?v=b282983-202611130911"></script>
-<script src="js/assets.js?v=b282983-202611130911"></script>
-<script src="js/sprites.js?v=b282983-202611130911"></script>
-<script src="js/audio.js?v=b282983-202611130911"></script>
-<script src="js/world.js?v=b282983-202611130911"></script>
-<script src="js/dungeon.js?v=b282983-202611130911"></script>
-<script src="js/render.js?v=b282983-202611130911"></script>
-<script src="js/classes.js?v=b282983-202611130911"></script>
-<script src="js/skills.js?v=b282983-202611130911"></script>
-<script src="js/vfx.js?v=b282983-202611130911"></script>
-<script src="js/ambient.js?v=b282983-202611130911"></script>
-<script src="js/ui.js?v=b282983-202611130911"></script>
-<script src="js/controls.js?v=b282983-202611130911"></script>
-<script src="js/enemies.js?v=b282983-202611130911"></script>
-<script src="js/game.js?v=b282983-202611130911"></script>
-<script src="js/shop.js?v=b282983-202611130911"></script>
-<script src="js/items.js?v=b282983-202611130911"></script>
-<script src="js/elites.js?v=b282983-202611130911"></script>
-<script src="js/save.js?v=b282983-202611130911"></script>
-<script src="js/touch.js?v=b282983-202611130911"></script>
-<script src="js/gamepad.js?v=b282983-202611130911"></script>
+<script src="js/util.js?v=57ffff1-202611131244"></script>
+<script src="js/font.js?v=57ffff1-202611131244"></script>
+<script src="js/art.js?v=57ffff1-202611131244"></script>
+<script src="js/assets.js?v=57ffff1-202611131244"></script>
+<script src="js/sprites.js?v=57ffff1-202611131244"></script>
+<script src="js/audio.js?v=57ffff1-202611131244"></script>
+<script src="js/world.js?v=57ffff1-202611131244"></script>
+<script src="js/dungeon.js?v=57ffff1-202611131244"></script>
+<script src="js/render.js?v=57ffff1-202611131244"></script>
+<script src="js/classes.js?v=57ffff1-202611131244"></script>
+<script src="js/skills.js?v=57ffff1-202611131244"></script>
+<script src="js/vfx.js?v=57ffff1-202611131244"></script>
+<script src="js/ambient.js?v=57ffff1-202611131244"></script>
+<script src="js/ui.js?v=57ffff1-202611131244"></script>
+<script src="js/controls.js?v=57ffff1-202611131244"></script>
+<script src="js/enemies.js?v=57ffff1-202611131244"></script>
+<script src="js/game.js?v=57ffff1-202611131244"></script>
+<script src="js/shop.js?v=57ffff1-202611131244"></script>
+<script src="js/items.js?v=57ffff1-202611131244"></script>
+<script src="js/elites.js?v=57ffff1-202611131244"></script>
+<script src="js/save.js?v=57ffff1-202611131244"></script>
+<script src="js/touch.js?v=57ffff1-202611131244"></script>
+<script src="js/gamepad.js?v=57ffff1-202611131244"></script>
 <script src="js/i18n.js"></script>
 </body>
 </html>
