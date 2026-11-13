@@ -378,9 +378,15 @@ function tintSprite(spr, mul, glow) {
   return { w: spr.w, h: spr.h, px, flash: spr.flash, grip: spr.grip };
 }
 const RAR_TINT = { comun: null, raro: [[0.85, 0.97, 1.2], false], epico: [[0.95, 0.7, 1.25], false], legendario: [[1.3, 1.05, 0.55], true] };
+// arma en primera persona según la rareza: dibujo propio para raro y para épico/legendario (espada, mandoble,
+// daga y los 4 fotogramas del arco); lo que aún no tiene dibujo (bastones, o mientras falte) se tiñe como antes
 function weaponSprite(type, base, tag = '') {
   const it = G.equip && G.equip.arma, wt = type === 'daggers' ? 'dagger' : type;
   if (!it || it.wtype !== wt || !RAR_TINT[it.rar]) return base;
+  const tier = it.rar === 'raro' ? 'raro' : 'epico';
+  const nm = wt === 'bow' ? 'bowfp_' + tag.slice(2) : wt === 'staff' ? null : wt;
+  const own = nm && SPR[nm + '_' + tier];
+  if (own) return base === SPR.daggerL ? (SPR[nm + '_' + tier + 'L'] || (SPR[nm + '_' + tier + 'L'] = flipSprite(own))) : own;
   G.wskin = G.wskin || {};
   const key = type + tag + (base === SPR.daggerL ? 'L' : '') + it.rar;
   return G.wskin[key] || (G.wskin[key] = tintSprite(base, RAR_TINT[it.rar][0], RAR_TINT[it.rar][1]));
