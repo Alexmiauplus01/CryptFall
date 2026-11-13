@@ -385,11 +385,13 @@ function weaponSprite(type, base, tag = '') {
   const key = type + tag + (base === SPR.daggerL ? 'L' : '') + it.rar;
   return G.wskin[key] || (G.wskin[key] = tintSprite(base, RAR_TINT[it.rar][0], RAR_TINT[it.rar][1]));
 }
+// escudo en primera persona (visto por detrás): madera para los comunes, reforzado para los raros
+// y ornamentado para épicos y legendarios (Pixellab, assets/pixellab/shield*.png)
 function shieldSprite() {
-  const it = G.equip && G.equip.escudo;
-  if (!it || !RAR_TINT[it.rar]) return SPR.shield;
-  G.wskin = G.wskin || {};
-  return G.wskin['shield' + it.rar] || (G.wskin['shield' + it.rar] = tintSprite(SPR.shield, RAR_TINT[it.rar][0], RAR_TINT[it.rar][1]));
+  const it = G.equip && G.equip.escudo, r = it && it.rar;
+  if (r === 'epico' || r === 'legendario') return SPR.shield_epico || SPR.shield;
+  if (r === 'raro') return SPR.shield_raro || SPR.shield;
+  return SPR.shield;
 }
 
 // ---------------------------------------------------------------- Antorcha, cofres y pociones
