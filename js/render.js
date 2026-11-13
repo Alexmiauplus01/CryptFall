@@ -665,10 +665,12 @@ class Renderer {
       const st = mv.find(o => o.st); // destello en la punta de la estocada
       if (st && sw > st.t - 0.06 && sw < st.t + 0.12) this.glow(gx + Math.sin(ang) * L * sc, gy - Math.cos(ang) * L * sc, 22, [230, 240, 255], 0.5);
     }
-    this.blitRot(spr, grip[0], grip[1], gx, gy, ang, lm, false, S2 * sc, sv);
+    // daga de una mano: como las gemelas, la hoja va inclinada hacia fuera en el puño y se endereza al golpear
+    const dTilt = dag ? DAGGER_TILT * (p.swing && !spin ? 1 - Math.sin(sw * Math.PI) : 1) : 0, bAng = ang + dTilt;
+    this.blitRot(spr, grip[0], grip[1], gx, gy, bAng, lm, false, S2 * sc, sv);
     if (p.enchanted) {
       const len = (big ? 180 : dag ? 70 : 120) * S2 * sc * sv;
-      for (let k = 0.3; k <= 1; k += 0.2) this.glow(gx + Math.sin(ang) * len * k, gy - Math.cos(ang) * len * k, 18, [100, 190, 255], 0.32 + 0.1 * Math.sin(time * 9 + k * 5));
+      for (let k = 0.3; k <= 1; k += 0.2) this.glow(gx + Math.sin(bAng) * len * k, gy - Math.cos(bAng) * len * k, 18, [100, 190, 255], 0.32 + 0.1 * Math.sin(time * 9 + k * 5));
     }
     if (spin) { // las manos quedan quietas abajo mientras gira la hoja
       if (big) this.hand(p, -1, x0 + Math.sin(rest) * 44, y0 - Math.cos(rest) * 44 + hide, rest, lm);
