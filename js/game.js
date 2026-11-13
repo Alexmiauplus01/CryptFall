@@ -1534,7 +1534,24 @@ requestAnimationFrame(() => setTimeout(boot, 30));
 // Juego sin conexión: el service worker solo existe en la web publicada (no al abrir el archivo en local)
 // instalar como app: el navegador avisa de que se puede y la opción aparece en el menú de opciones
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); G.installEvt = e; });
-window.addEventListener('appinstalled', () => { G.installEvt = null; });
+window.addEventListener('appinstalled', () => { G.installEvt = null; freshAppCache('instalada'); });
+// La app instalada empieza siempre con la caché de archivos limpia: al terminar de instalarse y la primera vez que se
+// abre como app (por cada versión) se borran los archivos guardados del juego y el service worker los vuelve a bajar.
+// Las partidas (localStorage) no se tocan.
+function freshAppCache(why) {
+  try { localStorage.setItem('hexcrypt_app_fresh', (document.querySelector('meta[name=version]') || {}).content || 'dev'); } catch (e) { /* sin almacenamiento */ }
+  if (!window.caches || navigator.onLine === false) { try { localStorage.removeItem('hexcrypt_app_fresh'); } catch (e) { /* nada */ } return; } // sin conexión: se hará la próxima vez
+  caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('hexcrypt-') || k.startsWith('cryptfall-')).map(k => caches.delete(k))))
+    .then(() => navigator.serviceWorker && navigator.serviceWorker.getRegistration().then(r => r && r.update()))
+    .catch(() => {});
+}
+(function firstAppLaunch() {
+  const standalone = (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)) || navigator.standalone;
+  const ver = (document.querySelector('meta[name=version]') || {}).content;
+  if (!standalone || !ver || ver === 'dev') return;
+  let done = null; try { done = localStorage.getItem('hexcrypt_app_fresh'); } catch (e) { /* nada */ }
+  if (done !== ver) freshAppCache('primera vez como app');
+})();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && document.querySelector('meta[name=version]') && document.querySelector('meta[name=version]').content !== 'dev') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
