@@ -17,7 +17,8 @@ function touchButtons() {
     const pos = [[VW - 100, VH - 68], [VW - 84, VH - 107], [VW - 44, VH - 120]][i];
     out.push({ id: 'skill' + i, i, x: Math.round(VW - (VW - pos[0]) * big), y: Math.round(VH - (VH - pos[1]) * big), r: Math.round(14 * big), label: ['R', 'C', 'V'][i] });
   });
-  if (offhandOf(p) === 'shield') out.push({ id: 'block', x: VW - 144, y: VH - 22, r: 14, label: 'ESC', hold: true });
+  // escudo junto al joystick (abajo a su derecha): se bloquea con el pulgar izquierdo y se ataca con el derecho (golpe de escudo)
+  if (offhandOf(p) === 'shield') out.push({ id: 'block', x: Math.round(110 * big), y: VH - Math.round(22 * big), r: Math.round(15 * big), label: 'ESC', hold: true });
   const top = [['pause', 'II'], ['journal', 'J'], ['inventory', 'I']];
   if (cl.slots.length > 1) top.push(['weapon', '<>']);
   if (G.inv && G.inv.potion) top.push(['potion', '+' + G.inv.potion]);

@@ -492,15 +492,19 @@ class UI {
     }
     // cabecera y leyenda
     this.text(12, 8, `MAPA · ${levelName(z).toUpperCase()}`, C.gold, { scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
-    const lx = VW - 128;
-    this.text(lx, 10, G.dg.name.toUpperCase().slice(0, 21), C.dim, { shadow: false });
+    // leyenda a la derecha con margen (en móviles el borde de la pantalla puede comerse los últimos píxeles);
+    // los textos largos se parten en líneas para que nunca se salgan
+    const lx = VW - 128, fit = (t) => wrapText(String(tr(t)).toUpperCase(), 19);
+    fit(G.dg.name).slice(0, 2).forEach((ln, i) => this.text(lx, 6 + i * 9, ln, C.dim, { shadow: false }));
     const leg = [[rgb(110, 255, 110), 'SALIDA'], [rgb(130, 255, 255), 'ESCALERA ARRIBA'], [rgb(210, 110, 255), 'ESCALERA ABAJO'], [rgb(200, 128, 52), 'PUERTA'], [rgb(244, 226, 172), 'CERRADURA'], [C.gold, 'COFRE'], [C.cyan, 'LLAVE'], [C.blue, 'ALTAR'], [C.green, 'M MERCADER'], [C.orange, 'H HERRERO'], [rgb(255, 120, 200), 'MT MENTOR']];
     leg.forEach(([c, t], i) => { this.rect(lx, 30 + i * 12, 6, 6, c); this.text(lx + 10, 30 + i * 12, t, C.ink, { shadow: false }); });
     const vis = G.dg.zs.filter(q => G.dg.lv(q).visited);
     this.text(lx, 30 + leg.length * 12 + 8, 'NIVELES:', C.dim, { shadow: false });
     vis.forEach((q, i) => this.text(lx + 50 + i * 20, 30 + leg.length * 12 + 8, 'P' + q, q === z ? C.goldL : q === G.z ? C.gold : C.dim, { shadow: false }));
-    this.text(lx, VH - 30, G.touchMode ? 'TOCA LOS LADOS: OTRO NIVEL' : 'A / D: OTRO NIVEL', C.dim, { shadow: false });
-    this.text(lx, VH - 18, G.touchMode ? 'TOCA EL CENTRO: CERRAR' : 'M: CERRAR', C.goldL, { shadow: false });
+    const h1 = fit(G.touchMode ? 'TOCA LOS LADOS: OTRO NIVEL' : 'A / D: OTRO NIVEL'), h2 = fit(G.touchMode ? 'TOCA EL CENTRO: CERRAR' : 'M: CERRAR');
+    let hy = VH - 14 - (h1.length + h2.length - 1) * 10;
+    for (const ln of h1) { this.text(lx, hy, ln, C.dim, { shadow: false }); hy += 10; }
+    for (const ln of h2) { this.text(lx, hy, ln, C.goldL, { shadow: false }); hy += 10; }
   }
   // sprite escalado para iconos (vecino más próximo, encajado en caja de lado s)
   blit(spr, cx, cy, s) {
