@@ -648,11 +648,11 @@ class Renderer {
     // ---------- armas blancas: espada, espadón y daga
     const big = W === 'greatsword', dag = W === 'dagger';
     const spr = weaponSprite(W, big ? SPR.greatsword : dag ? SPR.dagger : SPR.sword);
-    // agarre justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo. El mandoble común es la espada común
-    // ampliada (x1,4), así que su agarre es el de la espada escalado; el raro conserva el dibujo antiguo (80x224)
-    const gk = spr.h / 160, grip = big ? (spr.w === 80 ? [39, 190] : [Math.round(31 * gk), Math.round(122 * gk)]) : dag ? [23, 80] : [31, 122];
+    // agarre justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo. La espada común es el mandoble
+    // reducido (55x154), así que usa el agarre del mandoble escalado; las espadas de 64x160 conservan el suyo
+    const gk = spr.h / 224, grip = big ? [39, 190] : dag ? [23, 80] : spr.h === 160 ? [31, 122] : [Math.round(39 * gk), Math.round(190 * gk)];
     // espadón: a la derecha de la pantalla e inclinado hacia la esquina superior derecha
-    const rest = big ? GS_REST : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? grip[1] : dag ? 82 : 125) * S2;
+    const rest = big ? GS_REST : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (dag ? 82 : grip[1]) * S2;
     const x0 = big ? VW * GS_X : RGx, y0 = big ? VH - 22 - sideUp + by2 : RGy;
     let ang = rest, gx = x0, gy = y0, sc = 1, sv = 1, hide = 0;
     if (p.swing && spin) { // torbellino: las manos se esconden abajo y solo gira el arma
@@ -671,7 +671,7 @@ class Renderer {
     const dTilt = dag ? DAGGER_TILT * (p.swing && !spin ? 1 - Math.sin(sw * Math.PI) : 1) : 0, bAng = ang + dTilt;
     this.blitRot(spr, grip[0], grip[1], gx, gy, bAng, lm, false, S2 * sc, sv);
     if (p.enchanted) {
-      const len = (big ? grip[1] - 10 : dag ? 70 : 120) * S2 * sc * sv;
+      const len = (dag ? 70 : grip[1] - 8) * S2 * sc * sv;
       for (let k = 0.3; k <= 1; k += 0.2) this.glow(gx + Math.sin(bAng) * len * k, gy - Math.cos(bAng) * len * k, 18, [100, 190, 255], 0.32 + 0.1 * Math.sin(time * 9 + k * 5));
     }
     if (spin) { // las manos quedan quietas abajo mientras gira la hoja
