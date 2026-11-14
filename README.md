@@ -4,7 +4,7 @@ Roguelike en primera persona con estética pixel art al estilo *Daggerfall* / *H
 
 **▶ Jugar:** https://alexmiauplus01.github.io/HexCrypt/
 
-Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra llaves, enfréntate al Guardián y **sal con vida y con el botín**.
+Entra en mazmorras de varios niveles generadas al azar, saquea cofres, encuentra llaves, enfréntate al Guardián, **sal con vida, con el botín** y hazte cada vez más fuerte para enfrentarte a mazmorras más duras.
 
 | Control | Acción |
 |---|---|
