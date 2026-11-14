@@ -1337,7 +1337,7 @@ function render() {
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
   else {
-    if (!['learn', 'mentor', 'pact', 'paused', 'forge', 'reforge', 'reward'].includes(G.state)) ui.hud(G);
+    if (!['learn', 'mentor', 'pact', 'paused', 'forge', 'reforge', 'reward', 'inventory', 'shop', 'swap', 'levelup'].includes(G.state)) ui.hud(G);
     if (G.state === 'paused') ui.pause(G);
     else if (G.state === 'levelup') ui.levelUp(G);
     else if (G.state === 'learn') ui.learn(G);

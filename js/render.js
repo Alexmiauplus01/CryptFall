@@ -1,5 +1,20 @@
 // Raycaster con iluminación de color: paredes, suelo/techo, sprites, manos en primera persona
-const VW = 480, VH = 270, HALF = VH >> 1;
+// Resolución interna: 270 de alto y el ancho según la proporción de la pantalla (16:9 = 480; en móviles alargados,
+// hasta ~21:9 = 632). Así la imagen rellena la pantalla sin bandas negras y se ve más escenario por los lados.
+// Se decide al cargar; el lienzo y la caja de la página (CSS --ar) se ajustan a ello.
+const VH = 270, HALF = VH >> 1;
+const VW = (() => {
+  let a = 16 / 9;
+  try { const w = Math.max(innerWidth, innerHeight), h = Math.min(innerWidth, innerHeight); if (w > 0 && h > 0) a = w / h; } catch (e) { /* sin ventana */ }
+  return 2 * Math.round(VH * Math.min(2.34, Math.max(16 / 9, a)) / 2);
+})();
+// las manos y armas se colocan como si la pantalla midiera 480 de ancho, centradas: no se separan en pantallas anchas
+const HUD_W = 480;
+function hx(f) { return VW / 2 + (f - 0.5) * HUD_W; }
+try {
+  const cv = document.getElementById('view'); if (cv) cv.width = VW;
+  document.documentElement.style.setProperty('--ar', String(VW / VH)); document.documentElement.style.setProperty('--vwpx', String(VW));
+} catch (e) { /* fuera del navegador */ }
 const PLANE_LEN = VW / (2 * VH); // píxeles cuadrados (FOV ~96º)
 const LV = 10;                   // niveles de luz por unidad (bandas retro con tramado)
 const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
@@ -101,7 +116,7 @@ const MOVES = {
 // dirección del corte en pantalla (unitaria, en píxeles) para el plano inclinado
 for (const f in MOVES) for (const key in MOVES[f]) {
   const k = MOVES[f][key], l = (k.find(q => q.ln) || {}).ln;
-  if (l) { const dx = (l[2] - l[0]) * VW, dy = (l[3] - l[1]) * VH, d = Math.hypot(dx, dy); k.c = [dx / d, dy / d]; }
+  if (l) { const dx = (l[2] - l[0]) * HUD_W, dy = (l[3] - l[1]) * VH, d = Math.hypot(dx, dy); k.c = [dx / d, dy / d]; }
 }
 const PLANE_K = 0.42, PLANE_D = 0.9; // plano a ~60°: escorzo algo exagerado para que se lea en pixel art
 // pose del arma con el plano inclinado aplicado: posición del puño, ángulo y escala en pantalla, y escorzo de la hoja (sv)
@@ -478,7 +493,7 @@ class Renderer {
     const grow = clamp((u - tA) / (tB - tA), 0, 1), fade = u > tB ? (u - tB) / fadeT : 0;
     let [ax, ay, bx, by] = k[i].ln;
     if (mir < 0) { ax = 1 - ax; bx = 1 - bx; }
-    ax *= VW; bx *= VW; ay *= VH; by *= VH;
+    ax = hx(ax); bx = hx(bx); ay *= VH; by *= VH;
     const R = VR[rampName] || VR.steel, len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
     const t0 = fade * len * 0.85, t1 = len * grow;
     for (let pass = 0; pass < 2; pass++) for (let t = t0; t < t1; t++) {
@@ -493,7 +508,7 @@ class Renderer {
   // y la muñeca acompaña sólo un poco el giro de la hoja
   armHand(p, side, x, y, wAng, rest, rx, ry, lm) {
     if (y < VH * 0.5) return; // con el puño arriba solo se ve el arma (si no, el antebrazo colgaría desde el borde superior)
-    const sx = side > 0 ? VW * 0.9 : VW * 0.1, sy = VH + 110;
+    const sx = side > 0 ? hx(0.9) : hx(0.1), sy = VH + 110;
     const arm = (X, Y) => Math.atan2(-(sx - X), sy - Y);
     this.hand(p, side, x, y, rest + (arm(x, y) - arm(rx, ry)) + 0.12 * (wAng - rest), lm);
   }
@@ -537,8 +552,8 @@ class Renderer {
     const swE = 1 - (1 - sw) * (1 - sw), swArc = Math.sin(sw * Math.PI);
     // puntos de agarre en reposo (centro del puño)
     const sideUp = (SPR['handR_' + p.cls] || {}).side ? 40 : 0; // las manos de perfil se ven enteras: subir el agarre
-    const RGx = Math.round(VW * 0.70 + bx), RGy = Math.round(VH - 60 - sideUp + by);
-    const LGx = Math.round(VW * 0.25 + bxL * 0.7), LGy = Math.round(VH - 60 - sideUp + byL);
+    const RGx = Math.round(hx(0.70) + bx), RGy = Math.round(VH - 60 - sideUp + by);
+    const LGx = Math.round(hx(0.25) + bxL * 0.7), LGy = Math.round(VH - 60 - sideUp + byL);
     const S2 = HS;
 
     // ---------- forma animal: garras abiertas, sin armas ni antorcha
@@ -547,7 +562,7 @@ class Renderer {
       for (const side of [1, -1]) {
         const s = SPR[(side > 0 ? 'clawsR_' : 'clawsL_') + k];
         const active = p.swing && swDir === side;
-        const x0 = (side > 0 ? VW * 0.76 : VW * 0.24) + (side > 0 ? bx : bxL) * 0.6, y0 = VH - 40 + (side > 0 ? by : byL) + Math.sin(time * 3 + side) * 2;
+        const x0 = (side > 0 ? hx(0.76) : hx(0.24)) + (side > 0 ? bx : bxL) * 0.6, y0 = VH - 40 + (side > 0 ? by : byL) + Math.sin(time * 3 + side) * 2;
         let ang = side * -0.08 + Math.sin(time * 2.2 + side) * 0.04, x = x0, y = y0; // zarpas alzadas, algo giradas hacia el centro
         if (active) {
           const mv = MOVES.cl.swipe, q = poseAt(mv, sw);
@@ -577,12 +592,12 @@ class Renderer {
       this.hand(p, -1, LGx, LGy, ang, lm);
     } else if (hk === 1 && p.off === 'shield') {
       const k = p.block;
-      let sx = lerp(VW * 0.17, VW * 0.38, k) + bxL * 0.5, sy = lerp(VH + 12, VH / 2 + SHIELD_TOP, k) + byL * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
+      let sx = lerp(hx(0.17), hx(0.38), k) + bxL * 0.5, sy = lerp(VH + 12, VH / 2 + SHIELD_TOP, k) + byL * 0.5, ang = lerp(0.15, -0.02, k), ssc = 1;
       // Golpe de escudo: sale hacia delante (hacia el centro y más pequeño, porque se aleja) y vuelve
       const u = p.bashU;
       if (u !== undefined) {
         const out = u < 0.35 ? 1 - Math.pow(1 - u / 0.35, 2) : u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
-        sx = lerp(sx, VW * 0.47, out); sy = lerp(sy, VH * 0.5, out); ang = lerp(ang, 0, out); ssc = lerp(1, 0.62, out);
+        sx = lerp(sx, hx(0.47), out); sy = lerp(sy, VH * 0.5, out); ang = lerp(ang, 0, out); ssc = lerp(1, 0.62, out);
       }
       // escudo y mano forman un solo sprite: la mano agarra el escudo por el centro, por delante,
       // y al empujar se alejan y encogen juntos
@@ -651,7 +666,7 @@ class Renderer {
     const grip = big ? [39, 190] : dag ? [23, 80] : [31, 122]; // justo bajo la guarda: la guarda apoya en el puño y el pomo asoma debajo
     // espadón: a la derecha de la pantalla e inclinado hacia la esquina superior derecha
     const rest = big ? GS_REST : 0.04, fam = big ? 'gs' : dag ? 'dg' : 'sw', L = (big ? 190 : dag ? 82 : 125) * S2;
-    const x0 = big ? VW * GS_X : RGx, y0 = big ? VH - 22 - sideUp + by2 : RGy;
+    const x0 = big ? hx(GS_X) : RGx, y0 = big ? VH - 22 - sideUp + by2 : RGy;
     let ang = rest, gx = x0, gy = y0, sc = 1, sv = 1, hide = 0;
     if (p.swing && spin) { // torbellino: las manos se esconden abajo y solo gira el arma
       const k = Math.min(1, sw * 6, (1 - sw) * 6);

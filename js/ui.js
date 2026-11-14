@@ -327,7 +327,8 @@ class UI {
     const p = G.p, cx = VX + VW / 2, inv = G.inv;
     this.text(cx, 6, 'INVENTARIO', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
     // ---- consumibles
-    const lx = 8, lw = 222, y0 = 26;
+    const OX = (VW - 480) >> 1; // en pantallas anchas, centrado
+    const lx = 8 + OX, lw = 222, y0 = 26;
     this.panel(lx, y0, lw, 216);
     const one = WEAPONS[p.weapon].hands === 1, off = offhandOf(p);
     this.text(lx + 6, y0 + 5, `MANO IZQ.: ${off === 'torch' ? `ANTORCHA ${fmtTime(p.torchFuel)}` : off === 'shield' ? 'ESCUDO' : one ? 'VACÍA' : 'DOS MANOS'}`, off === 'torch' ? C.orange : C.ink);
@@ -350,7 +351,7 @@ class UI {
       if (sh > 16) this.text(sx + 24, sy + 12, r.sub.slice(0, 31), C.dim, { shadow: false });
     });
     // ---- equipo (sin mochila: lo que no llevas puesto no existe)
-    const rx = 238, rw = 234;
+    const rx = 238 + OX, rw = 234;
     this.panel(rx, y0, rw, 216);
     this.text(rx + 6, y0 + 5, 'EQUIPO', C.dim);
     let tip = null;
@@ -364,7 +365,7 @@ class UI {
       const sub = !it ? '-' : !on ? (s === 'arma' ? `NO LA LLEVAS EN LA MANO (${WT_NAME[it.wtype].toUpperCase()})` : 'SOLO CON EL ESCUDO EN LA MANO') : itemLines(it)[0].toUpperCase();
       this.text(sx + 28, sy + 14, String(tr(sub)).slice(0, 33), C.dim, { shadow: false });
     });
-    if (tip && tip.legend && LEGEND[tip.legend].set) this.setPanel(LEGEND[tip.legend].set, 8, 150, 222);
+    if (tip && tip.legend && LEGEND[tip.legend].set) this.setPanel(LEGEND[tip.legend].set, 8 + OX, 150, 222);
     if (tip) {
       const ls = itemLines(tip).join(' · ').toUpperCase();
       this.text(rx + 6, y0 + 186, `${itemName(tip).toUpperCase().slice(0, 25)} · ${RARITY[tip.rar].name.toUpperCase()}`, itemCol(tip), { shadow: false });
