@@ -1520,24 +1520,29 @@ function boot() {
   G.p = makePlayer('mago'); setClass('mago', false);
   newDungeon(1);
   loadAssets().then(() => {
-    const ld = document.getElementById('loading'); if (ld) ld.remove();
     window.__booted = true; // el vigilante del arranque (index.html) ya no hace falta
-    if (SPR.studio_cat_0) { G.state = 'splash'; G.splashT = 0; }
+    // la pantalla del estudio ya lleva un rato en index.html: el juego sigue en el mismo punto de la animación
+    // (y siempre deja al menos el fundido final)
+    if (SPR.studio_cat_0) { G.state = 'splash'; G.splashT = Math.min(SPLASH_TIME - 0.6, window.__splash0 ? (performance.now() - window.__splash0) / 1000 : 0); }
     requestAnimationFrame(frame);
+    // se quita la portada de carga cuando el lienzo ya ha pintado el primer fotograma (sin parpadeo)
+    requestAnimationFrame(() => requestAnimationFrame(() => { const ld = document.getElementById('loading'); if (ld && !ld.dataset.problem) ld.remove(); }));
   }).catch((e) => {
     const ld = document.getElementById('loading'); if (ld) ld.textContent = 'No se pudo cargar el juego: ' + e.message;
     throw e;
   });
 }
-requestAnimationFrame(() => setTimeout(boot, 30));
+// arrancar cuando estén TODOS los scripts: con un temporizador, si alguno llegaba lento de internet, el arranque
+// se adelantaba y fallaba (p. ej. «setLang is not defined»)
+if (document.readyState === 'complete') setTimeout(boot, 0); else window.addEventListener('load', () => setTimeout(boot, 0));
 
 // Juego sin conexión: el service worker solo existe en la web publicada (no al abrir el archivo en local)
 // instalar como app: el navegador avisa de que se puede y la opción aparece en el menú de opciones
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); G.installEvt = e; });
 window.addEventListener('appinstalled', () => { G.installEvt = null; freshAppCache('instalada'); });
-// La app instalada empieza siempre con la caché de archivos limpia: al terminar de instalarse y la primera vez que se
-// abre como app (por cada versión) se borran los archivos guardados del juego y el service worker los vuelve a bajar.
-// Las partidas (localStorage) no se tocan.
+// Al terminar de instalarse como app se borran los archivos guardados del juego y el service worker los vuelve a
+// bajar. Las partidas (localStorage) no se tocan. (Antes también se hacía al abrirla por primera vez: se quitó,
+// porque borraba la caché mientras cargaba y dejaba las siguientes aperturas descargando todo de nuevo.)
 function freshAppCache(why) {
   try { localStorage.setItem('hexcrypt_app_fresh', (document.querySelector('meta[name=version]') || {}).content || 'dev'); } catch (e) { /* sin almacenamiento */ }
   if (!window.caches || navigator.onLine === false) { try { localStorage.removeItem('hexcrypt_app_fresh'); } catch (e) { /* nada */ } return; } // sin conexión: se hará la próxima vez
@@ -1545,13 +1550,6 @@ function freshAppCache(why) {
     .then(() => navigator.serviceWorker && navigator.serviceWorker.getRegistration().then(r => r && r.update()))
     .catch(() => {});
 }
-(function firstAppLaunch() {
-  const standalone = (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)) || navigator.standalone;
-  const ver = (document.querySelector('meta[name=version]') || {}).content;
-  if (!standalone || !ver || ver === 'dev') return;
-  let done = null; try { done = localStorage.getItem('hexcrypt_app_fresh'); } catch (e) { /* nada */ }
-  if (done !== ver) freshAppCache('primera vez como app');
-})();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && document.querySelector('meta[name=version]') && document.querySelector('meta[name=version]').content !== 'dev') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
