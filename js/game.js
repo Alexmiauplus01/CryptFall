@@ -130,12 +130,18 @@ function newRun(cls) {
   G.equip = { anillo1: null, anillo2: null, amuleto: null, armadura: null, arma: null, escudo: null }; G.swap = null; G.wskin = null;
   G.souls = 0; G.upg = {}; G.pasOn = []; G.learn = null; G.dgScale = null; G.pact = null; G.nightmare = false; G.kills = 0; G.totalTime = 0; G.won = false; G.pending = 0; G.log = []; G.toasts = []; G.evolveReady = false; G.choice = null; G.allies = [];
   G.p = makePlayer(cls); setClass(cls, false);
-  G.inv = { torch: 3, potion: 1, map: 0, rune: 0 }; // kit inicial G.forge = {}; G.forgeOpts = null; G.met = {};
+  G.inv = { torch: 3, potion: 1, map: 0, rune: 0 }; // kit inicial
+  G.forge = {}; G.forgeOpts = null; G.met = {}; G.frags = 0;
+  // modo y hándicap elegidos al empezar (pesadilla dura toda la partida; el pacto, la primera mazmorra)
+  const sc = G.startCfg || {}; G.startCfg = null;
+  G.runNight = !!sc.nightmare; G.nightmare = G.runNight; G.pact = sc.pact || null;
   G.p.hp = G.p.maxHp;
   G.bladeAng = 0; G.novaT = 4; G.boltT = 2;
   G.state = 'play';
   G.bank = 0;
   newDungeon(1);
+  if (G.runNight) { toast('MODO PESADILLA', true); logMsg('Pesadilla: enemigos más duros, el doble de oro y botín sin objetos comunes', C.red); }
+  if (G.pact) logMsg(`Pacto: ${PACTS[G.pact].desc} (+${Math.round(PACTS[G.pact].bonus * 100)}% de oro y botín)`, C.red);
   logMsg(`Entras en la mazmorra como ${CLASSES[cls].name}`, C.ink);
   logMsg('Saquea lo que puedas y sal con vida', C.dim);
   saveRun();
@@ -152,6 +158,14 @@ function newDungeon(n) {
   placeGhost(G.dg); G.elite = null; G.phoenixUsed = false; G.phylUsed = false; G.raiseT = undefined; G.unbreakT = 0;
   enterLevel(G.dg.start.z, G.dg.start, true);
   jot('start', `Llego a ${G.dg.name}. Dicen que sus niveles guardan riquezas olvidadas... y un Guardián. Debo salir con vida y con el botín.`);
+  // lo que traen las mazmorras hondas
+  const deep = [];
+  if (n >= 3) deep.push('algunos enemigos se dividen al morir');
+  if (n >= 4) deep.push('hay salas de oscuridad espesa');
+  if (n >= 5) deep.push('algunos muertos vuelven a levantarse');
+  G.deepNote = deep.length ? 'En las profundidades ' + deep.join(', ') + '.' : null; G.splitSeen = G.reviveSeen = false; G.lastDarkRoom = null;
+  if (deep.length) jot('deep' + n, `${G.deepNote.charAt(0).toUpperCase() + G.deepNote.slice(1)} Hay que andarse con ojo.`);
+  if (G.state !== 'title' && G.deepNote) logMsg(G.deepNote, C.red);
   if (G.state !== 'title') { toast(G.dg.name.toUpperCase(), true); logMsg(`${G.dg.name}: ${G.dg.zs.length} niveles`, C.gold); logMsg(`Los enemigos se miden contigo: vida x${G.dgScale.hp.toFixed(2)} · daño x${G.dgScale.dmg.toFixed(2)}`, C.red); }
 }
 
@@ -169,6 +183,12 @@ function roomSpot(lv, r, used) {
 }
 
 // contenido de cada sala: enemigos dormidos, cofres, oro, llaves y el Guardián
+// sala de oscuridad: se decide de forma fija por mazmorra, nivel y sala (no hace falta guardarla)
+function isDarkRoom(lv, ri) {
+  const n = G.dg ? G.dg.n : 1; if (n < 4 || ri === undefined || ri < 0 || !lv.rooms[ri]) return false;
+  const r = lv.rooms[ri]; if (['entrada', 'guarida', 'santuario', 'mentor', 'tienda', 'forja'].includes(r.type)) return false;
+  return hash2(ri * 7 + 3, lv.z * 13 + n * 31, 91) < 0.18 + 0.03 * (n - 4);
+}
 function populateLevel(lv) {
   const saveE = G.enemies, saveF = G.floor, saveT = G.t;
   G.enemies = lv.state.enemies; G.floor = G.dg.diff(lv.z); G.t = 0; G.popTheme = lv.theme;
@@ -329,7 +349,7 @@ function nextDungeon(nightmare) {
   const p = G.p, n = G.dg.n + 1;
   G.pactNight = !!nightmare;
   openPacts(() => {
-    G.nightmare = !!nightmare;
+    G.nightmare = !!nightmare || !!G.runNight; // en una partida en pesadilla, todas las mazmorras lo son
     p.hp = p.maxHp; G.flashFx = 1;
     newDungeon(n);
     G.state = 'play'; lockMouse();
@@ -342,6 +362,10 @@ function fmtTime(t) { return `${Math.floor(t / 60)}:${String(Math.floor(t % 60))
 // sala en la que está el jugador; arena: se cierra hasta vaciarla
 function updateRooms(dt) {
   const lv = G.lv, p = G.p, ci = Math.floor(p.y) * MW + Math.floor(p.x), ri = lv.roomOf[ci], r = ri >= 0 ? lv.rooms[ri] : null;
+  // salas de oscuridad espesa (mazmorra 4 en adelante): la antorcha alumbra la mitad
+  const dark = isDarkRoom(lv, ri);
+  if (dark && !G.inDark && G.lastDarkRoom !== lv.z * 1000 + ri) { G.lastDarkRoom = lv.z * 1000 + ri; logMsg('Una oscuridad espesa ahoga tu luz', C.dim); }
+  G.inDark = dark;
   if (r && r.type === 'arena' && !r.done && !G.arena && lv.cells[ci] === 0) {
     // ¿totalmente dentro? (no en el umbral)
     if (p.x > r.x + 0.8 && p.x < r.x + r.w - 0.8 && p.y > r.y + 0.8 && p.y < r.y + r.h - 0.8) {
@@ -463,6 +487,8 @@ function hurtPlayer(d, sx, sy) {
   p.hp -= Math.max(1, Math.round(d)); p.inv = 0.45; G.hurtFx = 1; G.shake = Math.max(G.shake, 0.3);
   Sfx.play('hurt'); if (typeof padRumble === 'function') padRumble(0.7, 160);
   equipOnHurt(d, sx, sy);
+  // indicador de dirección del daño junto a la mirilla (ángulo respecto a donde miras)
+  if (sx !== undefined && Math.hypot(sx - p.x, sy - p.y) > 0.05) (G.hitDirs || (G.hitDirs = [])).push({ a: Math.atan2(sy - p.y, sx - p.x) - p.a, t: 1 });
   if (eqSpecial('espinas') && sx !== undefined) { let best = null, bd = 2.2; for (const e of G.enemies) { const q = Math.hypot(e.x - sx, e.y - sy); if (!e.dead && q < bd) { bd = q; best = e; } } if (best) damageEnemy(best, d * 0.3, { silent: true }); }
   if (p.hp <= 0) die();
 }
@@ -779,6 +805,38 @@ function updatePassives2(dt) {
 
 // ---------------------------------------------------------------- Habilidades aprendidas (3 activas) y pasivas (3 activas)
 // Las que no caben se guardan: el Mentor deja reorganizarlas por oro.
+// ---------------------------------------------------------------- Recompensa del Guardián
+// Al absorber su alma eliges 1 de 3: su objeto (épico o legendario, de su set si lo hay), mejorar una de tus
+// habilidades (o aprender una nueva, o subir una pasiva) o un tesoro de fragmentos y oro.
+function openReward(bossType) {
+  const p = G.p, n = G.dg ? G.dg.n : 1, opts = [];
+  let it = makeItem('boss', null, { boss: bossType }); if (it.rar === 'comun' || it.rar === 'raro') it = makeItem('boss', null, { boss: bossType, rar: 'epico' });
+  opts.push({ kind: 'item', item: it, name: itemName(it), lines: itemLines(it), tag: RARITY[it.rar].name });
+  const ups = p.active.filter(id => id && skLv(id) < SKILL_MAX_LV && upgradeSoulReq(skLv(id) + 1) <= soulsHave());
+  const ls = learnableSkills(), pas = UPG.filter(u => u.passive && G.pasOn.includes(u.id) && LR(u.id) < u.max);
+  if (ups.length) { const id = pick(ups); opts.push({ kind: 'skup', id, name: 'Mejorar ' + SKILLS[id].name, lines: [skillUpgradeDesc(id)], tag: 'Habilidad' }); }
+  else if (ls.length) { const id = pick(ls); opts.push({ kind: 'skill', id, name: SKILLS[id].name, lines: [skillDescShort(id)], tag: 'Habilidad nueva' }); }
+  else if (pas.length) { const u = pick(pas); opts.push({ kind: 'pas', id: u.id, name: u.name, lines: [u.desc(LR(u.id))], tag: 'Pasiva' }); }
+  else opts.push({ kind: 'potion', name: 'Dos pociones', lines: ['Dos pociones de vida para el camino'], tag: 'Consumible' });
+  const fr = 6 + 3 * (n - 1), gold = Math.round(150 * n * lootMul());
+  opts.push({ kind: 'treasure', frags: fr, gold, name: 'Tesoro del Guardián', lines: [`+${fr} fragmentos y +${gold} de oro`], tag: 'Tesoro' });
+  G.reward = opts; G.state = 'reward'; mouse.fire = false;
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+function chooseReward(i) {
+  if (G.state !== 'reward' || !G.reward || !G.reward[i]) return;
+  const o = G.reward[i], p = G.p; G.reward = null; G.state = 'play';
+  const then = () => { if (canEvolve()) { G.evolveReady = true; openEvolve(); } else if (G.state === 'play') lockMouse(); };
+  Sfx.play('level'); G.flashFx = 0.5;
+  if (o.kind === 'item') { takeItem(o.item); if (G.state === 'play') then(); else G.afterSwap = then; return; }
+  if (o.kind === 'skup') { p.skLv = p.skLv || {}; p.skLv[o.id] = skLv(o.id) + 1; logMsg(`${SKILLS[o.id].name} sube a nivel ${p.skLv[o.id] + 1}`, C.cyan); }
+  if (o.kind === 'skill') { learnSkill(o.id, then); return; }
+  if (o.kind === 'pas') { G.upg[o.id] = LR(o.id) + 1; recalc(); logMsg(`${o.name} sube a nivel ${LR(o.id)}`, C.orange); }
+  if (o.kind === 'potion') G.inv.potion = (G.inv.potion || 0) + 2;
+  if (o.kind === 'treasure') { G.frags = (G.frags || 0) + o.frags; G.loot += o.gold; Sfx.play('coin'); toast(`+${o.gold} DE ORO · +${o.frags} FRAGMENTOS`, false); }
+  then();
+}
+
 // ---------------------------------------------------------------- Almas de Guardián
 // Cada Guardián suelta un alma. No se gastan: cuentan las conseguidas en la partida.
 // · Evolucionar pide 1 alma (primera) y 2 (segunda).
@@ -887,7 +945,7 @@ function updatePickups(dt) {
         k.dead = true; G.souls = soulsHave() + 1; G.flashFx = 0.8; Sfx.play('level'); vfxPowerUp('cyan');
         toast('¡ALMA DE GUARDIÁN!', true); logMsg(`Absorbes un Alma de Guardián (${G.souls})`, C.cyan);
         jot('soul' + G.dg.n, `Absorbí el alma del Guardián. Siento que puedo llegar más lejos (almas: ${G.souls}).`);
-        if (canEvolve()) { G.evolveReady = true; if (G.state === 'play') openEvolve(); }
+        openReward(k.boss); // el Guardián ofrece 1 de 3 recompensas; después, la evolución si ya toca
       }
     } else if (k.type === 'portal') {
       k.t += dt;
@@ -1145,6 +1203,7 @@ function update(dt) {
   G.flashFx = Math.max(0, G.flashFx - dt * 2);
   G.novaFx = Math.max(0, G.novaFx - dt * 2.5);
   G.hitMark = Math.max(0, G.hitMark - dt);
+  if (G.hitDirs && G.hitDirs.length) { for (const h of G.hitDirs) h.t -= dt; G.hitDirs = G.hitDirs.filter(h => h.t > 0); }
   G.touchCd -= dt; G.fade = Math.max(0, G.fade - dt * 2.5);
   if (G.time - (G.savedAt || 0) > 20) saveRun();
   // mapa explorado
@@ -1254,7 +1313,7 @@ function render() {
   const sh = G.cfg && G.cfg.noShake ? 0 : G.shake * 3;
   const hasTorch = offhandOf(p) === 'torch', vis = classPassive(p.cls, 'vision', 0.4);
   // sin antorcha solo ves la penumbra cercana (más o menos según la visión nocturna de la clase)
-  const cam = { x: p.x, y: p.y, a: p.a + (sh > 0.05 ? rand(-sh, sh) * 0.01 : 0), light: (p.light || 1) * (hasTorch ? 1 : 0.75 + 0.35 * vis), torch: hasTorch ? 1.05 : 0.08 + vis * 0.3, lit: hasTorch };
+  const cam = { x: p.x, y: p.y, a: p.a + (sh > 0.05 ? rand(-sh, sh) * 0.01 : 0), light: (p.light || 1) * (hasTorch ? 1 : 0.75 + 0.35 * vis) * (G.inDark ? 0.5 : 1), torch: hasTorch ? 1.05 : 0.08 + vis * 0.3, lit: hasTorch };
   R.render(cam, G.lv, buildItems(), G.time, dynLights());
   // luz que recibe el jugador (estática + dinámica, ya preparada por el render) para oscurecer sus manos
   const sl = R.sampleLight(p.x, p.y, [0, 0, 0]);
@@ -1274,10 +1333,11 @@ function render() {
   if (G.state === 'title') { if (G.hasSave === undefined) G.hasSave = hasSave(); ui.title(G); }
   else if (G.state === 'options') ui.options(G);
   else if (G.state === 'controls' && G.ctlBack !== 'paused') ui.controls(G);
+  else if (G.state === 'mode') ui.modeSelect(G);
   else if (G.state === 'classselect') ui.choice(G);
   else if (G.state === 'evolve') ui.choice(G);
   else {
-    if (!['learn', 'mentor', 'pact', 'paused'].includes(G.state)) ui.hud(G);
+    if (!['learn', 'mentor', 'pact', 'paused', 'forge', 'reforge', 'reward'].includes(G.state)) ui.hud(G);
     if (G.state === 'paused') ui.pause(G);
     else if (G.state === 'levelup') ui.levelUp(G);
     else if (G.state === 'learn') ui.learn(G);
@@ -1290,6 +1350,8 @@ function render() {
     else if (G.state === 'map') ui.mapScreen(G);
     else if (G.state === 'controls') ui.controls(G);
     else if (G.state === 'forge') ui.forge(G);
+    else if (G.state === 'reforge') ui.reforge(G);
+    else if (G.state === 'reward') ui.reward(G);
     else if (G.state === 'exitask') ui.exitAsk(G);
     else if (G.state === 'escaped') ui.escaped(G);
     else if (G.state === 'pact') ui.pact(G);
@@ -1324,10 +1386,13 @@ document.addEventListener('keydown', (ev) => {
   if (G.state === 'swap') { const n = G.swap ? G.swap.slots.length : 0, d2 = { Digit4: 3, Numpad4: 3 }[e.code]; const i = dig !== undefined ? dig : d2; if (i !== undefined) { if (i < n) resolveSwap(G.swap.slots[i]); else if (i === n) resolveSwap(null); else if (i === n + 1) resolveSwap('recycle'); } return; }
   if (G.state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') closeMap(); if (e.code === 'KeyA' || e.code === 'ArrowLeft') mapStep(1); if (e.code === 'KeyD' || e.code === 'ArrowRight') mapStep(-1); return; }
   if (G.state === 'shop') { if (dig !== undefined) buyItem(SHOP_ITEMS[dig].id); else if (e.code === 'Digit4' || e.code === 'Numpad4') buyItem(SHOP_ITEMS[3].id); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
-  if (G.state === 'forge') { if (dig !== undefined) forgeBuy(dig); if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
+  if (G.state === 'forge') { if (dig !== undefined) forgeBuy(dig); if (e.code === 'KeyR') G.state = 'reforge'; if (e.code === 'Escape' || e.code === 'KeyI') closeNpc(); return; }
+  if (G.state === 'reward') { if (dig !== undefined) chooseReward(dig); return; }
+  if (G.state === 'reforge') { const k = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Digit5: 4, Digit6: 5 }[e.code], eq = SLOTS.filter(s => G.equip[s]); if (k !== undefined && eq[k]) reforgeItem(eq[k]); if (e.code === 'Escape' || e.code === 'KeyR') G.state = 'forge'; return; }
   if (G.state === 'exitask') { if (dig === 0) leaveDungeon(); else if (dig === 1 || e.code === 'Escape') stayInDungeon(); return; }
   if (G.state === 'escaped') { if (dig === 0) nextDungeon(); else if (dig === 1) nextDungeon(true); else if (dig === 2) retire(); return; }
   if (G.state === 'pact') { const i = dig !== undefined ? dig : { Digit4: 3, Numpad4: 3 }[e.code]; if (i !== undefined) choosePact(i); return; }
+  if (G.state === 'mode') { if (dig !== undefined) chooseMode(dig); else if (e.code === 'Escape') G.state = 'title'; return; }
   if (G.state === 'classselect' || G.state === 'evolve') { if (dig !== undefined) pickChoice(dig); return; }
   if (G.state === 'play') {
     if (dig !== undefined) equipSlot(dig);
@@ -1379,6 +1444,7 @@ function handleClick(x, y, button = 0) {
     }
     case 'options': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) optAction(h.id); else G.state = 'title'; break; }
     case 'dead': if (e.button === 0) startRun(); break;
+    case 'mode': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) chooseMode(h.id); break; }
     case 'classselect': case 'evolve': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) pickChoice(h.id); break; }
     case 'paused': {
       const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h));
@@ -1394,7 +1460,9 @@ function handleClick(x, y, button = 0) {
     case 'map': { const m = ui.mouse; if (m.x < VW * 0.25) mapStep(1); else if (m.x > VW * 0.75) mapStep(-1); else closeMap(); break; }
     case 'swap': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) resolveSwap(h.id === 'discard' ? null : h.id); break; }
     case 'shop': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else buyItem(h.id); } else closeNpc(); break; }
-    case 'forge': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else forgeBuy(h.id); } else closeNpc(); break; }
+    case 'forge': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 'close') closeNpc(); else if (h.id === 'reforge') G.state = 'reforge'; else forgeBuy(h.id); } else closeNpc(); break; }
+    case 'reward': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) chooseReward(h.id); break; }
+    case 'reforge': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) reforgeItem(h.id); else G.state = 'forge'; break; }
     case 'exitask': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) leaveDungeon(); else stayInDungeon(); } break; }
     case 'escaped': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) { if (h.id === 0) nextDungeon(); else if (h.id === 1) nextDungeon(true); else retire(); } break; }
     case 'pact': { const h = ui.hot.find(h => ui.hit(h.x, h.y, h.w, h.h)); if (h) choosePact(h.id); break; }
@@ -1483,7 +1551,23 @@ function resumeGame() { if (G.state !== 'paused') return; G.state = 'play'; lock
 
 function startRun() {
   Sfx.init(); Sfx.playMusic('title');
-  openClassSelect();
+  openModeSelect();
+}
+// Nueva partida: 1) modo (normal o pesadilla, para toda la partida), 2) hándicap opcional (un pacto para la primera
+// mazmorra, más oro y botín), 3) clase. newRun aplica lo elegido (G.startCfg).
+const RUN_MODES = [
+  { id: 'normal', name: 'Normal', desc: 'Difícil pero justo: la experiencia pensada para el juego.' },
+  { id: 'pesadilla', name: 'Pesadilla', desc: 'Toda la partida: enemigos con +50% de vida y +25% de daño y más élites. A cambio, el doble de oro y botín sin objetos comunes.' },
+];
+function openModeSelect() {
+  G.state = 'mode'; mouse.fire = false; G.startCfg = {};
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+function chooseMode(i) {
+  if (G.state !== 'mode' || !RUN_MODES[i]) return;
+  G.startCfg = { nightmare: RUN_MODES[i].id === 'pesadilla' };
+  Sfx.play('shrine');
+  openPacts(() => { G.startCfg.pact = G.pact; G.pact = null; openClassSelect(); });
 }
 
 // Bucle con límite de fotogramas (60 o 30, a elegir en opciones): se salta los refrescos que sobran

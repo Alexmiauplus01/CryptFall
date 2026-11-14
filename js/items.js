@@ -118,12 +118,14 @@ const BASE_NAME = {
 const WT_NAME = { sword: 'espada', greatsword: 'espadón', dagger: 'daga', staff: 'bastón', bow: 'arco' };
 
 // ---------------------------------------------------------------- creación
+// probabilidades base [legendario, épico, raro] por origen; cada mazmorra superada las sube (con tope), así el
+// botín mejora cuanto más hondo bajas: x1,5 legendario, x1,45 épico y x1,2 raro por mazmorra
+const RAR_BASE = { boss: [0.12, 0.20, 0.40], ghost: [0, 0.08, 0.52], vault: [0.006, 0.034, 0.26], chest: [0.003, 0.02, 0.177] };
 function rollRarity(src) {
+  const k = Math.max(0, ((G.dg && G.dg.n) || 1) - 1), b = RAR_BASE[src] || RAR_BASE.chest;
+  const leg = Math.min(src === 'boss' ? 0.4 : 0.05, b[0] * (1 + 0.5 * k)), epi = Math.min(src === 'boss' ? 0.4 : 0.2, b[1] * (1 + 0.45 * k)), raro = Math.min(0.6, b[2] * (1 + 0.2 * k));
   const r = Math.random();
-  if (src === 'boss') return r < 0.12 ? 'legendario' : r < 0.32 ? 'epico' : r < 0.72 ? 'raro' : 'comun';
-  if (src === 'ghost') return r < 0.08 ? 'epico' : r < 0.6 ? 'raro' : 'comun';
-  if (src === 'vault') return r < 0.006 ? 'legendario' : r < 0.04 ? 'epico' : r < 0.3 ? 'raro' : 'comun';
-  return r < 0.003 ? 'legendario' : r < 0.023 ? 'epico' : r < 0.2 ? 'raro' : 'comun';
+  return r < leg ? 'legendario' : r < leg + epi ? 'epico' : r < leg + epi + raro ? 'raro' : 'comun';
 }
 // tipos de objeto posibles para la clase actual (arma solo si la clase usa espada, espadón, daga o bastón; escudo si usa armas de una mano)
 function itemKinds() {
@@ -228,19 +230,39 @@ function equipItem(slot, it) {
 }
 // decisión del cuadro de cambio: slot = hueco a sustituir o null = quedarte con lo que llevas
 // reciclar: el objeto del suelo desaparece a cambio de algo de oro (según rareza y mazmorra)
+// fragmentos al reciclar (según rareza y profundidad): el herrero los usa para reforjar piezas
+function fragGain(it) { return Math.max(1, Math.round(({ comun: 1, raro: 2, epico: 4, legendario: 8 }[it.rar] || 1) * (1 + 0.25 * ((G.dg ? G.dg.n : 1) - 1)))); }
+function reforgeCost(it) { return it.legend ? 0 : ({ comun: 2, raro: 3, epico: 5 }[it.rar] || 2); }
+// reforjar: la pieza cambia su propiedad por otra al azar de su tipo, con la potencia de la mazmorra actual
+// (pone al día piezas viejas). Las legendarias no se reforjan: su efecto es único.
+function reforgeItem(slot) {
+  const it = G.equip[slot]; if (!it) return;
+  if (it.legend) { toast('LAS LEGENDARIAS NO SE REFORJAN', false); Sfx.play('locked'); return; }
+  const cost = reforgeCost(it);
+  if ((G.frags || 0) < cost) { toast('TE FALTAN FRAGMENTOS', false); Sfx.play('locked'); return; }
+  const list = AFFIX[it.kind]; let af = it.af;
+  if (list.length > 1) while (af === it.af) af = Math.floor(Math.random() * list.length);
+  const A = list[af];
+  G.frags -= cost; it.af = af; it.stat = A.stat; it.val = Math.round(A.v * RARITY[it.rar].k * itemPower('chest') * rand(0.95, 1.2) * 1000) / 1000;
+  G.wskin = null; recalc(); Sfx.play('unlock'); G.flashFx = 0.3;
+  logMsg(`El herrero reforja ${itemName(it).toLowerCase()}: ${itemLines(it).join(' · ')}`, C.orange);
+}
 function recycleValue(it) { return Math.round(({ comun: 12, raro: 30, epico: 70, legendario: 160 }[it.rar] || 12) * (1 + 0.3 * ((G.dg ? G.dg.n : 1) - 1)) * lootMul()); }
 function resolveSwap(slot) {
   const S = G.swap; if (!S) return;
   if (slot === 'recycle') {
-    const v = recycleValue(S.item); G.loot += v; Sfx.play('coin'); toast(`+${v} DE ORO`, false);
-    logMsg(`Reciclas ${itemName(S.item).toLowerCase()}: +${v} de oro`, C.gold);
-    G.swap = null; G.state = 'play'; lockMouse(); return;
+    const v = recycleValue(S.item), fr = fragGain(S.item); G.loot += v; G.frags = (G.frags || 0) + fr; Sfx.play('coin'); toast(`+${v} DE ORO · +${fr} FRAGMENTOS`, false);
+    logMsg(`Reciclas ${itemName(S.item).toLowerCase()}: +${v} de oro y ${fr} fragmentos`, C.gold);
+    G.swap = null; G.state = 'play'; lockMouse();
+    if (G.afterSwap) { const f = G.afterSwap; G.afterSwap = null; f(); }
+    return;
   }
   // lo que no te quedas (el viejo o el nuevo) se queda en el suelo; al salir de la mazmorra se pierde
   const left = slot ? G.equip[slot] : S.item;
   if (slot) equipItem(slot, S.item);
   if (left) { G.pickups.push({ type: 'item', item: left, x: G.p.x, y: G.p.y, t: 0, declined: true }); logMsg(`Dejas ${itemName(left).toLowerCase()} en el suelo`, C.dim); }
   G.swap = null; G.state = 'play'; lockMouse();
+  if (G.afterSwap) { const f = G.afterSwap; G.afterSwap = null; f(); }
 }
 function dropItem(src, x, y, opt) { G.pickups.push({ type: 'item', item: makeItem(src, null, opt), x, y, t: rand(0, 6) }); }
 

@@ -121,6 +121,12 @@ function spawnEnemy(type, x, y) {
   if (G.pact === 'prisa') e.spd *= 1.2;
   if (d.dmg > 0 && !d.ranged && !d.boss && Math.random() < 0.65) e.flank = (Math.random() < 0.5 ? -1 : 1) * rand(0.7, 1.3); // se abre hacia un flanco
   maybeElite(e);
+  // mazmorras hondas: desde la 3.ª algunos se dividen al morir; desde la 5.ª algunos se levantan una vez
+  const dn = G.dg ? G.dg.n : 1;
+  if (!d.boss && type !== 'ghost' && !d.fly && !e.small) {
+    if (dn >= 3 && Math.random() < 0.1 + 0.03 * (dn - 3)) e.splits = true;
+    if (dn >= 5 && Math.random() < 0.1 + 0.03 * (dn - 5)) e.revive = true;
+  }
   G.enemies.push(e);
   return e;
 }
@@ -293,6 +299,16 @@ function dropGem(x, y, v) {
 
 function killEnemy(e) {
   e.dead = true; G.kills++;
+  if (e.splits) { // se parte en dos más pequeños
+    const t = e.type, x = e.x, y = e.y, hp = e.maxHp * 0.35;
+    later(0.05, () => { for (const s of [-1, 1]) { const c = spawnEnemy(t, x + s * 0.3, y); c.small = true; c.splits = c.revive = false; c.elite = null; c.big = 0.72; c.hp = c.maxHp = hp; c.sleep = false; } });
+    burst(e.x, e.y, 0.4, 16, rgb(150, 230, 120), 2, 0.6);
+    if (!G.splitSeen) { G.splitSeen = true; toast('¡SE DIVIDE!', false); }
+  }
+  if (e.revive) { // vuelve a levantarse una vez, con media vida
+    const t = e.type, x = e.x, y = e.y, hp = e.maxHp * 0.5;
+    later(2.5, () => { if (G.state === 'title') return; const c = spawnEnemy(t, x, y); c.splits = c.revive = false; c.hp = c.maxHp = hp; c.sleep = false; vfxBlink(x, y, 'void'); burst(x, y, 0.5, 18, rgb(170, 90, 255), 2, 0.7); Sfx.play('summon'); if (!G.reviveSeen) { G.reviveSeen = true; toast('¡SE LEVANTA DE NUEVO!', false); } });
+  }
   forgeOnKill(e); equipOnKill(e); eliteKilled(e);
   if (e.ghost && e.ghost.doppel) { // doppelgänger: botín de jefe
     if (G.elite === e) G.elite = null;
@@ -321,12 +337,12 @@ function killEnemy(e) {
 
 function onBossDead(e) {
   G.boss = null;
-  if (G.z !== SECRET_Z) { G.guardianDown = true; G.pickups.push({ type: 'soul', x: e.x, y: e.y - 0.6, t: 0 }); } // portal secreto y Alma de Guardián
+  if (G.z !== SECRET_Z) { G.guardianDown = true; G.pickups.push({ type: 'soul', x: e.x, y: e.y - 0.6, t: 0, boss: e.type }); } // portal secreto y Alma de Guardián (al absorberla se elige la recompensa)
   else { G.cowDown = true; dropItem('boss', e.x - 0.4, e.y, {}); G.pickups.push({ type: 'gold', x: e.x, y: e.y + 0.5, v: 120 * G.floor, t: 0 }); jot('cow' + G.dg.n, 'Encontré un prado bajo la mazmorra, lleno de vacas armadas. Derroté a su rey. Nadie me va a creer.'); }
-  dropItem('boss', e.x + 0.4, e.y, { boss: e.type });
+  if (G.z === SECRET_Z) dropItem('boss', e.x + 0.4, e.y, { boss: e.type }); // el Guardián ofrece su tesoro al absorber el alma
   G.flashFx = 1; G.shake = 0.7;
   Sfx.play('portal');
-  toast(`¡${e.def.name} HA CAÍDO!`, true); logMsg('Su tesoro es tuyo. Ahora, a la salida', C.cyan);
+  toast(`¡${e.def.name} HA CAÍDO!`, true); logMsg(G.z === SECRET_Z ? 'Su tesoro es tuyo. Ahora, a la salida' : 'Absorbe su alma y elige tu recompensa', C.cyan);
   jot('boss', `${e.def.name.charAt(0) + e.def.name.slice(1).toLowerCase()}, guardián de ${G.dg.name}, ha caído. Solo queda volver a la salida con vida.`);
 }
 

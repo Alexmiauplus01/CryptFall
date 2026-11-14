@@ -88,6 +88,7 @@ class UI {
     const cc = G.hitMark > 0 ? C.red : rgb(255, 236, 200);
     for (const [dx, dy] of [[-3, 0], [-2, 0], [2, 0], [3, 0], [0, -3], [0, -2], [0, 2], [0, 3]]) { this.px(mx + dx + 1, my + dy + 1, C.dark); }
     for (const [dx, dy] of [[-3, 0], [-2, 0], [2, 0], [3, 0], [0, -3], [0, -2], [0, 2], [0, 3]]) this.px(mx + dx, my + dy, cc);
+    this.hitDirs(G, mx, my);
     // avisos grandes
     let ty = VY + 58;
     if (G.state === 'play') for (const t of G.toasts) {
@@ -338,7 +339,7 @@ class UI {
     if (inv.rune) rows.push({ id: 'rune', label: `RUNAS x${inv.rune}`, sub: 'USAR: VOLVER A LA SALIDA', on: true });
     rows.push({ id: 'shield', label: 'ESCUDO', sub: one ? (off === 'shield' ? 'BAJAR' : 'ALZAR') : 'ARMA DE UNA MANO', on: one });
     rows.push({ id: null, spr: G.keys.length ? SPR.keys[G.keys[0]] : null, label: `LLAVES ${G.keys.length}/${G.dg.lockRooms.length}`, sub: G.keys.length ? G.keys.map(k => KEYS[k].name.split(' ').pop()).join(', ').toUpperCase() : 'NINGUNA', on: true });
-    rows.push({ id: null, spr: SPR.coins, label: `BOTÍN ${G.loot}`, sub: `A SALVO: ${G.bank}`, on: true });
+    rows.push({ id: null, spr: SPR.coins, label: `BOTÍN ${G.loot}`, sub: `A SALVO: ${G.bank} · FRAGM.: ${G.frags || 0}`, on: true });
     const rh = Math.min(26, Math.floor(194 / rows.length));
     rows.forEach((r, i) => {
       const sx = lx + 5, sy = y0 + 18 + i * rh, sw = lw - 10, sh = rh - 3, hot = r.id && r.on && this.hit(sx, sy, sw, sh);
@@ -401,7 +402,7 @@ class UI {
     card(cx - 230, top, 220, 'HAS ENCONTRADO', it, C.goldL);
     if (it.legend && LEGEND[it.legend].set) this.setPanel(LEGEND[it.legend].set, cx - 230, top + 74, 220);
     S.slots.forEach((s, i) => { const o = G.equip[s]; if (o) card(cx + 10, top + i * 72, 220, `LLEVAS (${SLOT_LABEL[s].toUpperCase()})`, o); });
-    const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO'], ['recycle', `RECICLARLO (+${recycleValue(it)} DE ORO)`]]);
+    const opts = S.slots.map((s, i) => [s, S.slots.length > 1 ? `CAMBIAR POR EL ${SLOT_LABEL[s].toUpperCase()}` : 'EQUIPAR EL NUEVO']).concat([['discard', 'QUEDARME CON LO QUE LLEVO'], ['recycle', `RECICLARLO (+${recycleValue(it)} ORO, +${fragGain(it)} FRAGM.)`]]);
     const by = top + Math.max(1, S.slots.length) * 72 + 6;
     opts.forEach(([id, t], i) => {
       const w = 260, x = cx - w / 2, yy = by + i * 18, hot = this.hit(x, yy, w, 16);
@@ -452,7 +453,29 @@ class UI {
     });
     const fx = Object.keys(G.forge || {}).filter(k => G.forge[k]);
     this.text(cx, y + ch + 10, fx.length ? ('TU ARMA: ' + fx.map(k => `${FORGE.find(f => f.id === k).name} ${G.forge[k]}`).join(' · ')).toUpperCase().slice(0, 76) : 'TU ARMA AÚN NO TIENE MEJORAS', C.dim, { align: 'center' });
-    this.text(cx, y + ch + 30, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
+    // reforjar piezas con fragmentos
+    { const bw = 250, bx = Math.round(cx - bw / 2), by = y + ch + 20, hot = this.hit(bx, by, bw, 14);
+      this.hot.push({ x: bx, y: by, w: bw, h: 14, id: 'reforge' }); this.panel(bx, by, bw, 14, hot);
+      this.text(cx, by + 4, `${G.touchMode ? '' : '[R] '}REFORJAR EQUIPO · FRAGMENTOS: ${G.frags || 0}`, hot ? C.goldL : C.gold, { align: 'center', shadow: false }); }
+    this.text(cx, y + ch + 40, G.touchMode ? 'TOCA FUERA PARA SALIR' : 'ESC PARA SALIR', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // reforjar: lista de piezas equipadas con su propiedad y el coste en fragmentos
+  reforge(G) {
+    this.darken(VX, VY, VW, VH, 0.5);
+    const cx = VX + VW / 2, x = cx - 170, w = 340;
+    this.text(cx, 12, 'REFORJAR', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 32, `CAMBIA LA PROPIEDAD DE UNA PIEZA · FRAGMENTOS: ${G.frags || 0}`, C.dim, { align: 'center' });
+    const items = SLOTS.filter(s => G.equip[s]);
+    if (!items.length) this.text(cx, 110, 'NO LLEVAS NINGUNA PIEZA', C.dim, { align: 'center' });
+    items.forEach((s, i) => {
+      const it = G.equip[s], yy = 46 + i * 30, cost = reforgeCost(it), ok = !it.legend && (G.frags || 0) >= cost, hot = this.hit(x, yy, w, 27);
+      this.hot.push({ x, y: yy, w, h: 27, id: s }); this.panel(x, yy, w, 27, hot && ok);
+      this.rect(x + 4, yy + 3, 21, 21, rgb(24, 16, 10)); this.blit(itemIcon(it), x + 14, yy + 13, 17);
+      this.text(x + 30, yy + 4, `${G.touchMode ? '' : `[${i + 1}] `}${itemName(it).toUpperCase()}`.slice(0, 40), itemCol(it), { shadow: false });
+      this.text(x + 30, yy + 15, String(tr(itemLines(it)[0] || '')).toUpperCase().slice(0, 36), C.ink, { shadow: false });
+      this.text(x + w - 6, yy + 10, it.legend ? 'ÚNICA' : `${cost} FR.`, it.legend ? C.dim : ok ? C.gold : C.red, { align: 'right', shadow: false });
+    });
+    this.text(cx, VH - 14, G.touchMode ? 'TOCA FUERA PARA VOLVER' : 'ESC PARA VOLVER', C.goldL, { align: 'center', shadow: 'outline' });
   }
   // Mapa completo de un nivel (lo explorado), ampliado para que quepa; A/D cambian entre niveles visitados
   mapScreen(G) {
@@ -544,6 +567,41 @@ class UI {
   }
 
   // Elección de clase / evolución: tarjetas grandes
+  // recompensa del Guardián: 1 de 3
+  reward(G) {
+    const R = G.reward; if (!R) return;
+    this.darken(VX, VY, VW, VH, 0.45);
+    const cx = VX + VW / 2, cw = 140, ch = 150, gap = 10, n = R.length, x0 = Math.round(cx - (n * cw + (n - 1) * gap) / 2), y = 60;
+    this.text(cx, 12, 'OFRENDA DEL GUARDIÁN', C.gold, { align: 'center', scale: 2, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 36, 'SU ALMA TE OFRECE UNA RECOMPENSA: ELIGE UNA', C.dim, { align: 'center' });
+    R.forEach((o, i) => {
+      const x = x0 + i * (cw + gap), hot = this.hit(x, y, cw, ch);
+      this.hot.push({ x, y, w: cw, h: ch, id: i }); this.panel(x, y, cw, ch, hot);
+      this.text(x + 6, y + 6, `[${i + 1}]`, C.dim);
+      this.text(x + cw - 6, y + 6, String(o.tag).toUpperCase(), o.kind === 'item' ? itemCol(o.item) : o.kind === 'treasure' ? C.gold : C.cyan, { align: 'right' });
+      let yy = y + 22;
+      if (o.kind === 'item') { this.rect(x + cw / 2 - 12, yy, 24, 24, rgb(24, 16, 10)); this.blit(itemIcon(o.item), x + cw / 2, yy + 12, 20); yy += 30; }
+      wrapText(String(tr(o.name.toUpperCase())), 21).slice(0, 2).forEach(l => { this.text(x + cw / 2, yy, l, o.kind === 'item' ? itemCol(o.item) : C.goldL, { align: 'center' }); yy += 10; });
+      yy += 4;
+      wrapText(String(tr(o.lines.join(' · ').toUpperCase())), 21).slice(0, 6).forEach(l => { this.text(x + cw / 2, yy, l, C.ink, { align: 'center', shadow: false }); yy += 9; });
+    });
+  }
+  // nueva partida: elegir modo (después vienen el hándicap y la clase)
+  modeSelect(G) {
+    this.darken(VX, VY, VW, VH, 0.35);
+    const cx = VX + VW / 2, cw = 176, chh = 150, gap = 14, x0 = Math.round(cx - cw - gap / 2), y = 66;
+    this.text(cx, 12, 'NUEVA PARTIDA', C.gold, { align: 'center', scale: 3, grad: GOLD_GRAD, shadow: 'outline' });
+    this.text(cx, 40, 'ELIGE EL MODO', C.dim, { align: 'center' });
+    RUN_MODES.forEach((m, i) => {
+      const x = x0 + i * (cw + gap), hot = this.hit(x, y, cw, chh), night = m.id === 'pesadilla';
+      this.hot.push({ x, y, w: cw, h: chh, id: i });
+      this.panel(x, y, cw, chh, hot);
+      this.text(x + 6, y + 6, `[${i + 1}]`, C.dim);
+      this.text(x + cw / 2, y + 24, m.name.toUpperCase(), night ? C.red : C.gold, { align: 'center', scale: 2, grad: night ? RED_GRAD : GOLD_GRAD, shadow: 'outline' });
+      wrapText(String(tr(m.desc.toUpperCase())), Math.floor((cw - 12) / 6)).forEach((l, k) => this.text(x + 6, y + 52 + k * 10, l, C.ink, { shadow: false }));
+    });
+    this.text(cx, y + chh + 12, 'DESPUÉS: HÁNDICAP OPCIONAL (MÁS ORO) Y CLASE', C.dim, { align: 'center', shadow: false });
+  }
   choice(G) {
     const ch = G.choice; if (!ch) return;
     this.darken(VX, VY, VW, VH, 0.35);
@@ -797,6 +855,19 @@ class UI {
     if (s0 > 0) this.text(bx + 8, by + bh - 12, '< A', faded, { shadow: false });
     if (s0 < spreads - 1) this.text(bx + bw - 8, by + bh - 12, 'D >', faded, { align: 'right', shadow: false });
     this.text(VX + VW / 2, VY + VH - 10, G.touchMode ? 'TOCA EL CENTRO PARA CERRAR · LOS LADOS PASAN PÁGINA' : 'J PARA CERRAR', C.goldL, { align: 'center', shadow: 'outline' });
+  }
+  // de dónde vienen los golpes: un arco rojo alrededor de la mirilla. Delante = arriba, detrás = abajo,
+  // izquierda y derecha a su lado; se apaga en un segundo
+  hitDirs(G, mx, my) {
+    const L = G.hitDirs; if (!L || !L.length) return;
+    for (const h of L) {
+      const k = Math.max(0, h.t), ang = h.a - Math.PI / 2; // 0 (delante) apunta hacia arriba en pantalla
+      const col = lerpCol(rgb(255, 40, 30), rgb(120, 10, 8), 1 - k);
+      for (let s = -0.45; s <= 0.45; s += 0.03) for (const R of [15, 16, 17]) {
+        const x = Math.round(mx + Math.cos(ang + s) * R * 1.25), y = Math.round(my + Math.sin(ang + s) * R);
+        if (k > 0.35 || ((x + y) & 1)) this.px(x, y, col);
+      }
+    }
   }
   flashTint(x, y, w, h) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
